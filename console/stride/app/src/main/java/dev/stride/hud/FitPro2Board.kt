@@ -55,6 +55,7 @@ class FitPro2Board(private val conn: FitProConnection) {
     private var lastFrameMs = 0L
     private var lastKey = 0
     private var fanWarned = false
+    private var lastError = ""
 
     var model = ""; private set
     var software = ""; private set
@@ -108,22 +109,31 @@ class FitPro2Board(private val conn: FitProConnection) {
      * that comes back with a bad status.
      */
     fun cycle(writes: Map<FitPro.Field, Double>?, minKph: Double): Result {
-        // Starting or resuming: put the setpoint at the machine's minimum
-        // *first*. FitPro 2 keeps its last target through a pause — nothing
-        // ever writes it to zero — so going straight to RUNNING could bring
-        // the belt back at whatever pace it last had, instead of the crawl
-        // the poll loop's ramp climbs from.
+        // Starting or resuming: hold the setpoint at the machine's minimum on
+        // both sides of the RUNNING write. FitPro 2 keeps its last target
+        // through a pause — nothing ever writes it to zero — so RUNNING alone
+        // could bring the belt back at whatever pace it last had, instead of
+        // the crawl the poll loop's ramp climbs from.
+        //
+        // Before: best effort. An idle board refuses any target speed as out
+        // of range (seen on hardware, 11/10/2026), and that refusal used to
+        // abort the start — so RUNNING was never sent, while the HUD went on
+        // ramping a belt that had not moved. After: the one that counts, sent
+        // the moment the board is running and will accept it.
         val mode = writes?.get(FitPro.Field.WORKOUT_MODE)?.toInt()
-        if (mode == FitPro.Mode.RUNNING || mode == FitPro.Mode.RESUME || mode == FitPro.Mode.WARM_UP) {
-            val floor = values[FitPro2.Id.MIN_KPH]?.toDouble()?.takeIf { it > 0 } ?: minKph
-            if (!conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor.toFloat())))
-                return Result.Rejected("fp2 write did not go")
-            awaitWrite(FitPro2.Id.TARGET_KPH)?.let { return Result.Rejected(it) }
+        val starting = mode == FitPro.Mode.RUNNING || mode == FitPro.Mode.RESUME || mode == FitPro.Mode.WARM_UP
+        val floor = (values[FitPro2.Id.MIN_KPH]?.toDouble()?.takeIf { it > 0 } ?: minKph).toFloat()
+        if (starting && conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor))) {
+            awaitWrite(FitPro2.Id.TARGET_KPH)?.let { Log.i(TAG, "fp2: pre-start floor not taken ($it), continuing") }
         }
         writes?.forEach { (field, value) ->
             val (id, v) = translateWrite(field, value, minKph) ?: return@forEach
             if (!conn.send(FitPro2.write(id, v))) return Result.Rejected("fp2 write did not go")
             awaitWrite(id)?.let { return Result.Rejected(it) }
+        }
+        if (starting) {
+            if (!conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor))) return Result.Rejected("fp2 write did not go")
+            awaitWrite(FitPro2.Id.TARGET_KPH)?.let { return Result.Rejected(it) }
         }
         // Drain what has queued up since the last poll, without stalling it.
         var n = 0
@@ -177,7 +187,16 @@ class FitPro2Board(private val conn: FitProConnection) {
             else -> null
         }
 
-    /** Null once the board accepts the write; a reason if it refuses or says nothing. */
+    /**
+     * Null once the board accepts the write; a reason if it refuses or says nothing.
+     *
+     * An ERROR only counts if it is about *this* write: a WRITE request, and —
+     * where the error carries one — this feature id. The board repeats its
+     * latest frame every ~1.5 s, errors included, so a refusal from minutes
+     * ago keeps arriving; read as "whatever we just sent was refused", it
+     * failed writes the board had in fact taken (seen 11/10/2026: a PAUSED the
+     * board acted on, logged as refused).
+     */
     private fun awaitWrite(id: Int): String? {
         val until = SystemClock.elapsedRealtime() + WRITE_WAIT_MS
         while (SystemClock.elapsedRealtime() < until) {
@@ -189,7 +208,11 @@ class FitPro2Board(private val conn: FitProConnection) {
                 FitPro2.Resp.EVENT ->
                     if (f.payload.size >= 2 && FitPro2.u16(f.payload, 0) == id) return null
                 FitPro2.Resp.ERROR -> {
+                    if (f.payload.isEmpty() || f.payload[0].toInt() != FitPro2.Req.WRITE) continue
                     val code = if (f.payload.size > 1) f.payload[1].toInt() and 0xFF else -1
+                    // Codes 4, 5 and 7 name the feature. Another feature's
+                    // refusal is not this one's.
+                    if (f.payload.size >= 4 && code in setOf(4, 5, 7) && FitPro2.u16(f.payload, 2) != id) continue
                     return "fp2 ${FitPro2.errorName(code)} writing $id"
                 }
             }
@@ -212,7 +235,9 @@ class FitPro2Board(private val conn: FitProConnection) {
                 if (lastKey != 0) Log.i(TAG, "fp2: key $lastKey")
             }
         } else if (f.type == FitPro2.Resp.ERROR) {
-            Log.w(TAG, "fp2: board error ${FitPro.hex(raw, 3 + f.payload.size)}")
+            // Once per distinct error: the board repeats it every ~1.5 s.
+            val hex = FitPro.hex(raw, 3 + f.payload.size)
+            if (hex != lastError) { lastError = hex; Log.w(TAG, "fp2: board error $hex") }
         }
         return f
     }
