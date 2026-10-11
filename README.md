@@ -21,9 +21,12 @@
 > and it cuts the motor directly. STRIDE drives the incline, but speed is only
 > ever suggested. You decide when to go faster.
 
-> **Gen 7 / iFit 2.0.** Second-hand reports say this update closes the
-> privileged-mode route everything here depends on. If you know how to do this on Gen 7
-> let us know the steps and we can update this
+> **Gen 7.** The jailbreak works: privileged mode, ADB and disabling iFit
+> were tested on a Gen 7 incline trainer with iFit builds from August 2026. The
+> steps are in [INSTALL.md](docs/INSTALL.md), marked Gen 7. **But STRIDE can't
+> drive a Gen 7 yet.** Its motor board speaks a different protocol, FitPro 2,
+> which is now [written down](protocol/FITPRO2_PROTOCOL.md) and is the next
+> thing to build.
 
 
 I got tired of iFit on my NordicTrack. Manual mode, a 400 m loop, and an
@@ -52,7 +55,7 @@ and it now pairs with Zwift over Bluetooth FTMS.
 |---|---|
 | **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided walks, and gives you five completely different interfaces to pick from. |
 | **`homeassistant/`** | Optional scripts for the coach, the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
-| **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down. If you're working on a different machine, start here. |
+| **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
 There used to be an `ios/` folder. That's now its own thing,
 **[AH for HA](https://github.com/keranm/ah-for-ha)**, which pushes Apple Health
