@@ -805,8 +805,12 @@ class MainActivity : Activity() {
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != ACTION_USB_PERMISSION) return
-            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            // Ask the manager rather than trust the extras alone, so a reply
+            // that arrives without them still gets the right answer.
             val device: UsbDevice? = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                ?: conn.findDevice()
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false) ||
+                (device != null && conn.hasPermission(device))
             if (granted && device != null) start(device) else Log.w(TAG, "usb permission denied")
         }
     }
@@ -2293,7 +2297,11 @@ class MainActivity : Activity() {
                     runOnUiThread { start(device) }
                     return@thread
                 }
-                val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_IMMUTABLE else 0
+                // Must be MUTABLE: UsbManager answers by filling in EXTRA_DEVICE
+                // and EXTRA_PERMISSION_GRANTED, and an immutable intent arrives
+                // with neither, which reads as "denied". Invisible on the
+                // Android 9 console; found on a Gen 7 running Android 13.
+                val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
                 val pi = PendingIntent.getBroadcast(
                     this, 0, Intent(ACTION_USB_PERMISSION).setPackage(packageName), flags
                 )
