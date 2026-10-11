@@ -56,6 +56,9 @@ class FitPro2Board(private val conn: FitProConnection) {
     private var lastKey = 0
     private var fanWarned = false
     private var lastError = ""
+    /** We paused the board because the speed was taken to zero mid-workout. */
+    private var heldAtZero = false
+    private var lastCurrentKph = -1f
 
     var model = ""; private set
     var software = ""; private set
@@ -126,6 +129,8 @@ class FitPro2Board(private val conn: FitProConnection) {
         if (starting && conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor))) {
             awaitWrite(FitPro2.Id.TARGET_KPH)?.let { Log.i(TAG, "fp2: pre-start floor not taken ($it), continuing") }
         }
+        if (mode != null) heldAtZero = false
+        speedThroughState(writes, minKph, floor)?.let { return it }
         writes?.forEach { (field, value) ->
             val (id, v) = translateWrite(field, value, minKph) ?: return@forEach
             if (!conn.send(FitPro2.write(id, v))) return Result.Rejected("fp2 write did not go")
@@ -147,6 +152,51 @@ class FitPro2Board(private val conn: FitProConnection) {
     }
 
     fun has(id: Int) = id in features
+
+    /**
+     * Speed to zero, and back, inside a workout.
+     *
+     * On FitPro 1 a speed of 0 stops the belt while the workout carries on. A
+     * FitPro 2 board refuses anything under its ~1.5 km/h minimum, so that
+     * write used to be dropped — and the belt kept turning at the minimum,
+     * while the board's untouched target was then adopted back by the poll
+     * loop ("follow the board") and the HUD crept back up to 2 km/h. Seen on
+     * hardware 11/10/2026, belt empty.
+     *
+     * So zero is a PAUSED, which is proved to stop this belt, and a speed back
+     * above the minimum from there is RUNNING, the floor, then the speed —
+     * the same order as any start. Only when the write is speed alone: a mode
+     * travelling with it already says what the belt should do.
+     */
+    private fun speedThroughState(writes: Map<FitPro.Field, Double>?, minKph: Double, floor: Float): Result? {
+        val kph = writes?.get(FitPro.Field.KPH) ?: return null
+        if (writes.containsKey(FitPro.Field.WORKOUT_MODE)) return null
+        val state = values[FitPro2.Id.WORKOUT_STATE]?.toInt()
+        val running = state == FitPro2.WorkoutState.RUNNING ||
+            state == FitPro2.WorkoutState.WARM_UP || state == FitPro2.WorkoutState.COOL_DOWN
+
+        if (kph < minKph - 0.05) {
+            if (!running) return null
+            Log.i(TAG, "fp2: speed to zero — pausing the belt, workout carries on")
+            stateWrite(FitPro2.WorkoutState.PAUSED)?.let { return it }
+            heldAtZero = true
+            return null
+        }
+        if (heldAtZero && state == FitPro2.WorkoutState.PAUSED) {
+            Log.i(TAG, "fp2: speed up from zero — belt back to running from the minimum")
+            stateWrite(FitPro2.WorkoutState.RUNNING)?.let { return it }
+            if (!conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor))) return Result.Rejected("fp2 write did not go")
+            awaitWrite(FitPro2.Id.TARGET_KPH)?.let { return Result.Rejected(it) }
+            heldAtZero = false
+        }
+        return null
+    }
+
+    private fun stateWrite(state: Int): Result? {
+        if (!conn.send(FitPro2.write(FitPro2.Id.WORKOUT_STATE, state.toFloat())))
+            return Result.Rejected("fp2 write did not go")
+        return awaitWrite(FitPro2.Id.WORKOUT_STATE)?.let { Result.Rejected(it) }
+    }
 
     /**
      * A STRIDE write as a FitPro 2 one, or null if there is nothing to send.
@@ -230,6 +280,13 @@ class FitPro2Board(private val conn: FitProConnection) {
             val before = values.put(id, v)
             if (id == FitPro2.Id.SYSTEM_MODE && before != v) Log.i(TAG, "fp2: SYSTEM_MODE -> ${v.toInt()}")
             if (id == FitPro2.Id.WORKOUT_STATE && before != v) Log.i(TAG, "fp2: WORKOUT_STATE -> ${v.toInt()}")
+            // Every real move of the belt reading. After a pause the poll loop
+            // kept seeing the last running speed while the belt had stopped —
+            // this is how we find out whether the board ever reports 0.
+            if (id == FitPro2.Id.CURRENT_KPH && Math.abs(v - lastCurrentKph) >= 0.1f) {
+                lastCurrentKph = v
+                Log.i(TAG, "fp2: CURRENT_KPH ${"%.2f".format(v)}")
+            }
             if (id == FitPro2.Id.KEY_COOKED && v.toInt() != lastKey) {
                 lastKey = v.toInt()
                 if (lastKey != 0) Log.i(TAG, "fp2: key $lastKey")
