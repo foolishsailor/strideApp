@@ -21,7 +21,10 @@ Each claim is marked one of:
 - **INFERRED**: a reasonable guess. Treat it as a hypothesis.
 
 **Status, 11/10/2026:** STRIDE does not drive FitPro 2 yet. This page is the
-groundwork. Nothing has been *written* to a FitPro 2 board.
+groundwork. The read side has been confirmed on hardware: product info, the
+feature list, subscribing, live values and the safety key. See
+[Seen on hardware](#seen-on-hardware). Nothing has been *written* to a
+FitPro 2 board.
 
 ---
 
@@ -111,10 +114,10 @@ Every other type number is undefined. The board rejects one with error 6
 | Byte 1 | Name | Payload | |
 |---|---|---|---|
 | `0x11` | `FEATURES` | n × UInt16 feature id, **empty = end of list** | HARDWARE |
-| `0x13` | `ACKNOWLEDGE` | the source/type byte being acknowledged | CODE |
+| `0x13` | `ACKNOWLEDGE` | the source/type byte being acknowledged | HARDWARE |
 | `0x14` | `ERROR` | `[request byte] [error code] [details…]` | HARDWARE |
-| `0x15` | `EVENT` | UInt16 feature id + float32 value | CODE |
-| `0x1E` | `EXTENDED` | `[info type] [data…]` | CODE |
+| `0x15` | `EVENT` | UInt16 feature id + float32 value | HARDWARE |
+| `0x1E` | `EXTENDED` | `[info type] [data…]` | HARDWARE |
 
 ### Error codes (CODE; code 6 HARDWARE)
 
@@ -134,19 +137,23 @@ type 4) is not a request, code 6".
 
 ## Session start-up
 
-iFit's main start-up routine didn't decompile cleanly, so the **order** is
-INFERRED from a sibling device that uses the same stack:
+iFit's main start-up routine didn't decompile cleanly, so iFit's own **order** is
+INFERRED from a sibling device that uses the same stack. This order works
+(HARDWARE):
 
 1. **Product info.** Send `02 0E 01 02 00`. The board answers with
-   `EXTENDED` frames, `02 1E <len> 02 <item> <ASCII…>`, ending with item 0
-   (CODE). Items: 1 software version, 2 software part number, 3 hardware part
-   number, 4 model, 5 serial, 6 display type, 9 motor controller version,
-   13 product serial, 20 motor controller type.
+   `EXTENDED` frames, `02 1E <len> 02 <item> <ASCII…>`, ending with
+   `02 1E 02 02 00` (item 0) (HARDWARE). Items: 1 software version,
+   2 software part number, 3 hardware part number, 4 model, 5 serial,
+   6 display type, 9 motor controller version, 13 product serial, 20 motor
+   controller type. The board seen sent 1–6 (CODE for the rest).
 2. **Supported features.** Send `02 06 00`. The board answers with `02 11 …`
-   chunks of up to 8 ids and then an empty `02 11 00`. **It then repeats the
-   list** (HARDWARE). iFit tolerates the repeats.
-3. **Subscribe** to what you need, 8 ids per request. The board answers with one
-   `EVENT` per id holding its current value. After that it pushes `EVENT`s
+   chunks of up to 8 ids and then an empty `02 11 00`, **once** (HARDWARE). It
+   repeated the list endlessly only after a malformed request, a FitPro 1
+   frame of length 6.
+3. **Subscribe** to what you need, 8 ids per request. The board acknowledges
+   (`02 13 01 01`), then sends one `EVENT` per id holding its current value,
+   all within a few milliseconds (HARDWARE). After that it pushes `EVENT`s
    without being asked, and there is no polling (CODE).
 4. iFit then writes `HEART_BEAT_INTERVAL` (161) = 720 once (CODE). The unit,
    and what the board does without it, are **unknown**.
@@ -213,14 +220,14 @@ the authority.
 |---|---|
 | Read speed, incline | subscribe to 302, 402 |
 | Know the limits | subscribe to 303, 304, 403, 404 |
-| Detect the safety key | `SYSTEM_MODE` (102) = 2. iFit maps this to "safety key removed" (CODE) |
+| Detect the safety key | `SYSTEM_MODE` (102) = 2 (HARDWARE). Debounce it: it bounces while the key is clipped in |
 | See physical keys | `KEY_COOKED` (109) |
 | Set target speed / incline | write 301 / 401 |
 | Start, pause, end | write `WORKOUT_STATE` (602): 3 running, 5 paused, 6 results, 0 none. The board reports 1 when the user presses Start (CODE) |
 
 **Not yet known:** whether `PAUSED` stops the belt (INFERRED yes), whether the
 board stops the belt when the host goes quiet, and the units of distance and
-calories. iFit seems to refuse target speeds below 0.5 km/h rather than stop by
+calories. Speed and incline are confirmed as km/h and percent (HARDWARE). iFit seems to refuse target speeds below 0.5 km/h rather than stop by
 writing 0 (INFERRED, from a garbled part of the decompile).
 
 ---
@@ -242,8 +249,9 @@ No checksum anywhere. The trailing `00` is iFit's padding.
       └ 4 payload bytes
 ```
 
-Replies, one `EVENT` per id, for example `02 15 06 2E 01 00 00 A0 40`, which is
-`CURRENT_KPH` = 5.0 (float `0x40A00000`).
+Replies: `02 13 01 01` (ACK), then one `EVENT` per id. For example,
+`02 15 06 2E 01 00 00 A0 40` is `CURRENT_KPH` = 5.0 (float `0x40A00000`)
+(HARDWARE for the format).
 
 **Set target incline to 2.0 %:** (not yet tried on hardware)
 
@@ -277,6 +285,46 @@ So that a protocol layer can refuse these outright:
 
 Writes to 301, 401 and 602 are legitimate but **move the machine**. Make them
 only with someone at the treadmill, the safety key on, and STOP in reach.
+
+---
+
+## Seen on hardware
+
+11/10/2026, a Gen 7 incline trainer, model string `ETNT39225-INT`, board
+software 1.19, iFit 2026.08.25. Belt stopped, nobody on the deck, read-only
+requests only.
+
+```
+→ 02 0E 01 02 00                          product info
+← 02 15 06 5A 02 00 00 00 00              (unsolicited) WORKOUT_STATE = 0
+← 02 1E 10 02 01 "1.19.2e177c9e6"         software version
+← 02 1E 0F 02 04 "ETNT39225-INT"          model   (items 2, 3, 5, 6 too)
+← 02 1E 02 02 00                          end of list
+→ 02 06 00                                supported features
+← 02 11 10 0A 00 66 00 … (8 chunks) … 02 11 00   61 ids, once
+→ 02 01 10 66 00 5A 02 2E 01 92 01 2F 01 30 01 93 01 94 01 00   subscribe 8
+← 02 13 01 01                             ACK of SUBSCRIBE
+← 02 15 06 66 00 00 00 80 3F              SYSTEM_MODE   = 1.0  IDLE
+← 02 15 06 2E 01 00 00 00 00              CURRENT_KPH   = 0.0
+← 02 15 06 2F 01 3B DF BF 3F              MIN_KPH       = 1.499
+← 02 15 06 30 01 00 00 A0 41              MAX_KPH       = 20.0
+← 02 15 06 92 01 00 00 00 00              CURRENT_GRADE = 0.0
+← 02 15 06 93 01 00 00 C0 C0              MIN_GRADE     = −6.0
+← 02 15 06 94 01 00 00 20 42              MAX_GRADE     = 40.0
+← 02 15 06 5A 02 00 00 00 00              WORKOUT_STATE = 0  NONE
+```
+
+What this confirms:
+
+- **Values are float32 in real units.** km/h and percent, with no scaling.
+  The limits match the console's own settings screen.
+- **Safety key.** Pulling it sent `SYSTEM_MODE` = 2.0 (`02 15 06 66 00 00 00 00 40`).
+  Clipping it back sent 1.0. For about 4 s while it was being clipped in, the
+  value **bounced** between 1 and 2 (contact bounce). Debounce it before acting
+  on it.
+- **The board repeats its latest `EVENT` about every 1.5 s** while nothing
+  changes. That's a usable sign the link is alive.
+- No `ERROR` replies to any well-formed request.
 
 ---
 

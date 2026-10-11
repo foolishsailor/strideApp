@@ -64,8 +64,9 @@ One Gen 7 machine has been through Part 1 as far as step 1.6:
 | System version | `VKX1_20240619` |
 | iFit / GlassOS | 2026.08.25 builds, firmware 1.19 |
 | Console hardware | MediaTek MT8390 ("Xenon") |
-| Motor board | USB `0x213C`/`0x0003` "iFIT-LargeX", **FitPro 2** |
-| Ranges reported | incline −6 to +40 % |
+| Model string | `ETNT39225-INT`, as the board reports it |
+| Motor board | USB `0x213C`/`0x0003` "iFIT-LargeX", **FitPro 2**, software 1.19 |
+| Ranges reported | incline −6 to +40 %, speed 1.5 to 20 km/h |
 
 What you can check right now, on the console's own screen:
 
@@ -286,10 +287,11 @@ adb shell pm disable-user --user 0 com.ifit.glassos_service
 adb shell pm enable com.ifit.glassos_service
 ```
 
-✅ On Gen 7 it should show product info, "*n* features advertised", and live
+✅ On Gen 7 it shows product info, "*n* features advertised", and live
 `SYSTEM_MODE`, `WORKOUT_STATE`, speed and incline values. Pull the safety key
-and `SYSTEM_MODE` should change to 2 (DMK). Serial numbers go to logcat only, so a
-photo of the screen is safe to post.
+and `SYSTEM_MODE` changes from 1 (IDLE) to 2 (DMK). Serial numbers go to
+logcat only, so a photo of the screen is safe to post. The machine above showed
+61 features, speed 1.5–20 km/h and incline −6 to +40 %.
 
 **On Gen 7, stop here.** STRIDE cannot drive a FitPro 2 board yet, and
 installing it changes nothing: it only looks for the Gen 6 board.
