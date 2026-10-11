@@ -20,11 +20,11 @@ Each claim is marked one of:
 - **CODE**: read from the console software but not yet seen on a board.
 - **INFERRED**: a reasonable guess. Treat it as a hypothesis.
 
-**Status, 11/10/2026:** STRIDE does not drive FitPro 2 yet. This page is the
-groundwork. The read side has been confirmed on hardware: product info, the
-feature list, subscribing, live values and the safety key. See
-[Seen on hardware](#seen-on-hardware). Nothing has been *written* to a
-FitPro 2 board.
+**Status, 11/10/2026:** STRIDE drives FitPro 2. It was tested on one Gen 7
+board **with the belt empty**: start, speed up and down, speed to zero and
+back, incline, pause, resume, STOP, end and the safety key. See
+[Seen on hardware](#seen-on-hardware) and [Driving it](#driving-it-what-the-board-actually-does).
+Nobody has walked on it under STRIDE yet.
 
 ---
 
@@ -225,9 +225,9 @@ the authority.
 | Set target speed / incline | write 301 / 401 |
 | Start, pause, end | write `WORKOUT_STATE` (602): 3 running, 5 paused, 6 results, 0 none. The board reports 1 when the user presses Start (CODE) |
 
-**Not yet known:** whether `PAUSED` stops the belt (INFERRED yes), whether the
-board stops the belt when the host goes quiet, and the units of distance and
-calories. Speed and incline are confirmed as km/h and percent (HARDWARE). iFit seems to refuse target speeds below 0.5 km/h rather than stop by
+**Not yet known:** whether the board stops the belt when the host goes quiet,
+the calories unit, and the fan's encoding. Speed and incline are km/h and
+percent, distance is metres, and `PAUSED` stops the belt (all HARDWARE). iFit seems to refuse target speeds below 0.5 km/h rather than stop by
 writing 0 (INFERRED, from a garbled part of the decompile).
 
 ---
@@ -253,7 +253,7 @@ Replies: `02 13 01 01` (ACK), then one `EVENT` per id. For example,
 `02 15 06 2E 01 00 00 A0 40` is `CURRENT_KPH` = 5.0 (float `0x40A00000`)
 (HARDWARE for the format).
 
-**Set target incline to 2.0 %:** (not yet tried on hardware)
+**Set target incline to 2.0 %:** (incline writes HARDWARE; this exact value illustrative)
 
 ```
 02 02 06 91 01 00 00 00 40 00
@@ -325,6 +325,45 @@ What this confirms:
 - **The board repeats its latest `EVENT` about every 1.5 s** while nothing
   changes. That's a usable sign the link is alive.
 - No `ERROR` replies to any well-formed request.
+
+---
+
+## Driving it: what the board actually does
+
+11/10/2026, same board, **belt empty**, safety key in and a hand on it. STRIDE
+writing only `TARGET_KPH` (301), `TARGET_GRADE_PERCENT` (401) and
+`WORKOUT_STATE` (602). All HARDWARE.
+
+| Write | From | Result |
+|---|---|---|
+| 401 incline ±1 % | idle | Deck moves, in any state, as on FitPro 1 |
+| 301 any speed | idle (`NONE`) | **Refused**: `02 14 08 02 05 2D 01 <float>`, data out of range. An idle board takes no target speed |
+| 602 = 3 `RUNNING` | `NONE` | Accepted. `SYSTEM_MODE` → 3, belt starts |
+| 301 ≥ minimum | `RUNNING` | Accepted. The belt follows |
+| 301 < ~1.5 km/h | `RUNNING` | Refused: there is no speed 0 |
+| 602 = 5 `PAUSED` | `RUNNING` | Accepted. **The belt stops** |
+| 602 = 3 `RUNNING` | `PAUSED` | Accepted. The belt restarts at the board's held target |
+| 602 = 0 `NONE` | `PAUSED` | Accepted. `SYSTEM_MODE` → 1, idle |
+| 602 any | safety key out | Refused, code 7 (write value not allowed) |
+
+What this means for anything driving it:
+
+- **To stop the belt, write `PAUSED`.** A speed of 0 is refused, so FitPro
+  1's "speed 0" has to become a state change. STRIDE does this when the speed
+  is taken to zero mid-workout, and goes back to `RUNNING` when it is raised again.
+- **The board keeps its last target through a pause.** `RUNNING` brings the
+  belt back at that pace, so set the minimum speed immediately after `RUNNING`
+  and ramp from there. Setting it *before* is refused while idle.
+- **`CURRENT_KPH` never reports a stopped belt as 0.** It falls a little and
+  then stops changing: 2.13, 1.75, then nothing, with the belt standing still.
+  A fresh subscription returns that frozen value. A turning belt's reading
+  changes from one event to the next; a stopped one repeats. STRIDE treats a
+  reading unchanged for 3 s outside a running state as stopped.
+- **The board repeats its latest frame about every 1.5 s, errors included.** An
+  old refusal keeps arriving. Match an `ERROR` to the write it names (request
+  type and feature id), not to whatever was sent last.
+- **`DISTANCE` (252) is metres.** 33 m was reported for about a minute at
+  1.5–2 km/h.
 
 ---
 

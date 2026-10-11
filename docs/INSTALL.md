@@ -6,13 +6,13 @@
 **Read [SAFETY.md](../SAFETY.md) before you start.** This software drives a
 motorised treadmill.
 
-> **Gen 7.** Part 1 up to step 1.6 **works on Gen 7**. It was tested on
-> 11/10/2026 on a Gen 7 incline trainer with iFit builds dated 25/08/2026: privileged
-> mode, ADB over Wireless debugging and disabling iFit Admin all worked. **But
-> STRIDE cannot drive a Gen 7 yet.** Its motor board speaks a different
-> protocol, [FitPro 2](../protocol/FITPRO2_PROTOCOL.md). Gen 7 differences are
-> marked **Gen 7** below. On Gen 7, stop after step 1.6 and report your board.
-> If you are still on Gen 6, declining the update costs nothing.
+> **Gen 7.** Part 1 **works on Gen 7**. It was tested on 11/10/2026 on a Gen 7
+> incline trainer with iFit builds dated 25/08/2026. Privileged mode, ADB over
+> Wireless debugging and disabling iFit all worked, and STRIDE drove the belt
+> and deck with the belt empty. Its motor board speaks a different protocol,
+> [FitPro 2](../protocol/FITPRO2_PROTOCOL.md), which STRIDE now speaks too. Gen 7
+> differences are marked **Gen 7** below. One machine, belt-empty testing:
+> treat it as new.
 
 To undo everything: factory reset the console.
 
@@ -50,11 +50,10 @@ STRIDE is confirmed on one machine:
 | Ranges reported | incline -3 to +12 %, speed 1.6 to 20 km/h |
 
 - **Likely to work:** other Gen 6 NordicTrack and ProForm consoles on a FitPro board.
-- **Not yet:** Gen 7. Part 1 works, but the board speaks FitPro 2 and STRIDE
-  only speaks FitPro 1.
+- **New:** Gen 7, on the FitPro 2 board. One machine, tested with the belt empty.
 - **Required:** an Android console you can reach with `adb`.
 
-One Gen 7 machine has been through Part 1 as far as step 1.6:
+One Gen 7 machine has been through Part 1, with STRIDE driving it belt-empty:
 
 | | |
 |---|---|
@@ -278,14 +277,16 @@ incline -3 to +12 %, speed 1.6 to 20 km/h.
 If it says the device is claimed, `com.ifit.eru` is running again. Re-run
 `tools/unchain.sh`.
 
-**Gen 7:** iFit's motor service holds the board and restarts itself after a
-force-stop. Disable it for the probe, then turn it back on afterwards:
+**Gen 7:** iFit's motor service (`com.ifit.glassos_service`) holds the board
+and restarts itself after a force-stop. `unchain.sh` disables it when it sees
+the Gen 7 board. If the probe says the device is claimed, check it's still
+disabled:
 
 ```sh
 adb shell pm disable-user --user 0 com.ifit.glassos_service
-# … run the probe …
-adb shell pm enable com.ifit.glassos_service
 ```
+
+Leave it disabled: STRIDE needs the board too. `pm enable` hands it back to iFit.
 
 ✅ On Gen 7 it shows product info, "*n* features advertised", and live
 `SYSTEM_MODE`, `WORKOUT_STATE`, speed and incline values. Pull the safety key
@@ -293,8 +294,9 @@ and `SYSTEM_MODE` changes from 1 (IDLE) to 2 (DMK). Serial numbers go to
 logcat only, so a photo of the screen is safe to post. The machine above showed
 61 features, speed 1.5–20 km/h and incline −6 to +40 %.
 
-**On Gen 7, stop here.** STRIDE cannot drive a FitPro 2 board yet, and
-installing it changes nothing: it only looks for the Gen 6 board.
+When you're done with it, uninstall the probe
+(`adb uninstall dev.stride.usbprobe`). It and STRIDE both register for the
+board, and Android will otherwise ask which one to open every time.
 
 **[Open an issue](https://github.com/keranm/strideApp/issues) with what it
 says,** working or not. A list of known-good boards is the most useful thing
@@ -305,6 +307,9 @@ this project could have and it does not exist yet.
 Two ways in. They end at the same screen, so take whichever suits — but read
 the last paragraph before picking, because moving between them later costs you
 your settings.
+
+**Gen 7:** Gen 7 support arrived after v0.8. Until a release includes it, use
+Option B. The v0.8 APK only looks for the Gen 6 board.
 
 #### Option A — install the released APK
 
@@ -363,6 +368,20 @@ and your workout history with it.
 
 ✅ Either way: the console shows the STRIDE welcome screen, and the log prints
 `limits: <min>..<max> km/h, <min>..<max> %`.
+
+**Gen 7:**
+
+- The console asks **"Allow STRIDE to access iFIT-LargeX?"** Tick *Always
+  open STRIDE…* and tap OK. If the prompt vanishes before you can tap it, the
+  board has just re-attached. Close STRIDE and open it again.
+- The log also prints `fp2: model '…'` and `fp2: subscribed`.
+- **The belt's slowest speed is about 1.5 km/h; there is no slower.** Starting
+  a workout ramps to the warm-up speed (Settings → Treadmill). Taking the speed
+  down to 0 **pauses the belt** while the workout carries on, and raising it
+  again restarts from 1.5. STOP and the safety key work as on Gen 6.
+- The fan tile is not connected to the fan on Gen 7 yet.
+- Tested with the belt empty: start, speed, zero, pause, resume, STOP, incline
+  and the safety key. Try the same yourself before stepping on.
 
 ### 1.8 Set up STRIDE
 

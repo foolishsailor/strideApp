@@ -21,12 +21,11 @@
 > and it cuts the motor directly. STRIDE drives the incline, but speed is only
 > ever suggested. You decide when to go faster.
 
-> **Gen 7.** The jailbreak works: privileged mode, ADB and disabling iFit
-> were tested on a Gen 7 incline trainer with iFit builds from August 2026. The
-> steps are in [INSTALL.md](docs/INSTALL.md), marked Gen 7. **But STRIDE can't
-> drive a Gen 7 yet.** Its motor board speaks a different protocol, FitPro 2,
-> which is now [written down](protocol/FITPRO2_PROTOCOL.md) and is the next
-> thing to build.
+> **Gen 7.** The jailbreak works, and STRIDE drives the Gen 7's motor board,
+> which speaks a different protocol, [FitPro 2](protocol/FITPRO2_PROTOCOL.md).
+> It was tested on a Gen 7 incline trainer with iFit builds from August 2026,
+> **with the belt empty**: start, speed, pause, STOP, incline and the safety key.
+> The steps are in [INSTALL.md](docs/INSTALL.md), marked Gen 7. One machine so far.
 
 
 I got tired of iFit on my NordicTrack. Manual mode, a 400 m loop, and an
@@ -98,7 +97,12 @@ Honestly, maybe. It's proven on one machine, mine:
 
 Other Gen 6 NordicTrack and ProForm consoles on the same board are probably
 fine, because the protocol looks like a family rather than a single model, but
-nobody has tried. You also need a console you can reach with `adb`, and that's
+nobody has tried.
+
+A second machine, a **Gen 7** incline trainer (Android 13, FitPro 2 board,
+incline −6 to +40 %, speed 1.5 to 20 km/h), has STRIDE driving its belt and
+deck, tested with nobody on it. See the Gen 7 notes in
+[INSTALL.md](docs/INSTALL.md). You also need a console you can reach with `adb`, and that's
 the part that varies most by model and year.
 
 [`console/usbprobe`](console/usbprobe) asks your board what it is and changes
