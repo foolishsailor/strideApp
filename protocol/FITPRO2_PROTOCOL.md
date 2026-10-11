@@ -370,8 +370,15 @@ What this means for anything driving it:
   5 s later, and the relaunched app found it still reporting `RUNNING` with
   `CURRENT_KPH` 2.13. So releasing the interface stops the motor, but whoever
   connects next must not trust `WORKOUT_STATE`. STRIDE's unattended-belt check
-  wrote `PAUSED` within a second of reconnecting. A host that *hangs* while still
-  holding the interface has not been tested.
+  wrote `PAUSED` within a second of reconnecting.
+- **If the host hangs while still holding the interface, the belt runs on.**
+  With STRIDE's process frozen, the belt kept going at 2 km/h until the safety
+  key was pulled. Nothing in what STRIDE sends acts as a keep-alive. STRIDE now
+  watches its own poll loop and releases the interface after 3 s of silence
+  mid-workout, which stops the belt (tested). `HEART_BEAT_INTERVAL` (161) may be
+  the board's own answer to a fully frozen host. It is unexplored.
+- **The board leaves `PAUSED` for `RESULTS` by itself after 10 minutes**,
+  presumably its `PAUSE_TIMEOUT` (619).
 
 ---
 

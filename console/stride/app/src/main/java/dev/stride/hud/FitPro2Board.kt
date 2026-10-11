@@ -120,6 +120,10 @@ class FitPro2Board(private val conn: FitProConnection) {
      * that comes back with a bad status.
      */
     fun cycle(writes: Map<FitPro.Field, Double>?, minKph: Double): Result {
+        // Released — by the watchdog, or the board left the bus. That is
+        // silence, which the poll loop answers by reconnecting; a refusal
+        // would only be retried against a pipe that is not there.
+        if (!conn.isOpen) return Result.Silent
         // Starting or resuming: hold the setpoint at the machine's minimum on
         // both sides of the RUNNING write. FitPro 2 keeps its last target
         // through a pause — nothing ever writes it to zero — so RUNNING alone
@@ -288,7 +292,11 @@ class FitPro2Board(private val conn: FitProConnection) {
             val before = values.put(id, v)
             if (id == FitPro2.Id.SYSTEM_MODE && before != v) Log.i(TAG, "fp2: SYSTEM_MODE -> ${v.toInt()}")
             if (id == FitPro2.Id.WORKOUT_STATE && before != v) {
-                if (before != null) stateChangedMs = SystemClock.elapsedRealtime()
+                // Only leaving a driven state restarts the stale clock. The
+                // board moves itself PAUSED → RESULTS after ten minutes, and
+                // restarting the clock on that made the frozen reading live
+                // again for 3 s — a false runaway every ten minutes, idle.
+                if (before != null && driven(before.toInt())) stateChangedMs = SystemClock.elapsedRealtime()
                 Log.i(TAG, "fp2: WORKOUT_STATE -> ${v.toInt()}")
             }
             // Every real move of the belt reading. After a pause the poll loop
@@ -316,6 +324,9 @@ class FitPro2Board(private val conn: FitProConnection) {
         }
         return f
     }
+
+    private fun driven(state: Int) = state == FitPro2.WorkoutState.RUNNING ||
+        state == FitPro2.WorkoutState.WARM_UP || state == FitPro2.WorkoutState.COOL_DOWN
 
     /** One collect loop for setup: read until [done] or [ms] runs out. */
     private fun collect(ms: Long, done: (FitPro2.Frame) -> Boolean) {

@@ -81,8 +81,10 @@ class FitProConnection(private val context: Context) {
         return "no interrupt IN+OUT pair found"
     }
 
+    /** Safe from any thread — the watchdog calls this from its own. */
+    @Synchronized
     fun close() {
-        iface?.let { connection?.releaseInterface(it) }
+        try { iface?.let { connection?.releaseInterface(it) } } catch (e: Exception) {}
         connection?.close()
         connection = null; iface = null; epIn = null; epOut = null
         productId = 0
@@ -121,7 +123,9 @@ class FitProConnection(private val context: Context) {
         if (!isFitPro2) return false
         val conn = connection ?: return false
         val out = epOut ?: return false
-        val sent = conn.bulkTransfer(out, frame, frame.size, WRITE_TIMEOUT_MS)
+        // The watchdog may close the connection from its own thread while
+        // this one is mid-transfer; a closed pipe is a failed write, not a crash.
+        val sent = try { conn.bulkTransfer(out, frame, frame.size, WRITE_TIMEOUT_MS) } catch (e: Exception) { -1 }
         if (sent < 0) Log.w(TAG, "fp2 write failed: ${FitPro.hex(frame)}")
         return sent >= 0
     }
@@ -132,7 +136,7 @@ class FitProConnection(private val context: Context) {
         val conn = connection ?: return null
         val inn = epIn ?: return null
         val buf = ByteArray(FitPro.MAX_MSG)
-        val n = conn.bulkTransfer(inn, buf, buf.size, timeoutMs)
+        val n = try { conn.bulkTransfer(inn, buf, buf.size, timeoutMs) } catch (e: Exception) { -1 }
         return if (n > 0) buf.copyOf(n) else null
     }
 

@@ -151,6 +151,8 @@ class MainActivity : Activity() {
         const val SILENCE_MS = 5_000L
         /** How long a FitPro 2 belt gets to coast to a halt after a stop. */
         const val FP2_STOP_SETTLE_MS = 6_000L
+        /** Poll loop silent this long mid-workout: release the board. See watchdog(). */
+        const val WATCHDOG_MS = 3_000L
 
         /** How long to leave between two attempts at rebuilding the transport.
          *  Nothing about a silent board is urgent enough to retry at poll rate. */
@@ -2332,6 +2334,91 @@ class MainActivity : Activity() {
         if (err != null) { Log.e(TAG, "open failed: $err"); return }
         running = true
         thread(name = "fitpro-poll") { pollLoop() }
+        thread(name = "fitpro-watchdog") { watchdog() }
+        registerDebugHooks()
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Watchdog — FitPro 2
+     * ---------------------------------------------------------------- *
+     *
+     * Found on a Gen 7 with the belt empty, 11/10/2026: with the app frozen
+     * but still holding the USB interface, the belt ran on at 2 km/h and STOP
+     * on the screen did nothing — only the safety key stopped it. The same
+     * board stops its belt at once when the app lets go of the interface
+     * (force-closed: the belt stopped immediately).
+     *
+     * So this thread, which is not the poll thread, watches the poll loop's
+     * heartbeat. If a workout is under way and the loop has not come round for
+     * [WATCHDOG_MS] — stuck in a network call, a deadlock, anything — it lets
+     * go of the board, which stops the belt, and marks the workout paused so
+     * that nothing restarts the belt until somebody presses RESUME. A whole
+     * frozen process takes this thread with it; that case is the board's own
+     * heartbeat to solve, and the safety key in the meantime.
+     *
+     * FitPro 2 only: what a FitPro 1 board does on release is unknown.
+     */
+    @Volatile private var pollBeat = 0L
+    @Volatile private var debugStallMs = 0L
+
+    /**
+     * `adb shell am broadcast -a dev.stride.hud.DEBUG_STALL_POLL -p dev.stride.hud --el ms 8000`
+     * stalls the poll loop once, for testing the watchdog. Registered in debug
+     * builds only; a release build has no way to do this.
+     */
+    private fun registerDebugHooks() {
+        if (!BuildConfig.DEBUG) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                debugStallMs = i.getLongExtra("ms", 8000L).coerceIn(0L, 30_000L)
+            }
+        }
+        val f = IntentFilter("dev.stride.hud.DEBUG_STALL_POLL")
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_EXPORTED)
+        else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(r, f)
+    }
+    @Volatile private var watchdogTripped = false
+    /** Setup and reacquire legitimately take seconds; the watchdog stands down. */
+    @Volatile private var pollBusy = false
+
+    private fun watchdog() {
+        while (running) {
+            Thread.sleep(500)
+            if (fp2 == null || pollBusy || pollBeat == 0L || !conn.isOpen) continue
+            if (!Session.isMoving(session)) continue
+            val stalled = SystemClock.elapsedRealtime() - pollBeat
+            if (stalled < WATCHDOG_MS) continue
+            Log.e(TAG, "watchdog: poll loop silent for ${stalled} ms mid-workout — releasing the board to stop the belt")
+            recordIncident("WATCHDOG: poll loop silent ${stalled} ms in ${Session.name(session)} — board released, belt stopped")
+            watchdogTripped = true
+            conn.close()
+        }
+    }
+
+    /**
+     * What the poll loop does first when it comes back after the watchdog: the
+     * same as the safety key — paused, nothing remembered for the resume ramp,
+     * and the board told PAUSED once it is reachable again, since it will still
+     * say RUNNING.
+     */
+    private fun afterWatchdog() {
+        watchdogTripped = false
+        if (Session.isMoving(session)) {
+            accumulatedMs += SystemClock.elapsedRealtime() - activeSince
+            session = Session.PAUSED
+            phaseEndsAt = 0L
+        }
+        targetKph = 0.0
+        stopping = false
+        pausedKph = 0.0
+        rampTo = 0.0
+        rampReason = ""
+        pendingWrite = mapOf(
+            FitPro.Field.KPH to 0.0,
+            FitPro.Field.WORKOUT_MODE to FitPro.Mode.PAUSE.toDouble(),
+        )
+        lastReacquireMs = 0L   // reconnect now, not after the usual gap
+        repaint(boardOk = false)
     }
 
     /**
@@ -2484,6 +2571,17 @@ class MainActivity : Activity() {
         var sinceMqtt = 0L
         var rejects = 0
         while (running) {
+            pollBeat = SystemClock.elapsedRealtime()
+            if (watchdogTripped) afterWatchdog()
+            // Debug builds only: stand in for a poll loop stuck in a network
+            // call, so the watchdog can be tested on a real belt. See
+            // registerDebugHooks.
+            if (BuildConfig.DEBUG && debugStallMs > 0) {
+                val ms = debugStallMs
+                debugStallMs = 0
+                Log.w(TAG, "debug: stalling the poll loop for $ms ms")
+                Thread.sleep(ms)
+            }
             // enforceStopped comes first and outranks everything, including a
             // queued write: nothing is more important than a belt that should
             // not be moving.
@@ -3447,6 +3545,11 @@ class MainActivity : Activity() {
      * handle to go looking for one would be the more expensive mistake.
      */
     private fun reacquire(): Boolean {
+        pollBusy = true
+        try { return reacquireBoard() } finally { pollBusy = false }
+    }
+
+    private fun reacquireBoard(): Boolean {
         lastReacquireMs = SystemClock.elapsedRealtime()
         val device = conn.findDevice()
         if (device == null) {
