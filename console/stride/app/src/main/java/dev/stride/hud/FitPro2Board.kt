@@ -42,6 +42,9 @@ class FitPro2Board(private val conn: FitProConnection) {
         /** The board repeats its latest event every ~1.5 s even when idle, so
          *  this long with nothing at all means the link is gone. */
         const val SILENCE_MS = 5_000L
+
+        /** A belt reading unchanged this long outside a running state is a stopped belt. */
+        const val STALE_KPH_MS = 3_000L
     }
 
     sealed class Result {
@@ -59,6 +62,11 @@ class FitPro2Board(private val conn: FitProConnection) {
     /** We paused the board because the speed was taken to zero mid-workout. */
     private var heldAtZero = false
     private var lastCurrentKph = -1f
+    /** When CURRENT_KPH last arrived with a different value. See [actualKph]. */
+    private var currentKphMovedMs = 0L
+    /** When WORKOUT_STATE last changed. A steady belt's reading is constant
+     *  too, so the stale clock cannot start before the belt was told to stop. */
+    private var stateChangedMs = 0L
 
     var model = ""; private set
     var software = ""; private set
@@ -279,10 +287,20 @@ class FitPro2Board(private val conn: FitProConnection) {
             val v = FitPro2.f32(f.payload, 2)
             val before = values.put(id, v)
             if (id == FitPro2.Id.SYSTEM_MODE && before != v) Log.i(TAG, "fp2: SYSTEM_MODE -> ${v.toInt()}")
-            if (id == FitPro2.Id.WORKOUT_STATE && before != v) Log.i(TAG, "fp2: WORKOUT_STATE -> ${v.toInt()}")
+            if (id == FitPro2.Id.WORKOUT_STATE && before != v) {
+                if (before != null) stateChangedMs = SystemClock.elapsedRealtime()
+                Log.i(TAG, "fp2: WORKOUT_STATE -> ${v.toInt()}")
+            }
             // Every real move of the belt reading. After a pause the poll loop
             // kept seeing the last running speed while the belt had stopped —
             // this is how we find out whether the board ever reports 0.
+            // A change, not an arrival: the first value after subscribing is
+            // whatever the board was left holding — on a stopped belt, the last
+            // running speed — and counting it as movement raised a false
+            // runaway at every app start.
+            if (id == FitPro2.Id.CURRENT_KPH && before != null && before != v) {
+                currentKphMovedMs = SystemClock.elapsedRealtime()
+            }
             if (id == FitPro2.Id.CURRENT_KPH && Math.abs(v - lastCurrentKph) >= 0.1f) {
                 lastCurrentKph = v
                 Log.i(TAG, "fp2: CURRENT_KPH ${"%.2f".format(v)}")
@@ -324,7 +342,7 @@ class FitPro2Board(private val conn: FitProConnection) {
             out[FitPro.Field.KPH] = 0.0
         }
         put(FitPro.Field.GRADE, FitPro2.Id.TARGET_GRADE)
-        put(FitPro.Field.ACTUAL_KPH, FitPro2.Id.CURRENT_KPH)
+        actualKph(mode)?.let { out[FitPro.Field.ACTUAL_KPH] = it }
         put(FitPro.Field.ACTUAL_INCLINE, FitPro2.Id.CURRENT_GRADE)
         put(FitPro.Field.MIN_KPH, FitPro2.Id.MIN_KPH)
         put(FitPro.Field.MAX_KPH, FitPro2.Id.MAX_KPH)
@@ -339,6 +357,31 @@ class FitPro2Board(private val conn: FitProConnection) {
         put(FitPro.Field.DISTANCE, FitPro2.Id.DISTANCE)
         mode?.let { out[FitPro.Field.WORKOUT_MODE] = it.toDouble() }
         return out
+    }
+
+    /**
+     * The belt's measured speed, with the board's frozen last reading taken out.
+     *
+     * Once the belt stops, this board never reports 0: CURRENT_KPH falls a
+     * little and then simply stops changing — 2.13, 1.75, then nothing, with
+     * the belt standing still (hardware, 11/10/2026). Passed through, the poll
+     * loop sees a belt "still moving at 1.8 km/h outside a workout" for ever,
+     * re-commands the stop every poll and records a runaway that never was.
+     *
+     * A belt that is turning gives a reading that jitters from one event to the
+     * next; a stopped one gives the same float, repeated. So outside a running
+     * state, a value that has not changed at all for [STALE_KPH_MS] is a
+     * stopped belt. While running it always passes through, and anything still
+     * changing passes through in any state — a belt winding down, or one
+     * moving when it should not be, is never hidden.
+     */
+    private fun actualKph(mode: Int?): Double? {
+        val v = values[FitPro2.Id.CURRENT_KPH]?.toDouble() ?: return null
+        val driven = mode == FitPro.Mode.RUNNING || mode == FitPro.Mode.WARM_UP || mode == FitPro.Mode.COOL_DOWN
+        if (driven) return v
+        val since = maxOf(currentKphMovedMs, stateChangedMs)
+        val still = SystemClock.elapsedRealtime() - since >= STALE_KPH_MS
+        return if (still) 0.0 else v
     }
 
     /**

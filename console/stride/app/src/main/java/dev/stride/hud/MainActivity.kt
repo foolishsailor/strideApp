@@ -149,6 +149,8 @@ class MainActivity : Activity() {
          * a new connection.
          */
         const val SILENCE_MS = 5_000L
+        /** How long a FitPro 2 belt gets to coast to a halt after a stop. */
+        const val FP2_STOP_SETTLE_MS = 6_000L
 
         /** How long to leave between two attempts at rebuilding the transport.
          *  Nothing about a silent board is urgent enough to retry at poll rate. */
@@ -433,6 +435,8 @@ class MainActivity : Activity() {
     @Volatile private var deviceId: Byte = FitPro.Dev.TREADMILL
     /** Set when the board is a Gen 7 (FitPro 2). Null means FitPro 1. */
     @Volatile private var fp2: FitPro2Board? = null
+    /** When a stop was last queued for a FitPro 2 board. See enforceStopped. */
+    private var fp2StopAt = 0L
     @Volatile private var targetKph = 0.0
     @Volatile private var targetGrade = 0.0
     @Volatile private var fanState = 0
@@ -1803,6 +1807,12 @@ class MainActivity : Activity() {
     private fun enforceStopped(actualKph: Double): Map<FitPro.Field, Double>? {
         if (Session.isMoving(session)) return null
         if (actualKph < STOPPED_KPH) return null
+        // FitPro 2 only. Its belt reading is real — FitPro 1's ActualKph reads
+        // 0 at every speed, which is why this never came up there — so a STOP
+        // is seen while the belt is still coasting to a halt, and every press
+        // recorded a runaway and sent the alert. A stop that has just been
+        // commanded gets time to land; one that does not land is caught after.
+        if (fp2 != null && SystemClock.elapsedRealtime() - fp2StopAt < FP2_STOP_SETTLE_MS) return null
         // A wind-down *is* the stop being carried out, deliberately gradually —
         // slamming zero over it would undo the one thing it exists for. Bounded,
         // because this is the net and the net cannot be held off for ever: a
@@ -2493,6 +2503,10 @@ class MainActivity : Activity() {
              * then the speed it enables — and if the mode is refused, the
              * speed is still queued rather than lost with it. */
             var queued = pendingWrite
+            // A stop on its way to a FitPro 2 board — see enforceStopped.
+            if (fp2 != null && queued?.get(FitPro.Field.WORKOUT_MODE)?.toInt() == FitPro.Mode.PAUSE) {
+                fp2StopAt = SystemClock.elapsedRealtime()
+            }
             var rest: Map<FitPro.Field, Double>? = null
             if (queued != null && queued.size > 1 &&
                 queued.containsKey(FitPro.Field.WORKOUT_MODE)) {
