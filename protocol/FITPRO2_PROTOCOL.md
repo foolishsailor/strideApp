@@ -364,6 +364,14 @@ What this means for anything driving it:
   type and feature id), not to whatever was sent last.
 - **`DISTANCE` (252) is metres.** 33 m was reported for about a minute at
   1.5–2 km/h.
+- **If the host app dies, the belt stops at once**, but the board's state
+  does not say so. STRIDE was force-closed with the belt running at 2 km/h: the
+  belt stopped immediately, the board dropped off USB and re-attached about
+  5 s later, and the relaunched app found it still reporting `RUNNING` with
+  `CURRENT_KPH` 2.13. So releasing the interface stops the motor, but whoever
+  connects next must not trust `WORKOUT_STATE`. STRIDE's unattended-belt check
+  wrote `PAUSED` within a second of reconnecting. A host that *hangs* while still
+  holding the interface has not been tested.
 
 ---
 
