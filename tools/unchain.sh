@@ -115,6 +115,17 @@ EOF
   ;;
 esac
 
+# ---- 3b. Gen 7: free the motor board. ----
+# On Gen 7 the board (USB 0x213C/0x0003, FitPro 2) is held by iFit's motor
+# service, which restarts itself after a force-stop. Disabling it is the only
+# way STRIDE gets the board. Gen 6 never needed this, so it stays Gen 6-shaped
+# there: only when the Gen 7 board is actually on the bus.
+if sh_ dumpsys usb 2>/dev/null | tr -d '\r' | grep -A1 'vendor_id=8508' | grep -q 'product_id=3$'; then
+    say "Gen 7 board found — disabling com.ifit.glassos_service so STRIDE can claim it"
+    sh_ pm disable-user --user 0 com.ifit.glassos_service
+    echo "  to give the board back to iFit:  adb -s $DEV shell pm enable com.ifit.glassos_service"
+fi
+
 # ---- 4. Launcher replacement. ----
 say "Disabling com.ifit.launcher"
 sh_ pm disable-user --user 0 com.ifit.launcher

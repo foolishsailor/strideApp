@@ -431,6 +431,8 @@ class MainActivity : Activity() {
 
     @Volatile private var running = false
     @Volatile private var deviceId: Byte = FitPro.Dev.TREADMILL
+    /** Set when the board is a Gen 7 (FitPro 2). Null means FitPro 1. */
+    @Volatile private var fp2: FitPro2Board? = null
     @Volatile private var targetKph = 0.0
     @Volatile private var targetGrade = 0.0
     @Volatile private var fanState = 0
@@ -1401,7 +1403,8 @@ class MainActivity : Activity() {
         @JavascriptInterface fun about(): String = JSONObject()
             .put("version", BuildConfig.VERSION_NAME)
             .put("build", BuildConfig.VERSION_CODE)
-            .put("board", "FitPro · device 0x%02x".format(deviceId))
+            .put("board", fp2?.let { "FitPro 2 · ${it.model.ifEmpty { "Gen 7" }}" }
+                ?: "FitPro · device 0x%02x".format(deviceId))
             .put("android", android.os.Build.VERSION.RELEASE)
             .toString()
 
@@ -2448,12 +2451,19 @@ class MainActivity : Activity() {
     }
 
     private fun pollLoop() {
-        if (!resolveDeviceId()) { Log.e(TAG, "board did not answer on 4 or 2"); return }
-        // Before anything else. A locked board refuses reads too, so limits,
-        // telemetry and every workout command all depend on this.
-        unlockWithRetries()
-        readLimits()
-        readSleepConfig()
+        if (conn.isFitPro2) {
+            // Gen 7. Its own start-up, and nothing below that speaks FitPro 1
+            // may run against it: a FitPro 1 frame's length byte is a FitPro 2
+            // message type, and a 9-byte one means BOOTLOADER.
+            if (!startFitPro2()) { Log.e(TAG, "FitPro 2 board did not come up"); return }
+        } else {
+            if (!resolveDeviceId()) { Log.e(TAG, "board did not answer on 4 or 2"); return }
+            // Before anything else. A locked board refuses reads too, so limits,
+            // telemetry and every workout command all depend on this.
+            unlockWithRetries()
+            readLimits()
+            readSleepConfig()
+        }
         mqtt.onMessage(mqtt.coachTopic, ::onCoachLine)
         mqtt.onMessage(mqtt.uiTopic, ::onUiCommand)
         mqtt.onMessage(mqtt.personsTopic, ::onPersons)
@@ -2497,8 +2507,47 @@ class MainActivity : Activity() {
                 ?: queued ?: decelStep() ?: rampStep()
 
             if (writes != null) lastWriteMs = SystemClock.elapsedRealtime()
-            val reply = conn.exchange(FitPro.readWrite(deviceId, READS, writes ?: emptyMap()))
-            if (reply == null) {
+
+            /* Both protocols come down to the same three outcomes — silence, a
+             * refusal, or a set of FitPro 1 field values — so everything after
+             * this point, all the safety logic included, is shared. FitPro 2
+             * translates inside FitPro2Board; FitPro 1 is the frame it always
+             * was, plus the security block that only it has. */
+            val board = fp2
+            var reply: ByteArray? = null
+            val outcome: FitPro2Board.Result = if (board != null) {
+                board.cycle(writes, minKph)
+            } else {
+                reply = conn.exchange(FitPro.readWrite(deviceId, READS, writes ?: emptyMap()))
+                when {
+                    reply == null -> FitPro2Board.Result.Silent
+                    // The board asking to be unlocked is not a dropped frame — it is a
+                    // request, and the only correct answer is to authenticate again.
+                    // Ignoring it costs everything: reads are refused too, so the HUD
+                    // goes quiet, every workout command is silently rejected, and the
+                    // console can still navigate while being unable to act.
+                    FitPro.isSecurityBlock(reply) -> {
+                        lastReplyMs = SystemClock.elapsedRealtime()
+                        boardLocked = true
+                        if (unlockAttempts == 0 || SystemClock.elapsedRealtime() - lastUnlockMs > UNLOCK_RETRY_MS) {
+                            unlockAttempts++
+                            lastUnlockMs = SystemClock.elapsedRealtime()
+                            Log.w(TAG, "board locked (attempt $unlockAttempts) — authenticating again")
+                            if (unlockWithRetries()) {
+                                rejects = 0
+                                unlockAttempts = 0
+                            }
+                        }
+                        Thread.sleep(POLL_MS)
+                        continue
+                    }
+                    else -> FitPro.rejectReason(reply, READS)
+                        ?.let { FitPro2Board.Result.Rejected(it) }
+                        ?: FitPro2Board.Result.Values(FitPro.parse(reply, READS))
+                }
+            }
+
+            if (outcome is FitPro2Board.Result.Silent) {
                 // Same rule as the reject path below: a board that has stopped
                 // answering is a reason to say so, not a reason to stop
                 // drawing. This one used to fall straight through to the sleep
@@ -2522,32 +2571,12 @@ class MainActivity : Activity() {
             }
             lastReplyMs = SystemClock.elapsedRealtime()
 
-            // The board asking to be unlocked is not a dropped frame — it is a
-            // request, and the only correct answer is to authenticate again.
-            // Ignoring it costs everything: reads are refused too, so the HUD
-            // goes quiet, every workout command is silently rejected, and the
-            // console can still navigate while being unable to act.
-            if (FitPro.isSecurityBlock(reply)) {
-                boardLocked = true
-                if (unlockAttempts == 0 || SystemClock.elapsedRealtime() - lastUnlockMs > UNLOCK_RETRY_MS) {
-                    unlockAttempts++
-                    lastUnlockMs = SystemClock.elapsedRealtime()
-                    Log.w(TAG, "board locked (attempt $unlockAttempts) — authenticating again")
-                    if (unlockWithRetries()) {
-                        rejects = 0
-                        unlockAttempts = 0
-                    }
-                }
-                Thread.sleep(POLL_MS)
-                continue
-            }
-
-            val why = FitPro.rejectReason(reply, READS)
-            if (why != null) {
+            if (outcome is FitPro2Board.Result.Rejected) {
+                val why = outcome.reason
                 // Log the first few and then every hundredth — a persistent
                 // reject reason is a real signal, a lone one is just noise.
                 if (rejects < 5 || rejects % 100 == 0) {
-                    Log.w(TAG, "dropped frame ($why): ${FitPro.hex(reply)}")
+                    Log.w(TAG, "dropped frame ($why)" + (reply?.let { ": ${FitPro.hex(it)}" } ?: ""))
                 }
                 rejects++
 
@@ -2597,7 +2626,7 @@ class MainActivity : Activity() {
             // poll, now that the board is in a state that will accept it.
             if (queued != null && writes === queued) pendingWrite = rest
 
-            val v = FitPro.parse(reply, READS).filter { (f, value) ->
+            val v = (outcome as FitPro2Board.Result.Values).v.filter { (f, value) ->
                 // Reject anything outside what the machine says it can do.
                 when (f) {
                     FitPro.Field.ACTUAL_KPH, FitPro.Field.KPH ->
@@ -3116,6 +3145,8 @@ class MainActivity : Activity() {
      * along because a motor tachometer would do just as well as a speedometer.
      */
     private fun probeSpeed() {
+        // A FitPro 1 hunt through FitPro 1 devices. Never against a Gen 7 board.
+        if (fp2 != null) { Log.i(TAG, "fp2: CURRENT_KPH reads 0 while the belt should move"); return }
         Log.i(TAG, "--- speed probe: ActualKph reads 0 while the belt is moving ---")
         for (dev in listOf(FitPro.Dev.TREADMILL, FitPro.Dev.MAIN, FitPro.Dev.SPEED)) {
             val reply = conn.exchange(FitPro.readWrite(dev, SPEED_PROBE))
@@ -3295,6 +3326,8 @@ class MainActivity : Activity() {
      * that does not track, which is exactly where we are now.
      */
     private fun readFan() {
+        // FitPro 2's fan encoding is not known yet; the tile stays local.
+        if (fp2 != null) fanReadable = false
         if (fanReadable == false) return
         val reply = conn.exchange(FitPro.readWrite(deviceId, FAN_READ)) ?: return
         val why = FitPro.rejectReason(reply, FAN_READ)
@@ -3413,6 +3446,16 @@ class MainActivity : Activity() {
         conn.close()
         val err = conn.open(device)
         if (err != null) { Log.w(TAG, "board silent — reopen failed: $err"); return false }
+        if (conn.isFitPro2) {
+            // A fresh subscription; there is no lock to undo on FitPro 2.
+            val board = FitPro2Board(conn)
+            if (!board.setup()) { Log.w(TAG, "board silent — reopened, but FitPro 2 setup failed"); return false }
+            fp2 = board
+            Log.i(TAG, "FitPro 2 board is answering again")
+            lastReplyMs = SystemClock.elapsedRealtime()
+            return true
+        }
+        fp2 = null
         if (!resolveDeviceId()) {
             Log.w(TAG, "board silent — reopened, but it answers on neither 4 nor 2")
             return false
@@ -3449,9 +3492,34 @@ class MainActivity : Activity() {
         }
     }
 
+    /**
+     * Bring up a Gen 7 board: product info, feature list, subscribe, limits.
+     *
+     * No unlock — FitPro 2 has no VerifySecurity — and no sleep config, which
+     * is a FitPro 1 field set. The limits arrive with the subscription.
+     */
+    private fun startFitPro2(): Boolean {
+        val board = FitPro2Board(conn)
+        if (!board.setup()) return false
+        fp2 = board
+        when (val r = board.cycle(null, minKph)) {
+            is FitPro2Board.Result.Values -> applyLimits(r.v)
+            else -> {
+                Log.w(TAG, "fp2: no limits from the board — keeping defaults")
+                strap.logRadioCapabilities()
+                ftms.start()
+            }
+        }
+        lastReplyMs = SystemClock.elapsedRealtime()
+        return true
+    }
+
     private fun readLimits() {
         val reply = conn.exchange(FitPro.readWrite(deviceId, LIMITS)) ?: return
-        val v = FitPro.parse(reply, LIMITS)
+        applyLimits(FitPro.parse(reply, LIMITS))
+    }
+
+    private fun applyLimits(v: Map<FitPro.Field, Double>) {
         v[FitPro.Field.MAX_KPH]?.let { if (it > 0) maxKph = it }
         v[FitPro.Field.MIN_KPH]?.let { if (it > 0) minKph = it }
         v[FitPro.Field.MAX_GRADE]?.let { if (it != 0.0) maxGrade = it }

@@ -1,0 +1,281 @@
+package dev.stride.hud
+
+import android.os.SystemClock
+import android.util.Log
+
+/**
+ * A Gen 7 board, made to look like a FitPro 1 board to the poll loop.
+ *
+ * Everything that keeps a person safe — the ramps, the clamps, enforceStopped,
+ * the safety-key latch — is written in terms of [FitPro.Field] reads and
+ * writes, and was proved on FitPro 1. Rather than fork that logic, this
+ * translates at the edge: FitPro 2 feature ids in, FitPro 1 fields out, and
+ * the reverse for writes. The poll loop keeps one shape of safety code.
+ *
+ * The board pushes values once subscribed, so this keeps the latest of each and
+ * every [cycle] reports the whole picture, the way a FitPro 1 reply would.
+ */
+class FitPro2Board(private val conn: FitProConnection) {
+
+    companion object {
+        const val TAG = "Stride"
+
+        /**
+         * What the poll loop reads, in iFit's batches of eight. The board seen
+         * so far advertises all of these; any it does not are simply absent.
+         */
+        val SUBSCRIBE = listOf(
+            FitPro2.Id.SYSTEM_MODE, FitPro2.Id.WORKOUT_STATE,
+            FitPro2.Id.TARGET_KPH, FitPro2.Id.CURRENT_KPH,
+            FitPro2.Id.TARGET_GRADE, FitPro2.Id.CURRENT_GRADE,
+            FitPro2.Id.MIN_KPH, FitPro2.Id.MAX_KPH,
+            FitPro2.Id.MIN_GRADE, FitPro2.Id.MAX_GRADE,
+            FitPro2.Id.DISTANCE, FitPro2.Id.RUNNING_TIME,
+            FitPro2.Id.PULSE, FitPro2.Id.CURRENT_CALORIES,
+            FitPro2.Id.KEY_COOKED,
+        )
+
+        /** How long to wait for a write to be acknowledged. iFit allows 15 s; a
+         *  poll loop cannot, and an unanswered write is retried by the caller. */
+        const val WRITE_WAIT_MS = 400L
+
+        /** The board repeats its latest event every ~1.5 s even when idle, so
+         *  this long with nothing at all means the link is gone. */
+        const val SILENCE_MS = 5_000L
+    }
+
+    sealed class Result {
+        class Values(val v: Map<FitPro.Field, Double>) : Result()
+        class Rejected(val reason: String) : Result()
+        object Silent : Result()
+    }
+
+    private val values = HashMap<Int, Float>()
+    private var features = emptySet<Int>()
+    private var lastFrameMs = 0L
+    private var lastKey = 0
+    private var fanWarned = false
+
+    var model = ""; private set
+    var software = ""; private set
+
+    /** Product info, the feature list, then subscribe. True if values are flowing. */
+    fun setup(): Boolean {
+        values.clear()
+
+        conn.send(FitPro2.productInfo())
+        val info = HashMap<Int, String>()
+        collect(3000) { f ->
+            if (f.type != FitPro2.Resp.EXTENDED || f.payload.size < 2 ||
+                f.payload[0] != FitPro2.INFO_PRODUCT) return@collect false
+            val item = f.payload[1].toInt() and 0xFF
+            if (item == 0) return@collect true
+            info[item] = String(f.payload, 2, f.payload.size - 2, Charsets.US_ASCII).trim()
+            false
+        }
+        software = info[1] ?: ""
+        model = info[4] ?: ""
+        Log.i(TAG, "fp2: model '$model', board software '$software'")
+
+        conn.send(FitPro2.supportedFeatures())
+        val seen = sortedSetOf<Int>()
+        var chunks = 0
+        collect(5000) { f ->
+            if (f.type != FitPro2.Resp.FEATURES) return@collect false
+            if (f.payload.isEmpty()) return@collect chunks > 0
+            chunks++
+            for (i in 0 until f.payload.size / 2) seen.add(FitPro2.u16(f.payload, 2 * i))
+            false
+        }
+        features = seen
+        Log.i(TAG, "fp2: ${seen.size} features advertised")
+        if (seen.isEmpty()) return false
+        for (w in FitPro2.WRITABLE) if (w !in seen) Log.w(TAG, "fp2: board does not advertise writable $w")
+
+        for (batch in SUBSCRIBE.filter { it in seen }.chunked(8)) {
+            conn.send(FitPro2.subscribe(batch))
+            collect(2000) { batch.all { values.containsKey(it) } }
+        }
+        Log.i(TAG, "fp2: subscribed, ${values.size} values in hand")
+        return values.isNotEmpty()
+    }
+
+    /**
+     * Apply [writes], take in whatever the board has said, and report.
+     *
+     * A write that the board refuses rejects the cycle, so the caller's
+     * pendingWrite survives and is retried — the same rule as a FitPro 1 frame
+     * that comes back with a bad status.
+     */
+    fun cycle(writes: Map<FitPro.Field, Double>?, minKph: Double): Result {
+        // Starting or resuming: put the setpoint at the machine's minimum
+        // *first*. FitPro 2 keeps its last target through a pause — nothing
+        // ever writes it to zero — so going straight to RUNNING could bring
+        // the belt back at whatever pace it last had, instead of the crawl
+        // the poll loop's ramp climbs from.
+        val mode = writes?.get(FitPro.Field.WORKOUT_MODE)?.toInt()
+        if (mode == FitPro.Mode.RUNNING || mode == FitPro.Mode.RESUME || mode == FitPro.Mode.WARM_UP) {
+            val floor = values[FitPro2.Id.MIN_KPH]?.toDouble()?.takeIf { it > 0 } ?: minKph
+            if (!conn.send(FitPro2.write(FitPro2.Id.TARGET_KPH, floor.toFloat())))
+                return Result.Rejected("fp2 write did not go")
+            awaitWrite(FitPro2.Id.TARGET_KPH)?.let { return Result.Rejected(it) }
+        }
+        writes?.forEach { (field, value) ->
+            val (id, v) = translateWrite(field, value, minKph) ?: return@forEach
+            if (!conn.send(FitPro2.write(id, v))) return Result.Rejected("fp2 write did not go")
+            awaitWrite(id)?.let { return Result.Rejected(it) }
+        }
+        // Drain what has queued up since the last poll, without stalling it.
+        var n = 0
+        while (n < 20) {
+            val raw = conn.receive(15) ?: break
+            take(raw)
+            n++
+        }
+        if (SystemClock.elapsedRealtime() - lastFrameMs > SILENCE_MS) return Result.Silent
+        return Result.Values(translateIn())
+    }
+
+    fun has(id: Int) = id in features
+
+    /**
+     * A STRIDE write as a FitPro 2 one, or null if there is nothing to send.
+     *
+     * Speed below the machine's minimum is not sent. FitPro 1 stops the belt
+     * with {KPH 0, mode PAUSE}; on FitPro 2 the minimum is a real ~1.5 km/h,
+     * iFit never writes less, and the board refuses it as out of range. The
+     * stop travels in the mode, which the poll loop always sends alongside —
+     * WORKOUT_STATE PAUSED. That this actually stops the belt must be proved on
+     * the hardware, belt empty, before anybody walks on it.
+     */
+    private fun translateWrite(field: FitPro.Field, value: Double, minKph: Double): Pair<Int, Float>? =
+        when (field) {
+            FitPro.Field.KPH ->
+                if (value < minKph - 0.05) null else FitPro2.Id.TARGET_KPH to value.toFloat()
+            FitPro.Field.GRADE -> FitPro2.Id.TARGET_GRADE to value.toFloat()
+            FitPro.Field.WORKOUT_MODE -> {
+                val state = when (value.toInt()) {
+                    FitPro.Mode.IDLE -> FitPro2.WorkoutState.NONE
+                    FitPro.Mode.RUNNING, FitPro.Mode.RESUME -> FitPro2.WorkoutState.RUNNING
+                    FitPro.Mode.PAUSE, FitPro.Mode.PAUSE_OVERRIDE -> FitPro2.WorkoutState.PAUSED
+                    FitPro.Mode.RESULTS -> FitPro2.WorkoutState.RESULTS
+                    FitPro.Mode.WARM_UP -> FitPro2.WorkoutState.WARM_UP
+                    FitPro.Mode.COOL_DOWN -> FitPro2.WorkoutState.COOL_DOWN
+                    else -> null
+                }
+                if (state == null) {
+                    Log.w(TAG, "fp2: no workout state for mode ${FitPro.Mode.name(value.toInt())} — not sent")
+                    null
+                } else FitPro2.Id.WORKOUT_STATE to state.toFloat()
+            }
+            FitPro.Field.FAN_STATE, FitPro.Field.FAN_SPEED -> {
+                // The fan's FitPro 2 encoding is not known yet, and guessing
+                // costs nothing but a fan that stays as it is.
+                if (!fanWarned) { fanWarned = true; Log.i(TAG, "fp2: fan control not mapped yet — ignored") }
+                null
+            }
+            else -> null
+        }
+
+    /** Null once the board accepts the write; a reason if it refuses or says nothing. */
+    private fun awaitWrite(id: Int): String? {
+        val until = SystemClock.elapsedRealtime() + WRITE_WAIT_MS
+        while (SystemClock.elapsedRealtime() < until) {
+            val raw = conn.receive(50) ?: continue
+            val f = take(raw) ?: continue
+            when (f.type) {
+                FitPro2.Resp.ACK ->
+                    if (f.payload.isNotEmpty() && f.payload[0].toInt() == FitPro2.Req.WRITE) return null
+                FitPro2.Resp.EVENT ->
+                    if (f.payload.size >= 2 && FitPro2.u16(f.payload, 0) == id) return null
+                FitPro2.Resp.ERROR -> {
+                    val code = if (f.payload.size > 1) f.payload[1].toInt() and 0xFF else -1
+                    return "fp2 ${FitPro2.errorName(code)} writing $id"
+                }
+            }
+        }
+        return "fp2 no answer writing $id"
+    }
+
+    /** Fold one packet into what we know. Returns it parsed, for anyone waiting on it. */
+    private fun take(raw: ByteArray): FitPro2.Frame? {
+        val f = FitPro2.parse(raw) ?: return null
+        lastFrameMs = SystemClock.elapsedRealtime()
+        if (f.type == FitPro2.Resp.EVENT && f.payload.size >= 6) {
+            val id = FitPro2.u16(f.payload, 0)
+            val v = FitPro2.f32(f.payload, 2)
+            val before = values.put(id, v)
+            if (id == FitPro2.Id.SYSTEM_MODE && before != v) Log.i(TAG, "fp2: SYSTEM_MODE -> ${v.toInt()}")
+            if (id == FitPro2.Id.WORKOUT_STATE && before != v) Log.i(TAG, "fp2: WORKOUT_STATE -> ${v.toInt()}")
+            if (id == FitPro2.Id.KEY_COOKED && v.toInt() != lastKey) {
+                lastKey = v.toInt()
+                if (lastKey != 0) Log.i(TAG, "fp2: key $lastKey")
+            }
+        } else if (f.type == FitPro2.Resp.ERROR) {
+            Log.w(TAG, "fp2: board error ${FitPro.hex(raw, 3 + f.payload.size)}")
+        }
+        return f
+    }
+
+    /** One collect loop for setup: read until [done] or [ms] runs out. */
+    private fun collect(ms: Long, done: (FitPro2.Frame) -> Boolean) {
+        val until = SystemClock.elapsedRealtime() + ms
+        while (SystemClock.elapsedRealtime() < until) {
+            val raw = conn.receive(200) ?: continue
+            val f = take(raw) ?: continue
+            if (done(f)) return
+        }
+    }
+
+    /** The FitPro 1 view of the board. Only fields we actually have are present. */
+    private fun translateIn(): Map<FitPro.Field, Double> {
+        val out = HashMap<FitPro.Field, Double>()
+        fun put(field: FitPro.Field, id: Int) { values[id]?.let { out[field] = it.toDouble() } }
+        val mode = mode()
+        // The target speed only means something while the belt is being driven.
+        // A paused FitPro 2 board still holds its last target, where FitPro 1
+        // reads 0 — and the poll loop adopts the board's target when idle, so
+        // passing it through would hand a stale 6 km/h to the resume ramp.
+        if (mode == FitPro.Mode.RUNNING || mode == FitPro.Mode.WARM_UP || mode == FitPro.Mode.COOL_DOWN) {
+            put(FitPro.Field.KPH, FitPro2.Id.TARGET_KPH)
+        } else if (values.containsKey(FitPro2.Id.TARGET_KPH)) {
+            out[FitPro.Field.KPH] = 0.0
+        }
+        put(FitPro.Field.GRADE, FitPro2.Id.TARGET_GRADE)
+        put(FitPro.Field.ACTUAL_KPH, FitPro2.Id.CURRENT_KPH)
+        put(FitPro.Field.ACTUAL_INCLINE, FitPro2.Id.CURRENT_GRADE)
+        put(FitPro.Field.MIN_KPH, FitPro2.Id.MIN_KPH)
+        put(FitPro.Field.MAX_KPH, FitPro2.Id.MAX_KPH)
+        put(FitPro.Field.MIN_GRADE, FitPro2.Id.MIN_GRADE)
+        put(FitPro.Field.MAX_GRADE, FitPro2.Id.MAX_GRADE)
+        put(FitPro.Field.CURRENT_TIME, FitPro2.Id.RUNNING_TIME)
+        put(FitPro.Field.PULSE, FitPro2.Id.PULSE)
+        put(FitPro.Field.CALORIES, FitPro2.Id.CURRENT_CALORIES)
+        // FitPro 1 counts distance in metres. FitPro 2's unit is not yet
+        // established, so this goes through unscaled and is checked against a
+        // known walk before anything is built on it.
+        put(FitPro.Field.DISTANCE, FitPro2.Id.DISTANCE)
+        mode?.let { out[FitPro.Field.WORKOUT_MODE] = it.toDouble() }
+        return out
+    }
+
+    /**
+     * SYSTEM_MODE and WORKOUT_STATE folded into one FitPro 1 WorkoutMode.
+     *
+     * The safety key wins over everything, exactly as DMK does on FitPro 1 —
+     * it is the one reading the poll loop latches. The key contact bounces for
+     * a few seconds on the way back in; the latch is what absorbs that.
+     */
+    private fun mode(): Int? {
+        if (values[FitPro2.Id.SYSTEM_MODE]?.toInt() == FitPro2.SystemMode.DMK) return FitPro.Mode.DMK
+        return when (values[FitPro2.Id.WORKOUT_STATE]?.toInt() ?: return null) {
+            FitPro2.WorkoutState.NONE, FitPro2.WorkoutState.READY_TO_START -> FitPro.Mode.IDLE
+            FitPro2.WorkoutState.WARM_UP -> FitPro.Mode.WARM_UP
+            FitPro2.WorkoutState.RUNNING -> FitPro.Mode.RUNNING
+            FitPro2.WorkoutState.COOL_DOWN -> FitPro.Mode.COOL_DOWN
+            FitPro2.WorkoutState.PAUSED, FitPro2.WorkoutState.OFF_MACHINE -> FitPro.Mode.PAUSE
+            FitPro2.WorkoutState.RESULTS -> FitPro.Mode.RESULTS
+            else -> FitPro.Mode.UNKNOWN
+        }
+    }
+}
