@@ -175,10 +175,19 @@ if [ "${STRIDE_KIOSK:-1}" = "1" ] && sh_ pm list packages | grep -q dev.stride.h
     # The alias ships disabled: two home apps and no preference between them
     # means Android asks "which one?" at every boot. Enabling it and setting
     # the preference has to happen together, in that order.
-    sh_ pm enable dev.stride.hud/.HomeAlias
+    #
+    # Android 13 (Gen 7) refuses `pm enable` on another app's component, so
+    # there the app enables its own alias at our request — see KioskReceiver.
+    if sh_ pm enable dev.stride.hud/.HomeAlias 2>&1 | grep -q "Exception"; then
+        echo "  pm enable refused (Android 12+) — asking STRIDE to enable it itself"
+        sh_ am broadcast -a dev.stride.hud.KIOSK --ez on true -n dev.stride.hud/.KioskReceiver >/dev/null
+        OFF="adb -s $DEV shell am broadcast -a dev.stride.hud.KIOSK --ez on false -n dev.stride.hud/.KioskReceiver"
+    else
+        OFF="adb -s $DEV shell pm disable-user --user 0 dev.stride.hud/.HomeAlias"
+    fi
     sh_ cmd package set-home-activity dev.stride.hud/.HomeAlias
     echo "  to hand the console back to its launcher:"
-    echo "      adb -s $DEV shell pm disable-user --user 0 dev.stride.hud/.HomeAlias"
+    echo "      $OFF"
 fi
 
 say "Current launchers"
