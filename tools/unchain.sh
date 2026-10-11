@@ -3,18 +3,41 @@
 # Order matters: eru dies first, everything else is cleanup.
 
 set -u
+say() { printf '\n>>> %s\n' "$*"; }
+
+if ! command -v adb >/dev/null 2>&1; then
+  echo "adb not found. Install Android platform-tools and put it on your PATH." >&2
+  exit 1
+fi
+
+# Gen 7 / newer consoles: Wireless debugging wants a one-off pairing first, on
+# a different port from the one you connect to, with a code that changes every
+# time the pairing dialog opens. Pairing needs platform-tools 30 or later, and
+# an older adb is half of why the original Unchained script stopped working.
+#   STRIDE_PAIR=<ip>:<pairing port>  STRIDE_PAIR_CODE=<six digits>
+if [ -n "${STRIDE_PAIR:-}" ]; then
+  TOOLS="$(adb version | tr -d '\r' | sed -n 's/^Version \([0-9]*\).*/\1/p')"
+  if [ -n "$TOOLS" ] && [ "$TOOLS" -lt 30 ]; then
+    echo "adb is platform-tools $TOOLS. Pairing needs 30 or later; update it." >&2
+    exit 1
+  fi
+  say "Pairing with $STRIDE_PAIR"
+  adb pair "$STRIDE_PAIR" "${STRIDE_PAIR_CODE:?set STRIDE_PAIR_CODE to the six-digit code on the console}" \
+    || { echo "FAILED: pairing. Reopen the pairing dialog; the port and code change each time." >&2; exit 1; }
+fi
+
 # The console's address. Override with STRIDE_DEVICE, or leave it and the
 # script asks adb what is attached — which is right far more often than a
 # hardcoded IP, and is the difference between this working on one bench and
-# working on anyone's.
-DEV="${STRIDE_DEVICE:-$(adb devices | awk 'NR>1 && $2=="device" {print $1; exit}')}"
+# working on anyone's. adb on Windows ends its lines in \r, hence the tr.
+DEV="${STRIDE_DEVICE:-$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device" {print $1; exit}')}"
 if [ -z "$DEV" ]; then
-  echo "No device. Plug in over USB, or: export STRIDE_DEVICE=<ip>:5555" >&2
+  echo "No device. Plug in over USB, or: export STRIDE_DEVICE=<ip>:<port>" >&2
+  echo "On Gen 7 the port is the one under Wireless debugging, not 5555." >&2
   exit 1
 fi
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-say() { printf '\n>>> %s\n' "$*"; }
 sh_() { adb -s "$DEV" shell "$@"; }
 
 say "Connecting to $DEV"
@@ -79,6 +102,18 @@ else
 
 EOF
 fi
+case "$DEV" in
+  *:5555) ;;
+  *:*) cat <<EOF
+
+  NOTE: $DEV looks like Wireless debugging rather than classic ADB over Wi-Fi.
+  Its port changes when the console reboots or Wireless debugging is toggled.
+  This computer stays paired, so next time read the new port under Developer
+  options → Wireless debugging and run: adb connect <ip>:<new port>
+
+EOF
+  ;;
+esac
 
 # ---- 4. Launcher replacement. ----
 say "Disabling com.ifit.launcher"
@@ -140,4 +175,12 @@ sh_ cmd package query-activities \
     -a android.intent.action.MAIN -c android.intent.category.HOME \
     2>/dev/null | grep -i packageName | sort -u
 
-say "DONE — eru disabled, STRIDE installed and set as home. Reboot to verify it sticks."
+if sh_ pm list packages | grep -q dev.stride.hud; then
+    if [ "${STRIDE_KIOSK:-1}" = "1" ]; then
+        say "DONE — eru disabled, STRIDE installed and set as home. Reboot to verify it sticks."
+    else
+        say "DONE — eru disabled, STRIDE installed (home app left alone). Reboot to verify it sticks."
+    fi
+else
+    say "DONE — eru disabled. STRIDE is not installed yet. Reboot to verify eru stays off."
+fi
