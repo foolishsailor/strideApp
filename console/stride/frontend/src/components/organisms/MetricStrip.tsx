@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { mmss, nf } from '../../lib/format';
-import { paceSecPerKm } from '../../lib/session';
+import { climb as climbIn, paceSec, paceUnit, speedIn, speedUnit, stride as strideIn, walked } from '../../lib/units';
 import { useField } from '../../store/session';
+import { useUnits } from '../../store/settings';
 import { Row } from '../primitives';
 import { Metric } from '../molecules';
 import styles from './MetricStrip.module.css';
@@ -26,25 +27,28 @@ export function MetricStrip({ left, right, children }: { left?: ReactNode; right
   const climb = useField('climbM') ?? 0;
   const stride = useField('strideM');
   const podKph = useField('podKph');
-  const pace = paceSecPerKm(speed);
+  const u = useUnits();
+  const pace = paceSec(speed, u);
+  const dist = walked(distance, u);
+  const up = climbIn(climb, u);
   return (
     <div className={styles.strip}>
       {left}
       <div className={styles.middle}>
         <Row className={styles.row}>
           <Metric large label="Elapsed">{mmss(elapsed)}</Metric>
-          <Metric large label="Distance" unit="m">{nf(distance)}</Metric>
-          <Metric large label="Pace" unit="/km">{pace ? mmss(pace) : dash}</Metric>
+          <Metric large label="Distance" unit={dist.unit}>{dist.value}</Metric>
+          <Metric large label="Pace" unit={paceUnit(u)}>{pace ? mmss(pace) : dash}</Metric>
           <Metric large label="Heart rate" unit="bpm">{orDash(pulse)}</Metric>
           <Metric large label="Cadence" unit="spm">{orDash(cadence)}</Metric>
           <Metric large label="Power" unit="W">{orDash(power)}</Metric>
         </Row>
         <Row className={styles.second}>
           <Metric inline label="Calories" unit="kcal">{nf(calories)}</Metric>
-          <Metric inline label="Climb" unit="m">{nf(climb)}</Metric>
+          <Metric inline label="Climb" unit={up.unit}>{up.value}</Metric>
           {children && <div className={styles.status}>{children}</div>}
-          <Metric inline label="Stride" unit="m">{orDash(stride, (n) => n.toFixed(2))}</Metric>
-          <Metric inline label="Pod speed" unit="km/h">{orDash(podKph, (n) => n.toFixed(1))}</Metric>
+          <Metric inline label="Stride" unit={stride ? strideIn(stride, u).unit : u === 'mi' ? 'ft' : 'm'}>{orDash(stride, (n) => strideIn(n, u).value)}</Metric>
+          <Metric inline label="Pod speed" unit={speedUnit(u)}>{orDash(podKph, (n) => speedIn(n, u).toFixed(1))}</Metric>
         </Row>
       </div>
       {right}

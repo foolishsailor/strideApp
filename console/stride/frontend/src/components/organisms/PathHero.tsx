@@ -5,6 +5,8 @@ import { segmentSubtitle, suggestion } from '../../lib/session';
 import { bridge } from '../../bridge/stride';
 import { useTap } from '../../hooks/useTap';
 import { useField, useSession } from '../../store/session';
+import { useUnits } from '../../store/settings';
+import { speedText, speedUnit } from '../../lib/units';
 import { cx } from '../../lib/cx';
 import { Label } from '../primitives';
 import styles from './Hero.module.css';
@@ -30,10 +32,11 @@ function PathCanvas() {
 
 function SegmentHeader() {
   const snapshot = useSession((s) => s.snapshot);
+  const u = useUnits();
   return (
     <div className={styles.segment}>
       <Label tone="accent" className={styles.segName}>{snapshot.segmentLabel || ''}</Label>
-      <div className={styles.segSub}>{segmentSubtitle(snapshot)}</div>
+      <div className={styles.segSub}>{segmentSubtitle(snapshot, u)}</div>
     </div>
   );
 }
@@ -44,6 +47,7 @@ function Suggestion() {
   const suggestPace = useField('suggestPace');
   const targetSpeed = useField('targetSpeed');
   const inclineAuto = useField('inclineAuto');
+  const u = useUnits();
   const s = suggestion({ suggestPace, targetSpeed, inclineAuto });
   const ref = useTap<HTMLDivElement>(() => {
     if (s) bridge().setSpeed(s.kph);
@@ -52,7 +56,7 @@ function Suggestion() {
     <div ref={ref} className={cx(styles.suggest, s?.manualIncline && styles.manual)}>
       {s && (
         <>
-          {s.verb} <b>{s.kph.toFixed(1)}</b> km/h
+          {s.verb} <b>{speedText(s.kph, u)}</b> {speedUnit(u)}
           {s.manualIncline && ' · incline yours until the next stretch'}
         </>
       )}

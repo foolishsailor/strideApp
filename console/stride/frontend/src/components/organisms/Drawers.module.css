@@ -1,0 +1,66 @@
+/* A drawer is the whole panel, so its children keep the positions they have
+   on the walk screen; it only ever moves. Clicks go to the children, never to
+   the empty panel. */
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  transition: transform var(--motion-settle) ease;
+}
+.drawer > * {
+  pointer-events: auto;
+  background: var(--role-fill-over-app);
+}
+
+/* Closed: moved by the depth of what it holds — the strip is 140 deep, the
+   rails 150 wide, the dock 104 tall. */
+.top.closed { transform: translateY(-140px); }
+.left.closed { transform: translateX(-150px); }
+.right.closed { transform: translateX(150px); }
+.bottom.closed { transform: translateY(104px); }
+
+button.grip {
+  position: absolute;
+  padding: 0;
+  border: none;
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---- grips ---------------------------------------------------------------- */
+/* Hanging 16px off the drawer's inner edge, so a closed drawer leaves its grip
+   16px in from the bezel. A white bar on a pill of the drawer's own panel, so
+   it shows on a white page as well as a dark scene. */
+.grip {
+  border-radius: 14px;
+}
+.grip i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 3px;
+  background: var(--role-ink-over-app);
+  opacity: 0.75;
+}
+.grip:global(.down) i {
+  opacity: 1;
+}
+.topGrip,
+.bottomGrip {
+  left: 50%;
+  margin-left: -60px;
+  width: 120px;
+  height: 28px;
+}
+.topGrip { top: 156px; }
+.bottomGrip { bottom: 120px; }
+.topGrip i,
+.bottomGrip i {
+  width: 64px;
+  height: 6px;
+  margin: -3px 0 0 -32px;
+}

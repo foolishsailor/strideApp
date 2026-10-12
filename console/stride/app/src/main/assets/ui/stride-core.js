@@ -1097,6 +1097,22 @@ function stub() {
                    [1600,2100,-2],[2100,2500,-3],[2500,3030,0]] }
     ]);
   };
+  /* APPS on a desktop: two pretend apps, and "opening" one puts the page in
+     its over-another-app state, the way OverApp.kt does on the console. There
+     is no app behind it, so the browser's own background shows through. */
+  s.apps = function () {
+    return JSON.stringify([
+      { pkg: 'com.netflix.mediaclient', name: 'Netflix', icon: '' },
+      { pkg: 'com.google.android.youtube', name: 'YouTube', icon: '' }
+    ]);
+  };
+  function overApp(on) {
+    console.log('Stride.overApp', on);
+    if (global.overApp) global.overApp(on);
+  }
+  s.openApp = function () { overApp(true); };
+  s.touchable = function () {};
+  s.closeApp = function () { overApp(false); };
   global.Stride = s;
   return true;
 }

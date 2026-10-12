@@ -1,7 +1,10 @@
 .menu {
   position: absolute;
   left: 50%;
-  margin-left: -85px; /* centred over FAN, the middle of three */
+  /* Centred over FAN, the third of four in the dock: APPS takes 170 + 24 of
+     its 980px, the other three share the rest, so FAN sits 97px right of
+     the panel's centre. Half the menu's 170 back from there. */
+  margin-left: 12px;
   bottom: 116px; /* just above the docked controls */
   width: 170px;
   padding: 10px;

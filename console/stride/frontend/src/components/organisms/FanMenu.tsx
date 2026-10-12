@@ -23,7 +23,7 @@ export function FanMenu() {
 
   if (!open) return null;
   return (
-    <div className={styles.menu}>
+    <div data-touch className={styles.menu}>
       {FAN_LEVELS.map((name, level) => (
         <Button key={name} size="menu" selected={level === fan} onTap={() => { bridge().setFan(level); close(); }}>
           {name}

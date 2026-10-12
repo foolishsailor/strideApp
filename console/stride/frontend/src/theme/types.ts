@@ -47,6 +47,9 @@ export interface Theme {
     backdropMid: string;
     shadowRaised: string; // box-shadow for cards and buttons
     shadowFloating: string; // box-shadow for the fan menu
+    fillOverApp: string; // the translucent panel under the drawers over another app
+    inkOverApp: string; // every word over another app: one colour, white
+    shadowOverApp: string; // text-shadow that keeps the walk readable over another app
     sleepBg: string;
     sleepClock: string;
     sleepHint: string;
