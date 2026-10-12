@@ -2,7 +2,8 @@
    all occupy exactly this box; only one is ever mounted. */
 .hero {
   position: absolute;
-  left: 274px;
+  left: 50%;
+  margin-left: -366px; /* centred between the rails at any width */
   top: 150px;
   width: 732px;
   height: 404px;
