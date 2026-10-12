@@ -3444,7 +3444,10 @@ class MainActivity : Activity() {
         // starts filling ActualKph in.
         val derived = beltSpeed(distance)
         val beltKph = when {
-            actual > 0.0 -> actual          // if the board ever starts answering
+            // The board's reading is in the board's speed; the dial is true
+            // speed. Compared untranslated, a calibrated belt would read as
+            // slipping by exactly its calibration. See BeltCalibration.
+            actual > 0.0 -> calib.fromBelt(actual)   // FitPro 2 answers; FitPro 1 reads 0
             // Not "zero because no workout is running". This field answers
             // "what is the belt doing", and a belt turning in manual mode is
             // turning whether or not STRIDE calls it a session. idleBeltSpeed
