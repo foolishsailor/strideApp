@@ -13,11 +13,11 @@ export function WorkoutScreen() {
   const ramping = useField('ramping');
   return (
     <Fill>
-      <MetricStrip />
-      {/* After the strip, so the clock row draws over its top. */}
-      <TopBar>
+      <MetricStrip>
         <StatusChip mode={mode} label={modeLabel(mode, ramping)} />
-      </TopBar>
+      </MetricStrip>
+      {/* Clock and date in the corners, either side of the metrics. */}
+      <TopBar />
       <InclineRail />
       <SpeedRail />
       <Hero />
