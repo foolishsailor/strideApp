@@ -27,8 +27,7 @@ export function InclineRail() {
     <ValueRail
       side="left" label="Incline" value={fixed1(incline)} unit="%" target={fixed1(target)}
       stops={stops} selected={exactly(stops, target)} focus={nearestStop(stops, target)}
-      // The bridge only takes a step, so a stop is the step from the target.
-      onPick={(v) => bridge().incline(v - target)}
+      onPick={(v) => bridge().setIncline(v)}
       onStep={(d) => bridge().incline(d)} {...INCLINE_STEP}
     />
   );

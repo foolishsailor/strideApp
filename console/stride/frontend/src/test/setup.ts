@@ -14,7 +14,7 @@ export function mockBridge(overrides: Partial<Record<keyof StrideBridge | string
   const b: Record<string, unknown> = {};
   for (const name of [
     'choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause', 'resume', 'end',
-    'home', 'speed', 'incline', 'setSpeed', 'setFan', 'setWalker', 'ackDmk', 'hushCoach', 'dim',
+    'home', 'speed', 'incline', 'setSpeed', 'setIncline', 'setFan', 'setWalker', 'ackDmk', 'hushCoach', 'dim',
   ]) b[name] = vi.fn();
   b.routes = vi.fn(() => '[]');
   b.settingsJson = vi.fn(() => JSON.stringify({ people: [{ name: 'Sam' }], default_walker: '' }));

@@ -1196,7 +1196,19 @@ class MainActivity : Activity() {
         }
 
         /** Incline has no interlock — the board services it in any state. */
-        @JavascriptInterface fun incline(delta: Double) {
+        @JavascriptInterface fun incline(delta: Double) = gradeByHand(targetGrade + delta)
+
+        /**
+         * Go straight to a grade: a stop picked from the incline rail. A step
+         * computed on the page from the last snapshot's target could land off
+         * by whatever moved in the fifth of a second since.
+         */
+        @JavascriptInterface fun setIncline(pct: Double) {
+            gradeByHand(pct)
+            Log.i(TAG, "incline: set by hand to ${"%.1f".format(targetGrade)} %")
+        }
+
+        private fun gradeByHand(grade: Double) {
             // Touching the hill takes it back from the plan until the next
             // segment. Same rule as speed abandoning its ramp: the person on the
             // treadmill outranks the schedule.
@@ -1211,7 +1223,7 @@ class MainActivity : Activity() {
                 levelling = false
                 Log.i(TAG, "levelling abandoned — incline set by hand")
             }
-            targetGrade = (targetGrade + delta).coerceIn(minGrade, maxGrade)
+            targetGrade = grade.coerceIn(minGrade, maxGrade)
             pendingWrite = mapOf(FitPro.Field.GRADE to targetGrade)
         }
 
@@ -2374,6 +2386,7 @@ class MainActivity : Activity() {
             "speed" -> bridge.speed(f("by", 0.1f))
             "setspeed" -> bridge.setSpeed(f("kph", 3f))
             "incline" -> bridge.incline(f("by", 1f))
+            "setincline" -> bridge.setIncline(f("pct", 0f))
             "pause" -> bridge.pause()
             "resume" -> bridge.resume()
             "end" -> bridge.end()

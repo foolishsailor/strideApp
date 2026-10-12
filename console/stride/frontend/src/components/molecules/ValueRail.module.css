@@ -1,6 +1,7 @@
-/* The side docks, 140 – 800, under the metric band. Edge to edge with the
-   panel; everything pressable is held 16px in, because touches within ~15px
-   of the bezel register unreliably on this digitiser. */
+/* The side docks, 140 – 800, under the metric band. No panel of their own:
+   the readings and their controls sit straight on the backdrop. Everything
+   pressable is held 16px in, because touches within ~15px of the bezel
+   register unreliably on this digitiser. */
 .rail {
   position: absolute;
   top: 140px;
@@ -9,15 +10,12 @@
   display: flex;
   flex-direction: column;
   padding: 14px 16px 18px;
-  background: var(--role-fill-card);
 }
 .left {
   left: 0;
-  border-right: var(--edge-width) solid var(--role-edge);
 }
 .right {
   right: 0;
-  border-left: var(--edge-width) solid var(--role-edge);
 }
 
 .reading {
@@ -58,6 +56,8 @@
   display: none;
 }
 
+/* Just the number. The whole 56px row is still the target; only the box
+   around it is gone. */
 .stop {
   display: block;
   width: 100%;
@@ -65,31 +65,30 @@
   margin-bottom: 6px;
   -webkit-tap-highlight-color: transparent;
   outline: none;
-  background: var(--role-fill);
-  border: var(--edge-width) solid var(--role-edge);
-  border-radius: var(--radius-chip);
-  color: var(--colour-ink);
+  background: transparent;
+  border: none;
+  color: var(--colour-ink-dim);
   font-family: inherit;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: var(--weight-numeral);
   font-variant-numeric: tabular-nums;
-  transition: background var(--motion-quick), border-color var(--motion-quick), transform 0.06s;
+  transition: color var(--motion-quick), font-size var(--motion-quick), transform 0.06s;
 }
 .stop:last-child {
   margin-bottom: 0;
 }
 .stop:global(.down) {
-  transform: scale(0.96);
-  background: var(--role-pressed);
+  transform: scale(0.92);
+  color: var(--colour-ink);
 }
+/* The stop the target is on: bigger and in the accent, nothing drawn round it. */
 .selected {
-  border-color: var(--colour-accent);
   color: var(--colour-accent);
-  background: var(--role-selected);
+  font-size: 40px;
+  font-weight: 600;
 }
 
 /* Speed while the belt is stopped: shown, but not the thing to reach for. */
-
 .muted :global(button) {
   opacity: 0.4;
 }

@@ -83,9 +83,8 @@ describe('workout', () => {
     const stop = (v: number) => document.querySelector(`[data-stop="${v}"]`)!;
     fireEvent.click(stop(12));
     expect(b.setSpeed).toHaveBeenCalledWith(12);
-    // Incline only takes a step: 8 % from a target of 2 % is six up.
     fireEvent.click(stop(8));
-    expect(b.incline).toHaveBeenCalledWith(6);
+    expect(b.setIncline).toHaveBeenCalledWith(8);
     // Only what this board reaches: up to 15 %, up to 16 km/h.
     expect(stop(15)).toBeTruthy();
     expect(document.querySelector('[data-stop="18"]')).toBeNull();

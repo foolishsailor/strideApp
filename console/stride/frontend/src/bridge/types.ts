@@ -80,6 +80,7 @@ export interface StrideBridge {
   speed(delta: number): void;
   incline(delta: number): void;
   setSpeed(kph: number): void;
+  setIncline(pct: number): void;
   setFan(level: number): void;
   setWalker(name: string): void;
   ackDmk(): void;
