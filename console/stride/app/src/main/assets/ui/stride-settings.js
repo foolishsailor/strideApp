@@ -477,8 +477,7 @@
   /* ---- sections ---------------------------------------------------------- */
   var ICONS = {
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
-    hr: 'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z',
-    pod: 'M4 16c0-3 2-5 5-5h2l3-6h3l-1 7c3 0 4 2 4 4v2H4z',
+    devices: 'M7 7l10 10-5 5V2l5 5L7 17',
     ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     coach: 'M4 5h16v11H9l-5 4V5z',
@@ -489,8 +488,7 @@
 
   var SECTIONS = [
     ['people', 'Who walks',      paneWho],
-    ['hr',     'Heart rate',     paneHeart],
-    ['pod',    'Foot pod',       panePod],
+    ['devices', 'Devices',       paneDevices],
     ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
@@ -684,56 +682,71 @@
     drawHa();
   }
 
-  // --- heart rate ---
-  function paneHeart(pane) {
-    var sc = head(pane, 'Heart rate',
-      'A Bluetooth chest strap is how most machines get a pulse here. Some ' +
-      'treadmills also wire contact grips on the handlebar to the board, but many do not, including the one STRIDE was built on.');
+  // --- devices: heart-rate strap, foot pod, headphones ---
+  /* One place for everything Bluetooth. One scan looks for all three kinds at
+     once; each kind keeps one paired device. Kotlin's devices* calls. */
+  var KINDS = [
+    ['hr', 'Heart rate strap', 'Heart rate'],
+    ['pod', 'Foot pod', 'Foot pod'],
+    ['phones', 'Headphones', 'Headphones']
+  ];
 
-    var g = group('Where the pulse comes from');
-    g.appendChild(row('Source',
+  function paneDevices(pane) {
+    var sc = head(pane, 'Devices',
+      'Heart-rate straps, foot pods such as Stryd, and headphones for the coach. ' +
+      'The console connects to each itself; nothing else needs to be paired.');
+
+    var g1 = group('Your devices');
+    var pairedBox = el('div');
+    g1.appendChild(pairedBox);
+    sc.appendChild(g1);
+
+    var g2 = group('Add a device');
+    var scanBtn = press(el('button', 'sx-pill sx-go', 'SCAN'), function () {
+      scanBtn.textContent = 'SCANNING';
+      foundBox.innerHTML = '<div class="sx-empty"><span class="sx-state">' +
+        '<i class="sx-dot sx-busy"></i>Looking for devices…</span></div>';
+      try { bridge().devicesScan(); } catch (e) {}
+      // Sensors answer in a second or two; headphones take the full
+      // discovery, about twelve seconds. Show what there is as it arrives.
+      [3000, 6000, 9000, 13000].forEach(function (ms, i, all) {
+        setTimeout(function () { drawFound(i === all.length - 1); }, ms);
+      });
+    });
+    g2.appendChild(row('Scan for devices',
+      'Wear the strap, give the pod a few steps, and put headphones in pairing ' +
+      'mode. A pod your watch holds over Bluetooth may have no room for the console.', scanBtn));
+    var foundBox = el('div');
+    g2.appendChild(foundBox);
+    sc.appendChild(g2);
+
+    var g3 = group('Heart rate');
+    g3.appendChild(row('Source',
       'Automatic prefers a paired strap and falls back to the board. If your machine has no grips, the board reads zero and only a strap will work.',
       segment('hr_source', [['auto', 'Automatic'], ['strap', 'Strap only'], ['grips', 'Board only']],
         S.hr_source || 'auto')));
-    sc.appendChild(g);
-
-    var g2 = group('Paired strap');
-    var pairedBox = el('div');
-    g2.appendChild(pairedBox);
-    sc.appendChild(g2);
-
-    var g3 = group('Add a strap');
-    var scanBtn = press(el('button', 'sx-pill sx-go', 'SCAN'), function () {
-      scanBtn.textContent = 'SCANNING';
-      foundBox.innerHTML = '<div class="sx-empty"><span class="sx-state">' +
-        '<i class="sx-dot sx-busy"></i>Looking for straps…</span></div>';
-      try { bridge().hrScan(); } catch (e) {}
-      setTimeout(drawFound, 9000);
-    });
-    g3.appendChild(row('Scan for straps',
-      'Any strap using the standard Bluetooth heart rate service — Polar, Garmin, ' +
-      'Wahoo, Coospo and most others.', scanBtn));
-    var foundBox = el('div');
-    g3.appendChild(foundBox);
     sc.appendChild(g3);
 
-    function drawFound() {
-      scanBtn.textContent = 'SCAN AGAIN';
+    function drawFound(done) {
       var list = [];
-      try { list = JSON.parse(bridge().hrFound()); } catch (e) {}
+      try { list = JSON.parse(bridge().devicesFound()); } catch (e) {}
+      if (!list.length && !done) return;
+      if (done) scanBtn.textContent = 'SCAN AGAIN';
       foundBox.innerHTML = '';
       if (!list.length) {
         foundBox.appendChild(el('div', 'sx-empty',
-          'No straps found.<br>Put yours on — most only advertise once they detect skin.'));
+          'Nothing found.<br>Straps advertise once they touch skin, pods once they move, ' +
+          'and headphones only in pairing mode.'));
         return;
       }
       list.forEach(function (d) {
+        var kind = KINDS.filter(function (k) { return k[0] === d.kind; })[0];
         var r = el('div', 'sx-dev');
         r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + d.name + ' · ' +
-          d.address.slice(0, 8) + '</div><div class="sx-d">Heart rate service · ' +
-          d.rssi + ' dBm</div></div>';
+          d.address.slice(0, 8) + '</div><div class="sx-d">' + (kind ? kind[2] : d.kind) +
+          ' · ' + d.rssi + ' dBm</div></div>';
         r.appendChild(press(el('button', 'sx-pill sx-go', 'PAIR'), function () {
-          try { bridge().hrPair(d.address, d.name); } catch (e) {}
+          try { bridge().devicePair(d.kind, d.address, d.name); } catch (e) {}
           foundBox.innerHTML = '';
           scanBtn.textContent = 'SCAN';
           load(); drawPaired();
@@ -742,124 +755,49 @@
       });
     }
 
-    function drawPaired() {
-      var st = {};
-      try { st = JSON.parse(bridge().hrStatus()); } catch (e) {}
-      pairedBox.innerHTML = '';
-
-      if (!st.available) {
-        pairedBox.appendChild(el('div', 'sx-empty',
-          'Bluetooth is off, or this console has none.<br>Without a strap there is no pulse unless your machine has grips.'));
-        return;
-      }
-      if (!st.address) {
-        pairedBox.appendChild(el('div', 'sx-empty',
-          'No strap paired.<br>Put yours on and scan.'));
-        return;
-      }
-      var r = el('div', 'sx-dev' + (st.connected ? ' sx-on' : ''));
-      var bits = [st.connected ? 'Connected' : 'Not in range'];
-      if (st.battery >= 0) bits.push('battery ' + st.battery + '%');
-      r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (st.name || 'Strap') +
-        ' · ' + st.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
-        '</div></div><div class="sx-bpm">' + (st.bpm > 0 ? st.bpm : '—') +
-        ' <small>bpm</small></div>';
-      r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
-        try { bridge().hrForget(); } catch (e) {}
-        load(); drawPaired();
-      }));
-      pairedBox.appendChild(r);
-    }
-
-    drawPaired();
-    pane.sxTick = drawPaired;   // live bpm while this section is open
-  }
-
-  // --- foot pod ---
-  function panePod(pane) {
-    var sc = head(pane, 'Foot pod',
-      'A Stryd or other foot pod gives the walk screen cadence, power, stride ' +
-      'and the pod\'s own speed. A Garmin watch only broadcasts heart rate, so ' +
-      'the console reads the pod directly.');
-
-    var g2 = group('Paired pod');
-    var pairedBox = el('div');
-    g2.appendChild(pairedBox);
-    sc.appendChild(g2);
-
-    var g3 = group('Add a pod');
-    var scanBtn = press(el('button', 'sx-pill sx-go', 'SCAN'), function () {
-      scanBtn.textContent = 'SCANNING';
-      foundBox.innerHTML = '<div class="sx-empty"><span class="sx-state">' +
-        '<i class="sx-dot sx-busy"></i>Looking for pods…</span></div>';
-      try { bridge().podScan(); } catch (e) {}
-      setTimeout(drawFound, 9000);
-    });
-    g3.appendChild(row('Scan for pods',
-      'Any pod using the standard Bluetooth running speed and cadence or power ' +
-      'services. If your watch holds the pod over Bluetooth, the pod may not ' +
-      'have room for the console too; over ANT+ it will.', scanBtn));
-    var foundBox = el('div');
-    g3.appendChild(foundBox);
-    sc.appendChild(g3);
-
-    function drawFound() {
-      scanBtn.textContent = 'SCAN AGAIN';
-      var list = [];
-      try { list = JSON.parse(bridge().podFound()); } catch (e) {}
-      foundBox.innerHTML = '';
-      if (!list.length) {
-        foundBox.appendChild(el('div', 'sx-empty',
-          'No pods found.<br>Give yours a shake or a few steps — most sleep when still.'));
-        return;
-      }
-      list.forEach(function (d) {
-        var r = el('div', 'sx-dev');
-        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + d.name + ' · ' +
-          d.address.slice(0, 8) + '</div><div class="sx-d">Foot pod · ' +
-          d.rssi + ' dBm</div></div>';
-        r.appendChild(press(el('button', 'sx-pill sx-go', 'PAIR'), function () {
-          try { bridge().podPair(d.address, d.name); } catch (e) {}
-          foundBox.innerHTML = '';
-          scanBtn.textContent = 'SCAN';
-          load(); drawPaired();
-        }));
-        foundBox.appendChild(r);
-      });
+    /* The live reading beside each device: what it is there to provide. */
+    function reading(kind, d) {
+      if (kind === 'hr') return d.bpm > 0 ? d.bpm + ' <small>bpm</small>' : '— <small>bpm</small>';
+      if (kind === 'pod') return d.cadence > 0 ? d.cadence + ' <small>spm</small>' : '— <small>spm</small>';
+      return '';
     }
 
     function drawPaired() {
       var st = {};
-      try { st = JSON.parse(bridge().podStatus()); } catch (e) {}
+      try { st = JSON.parse(bridge().devicesStatus()); } catch (e) {}
       pairedBox.innerHTML = '';
-
       if (!st.available) {
         pairedBox.appendChild(el('div', 'sx-empty',
           'Bluetooth is off, or this console has none.'));
         return;
       }
-      if (!st.address) {
-        pairedBox.appendChild(el('div', 'sx-empty',
-          'No pod paired.<br>Wake yours and scan.'));
-        return;
-      }
-      var r = el('div', 'sx-dev' + (st.connected ? ' sx-on' : ''));
-      var bits = [st.connected ? 'Connected' : 'Not in range'];
-      if (st.battery >= 0) bits.push('battery ' + st.battery + '%');
-      if (st.watts > 0) bits.push(st.watts + ' W');
-      r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (st.name || 'Pod') +
-        ' · ' + st.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
-        '</div></div><div class="sx-bpm">' + (st.cadence > 0 ? st.cadence : '—') +
-        ' <small>spm</small></div>';
-      r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
-        try { bridge().podForget(); } catch (e) {}
-        load(); drawPaired();
-      }));
-      pairedBox.appendChild(r);
+      KINDS.forEach(function (k) {
+        var d = st[k[0]] || {};
+        var r;
+        if (!d.address) {
+          r = el('div', 'sx-dev');
+          r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + k[1] +
+            '</div><div class="sx-d">None paired</div></div>';
+          pairedBox.appendChild(r);
+          return;
+        }
+        r = el('div', 'sx-dev' + (d.connected ? ' sx-on' : ''));
+        var bits = [k[1], d.connected ? 'Connected' : 'Not in range'];
+        if (d.battery >= 0) bits.push('battery ' + d.battery + '%');
+        if (d.watts > 0) bits.push(d.watts + ' W');
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (d.name || k[1]) +
+          ' · ' + d.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
+          '</div></div><div class="sx-bpm">' + reading(k[0], d) + '</div>';
+        r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
+          try { bridge().deviceForget(k[0]); } catch (e) {}
+          load(); drawPaired();
+        }));
+        pairedBox.appendChild(r);
+      });
     }
 
     drawPaired();
-    pane.sxTick = drawPaired;   // live cadence while this section is open
+    pane.sxTick = drawPaired;   // live readings while this section is open
   }
 
   // --- home assistant ---

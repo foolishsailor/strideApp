@@ -95,7 +95,7 @@ edges. A full-width bar along the top holds incline at its left end, speed at
 its right and the walk's numbers between them in two rows: elapsed, distance,
 pace, heart rate, cadence and power large; calories, climb, stride and pod
 speed smaller, either side of the status. Cadence, power, stride and pod
-speed come from a foot pod (Footpod.kt; Settings → Foot pod) and show a dash
+speed come from a foot pod (Footpod.kt; Settings → Devices) and show a dash
 without one; `tools/sim.py pod on` fakes one on the emulator. The incline and speed rails
 run down the sides from the bottom of that bar: a fixed + and −, with a
 scrolling list of stops between them. Start, fan and stop are docked along

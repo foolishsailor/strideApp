@@ -428,8 +428,10 @@ class MainActivity : Activity() {
     private val strap by lazy { HeartRate(this) { ftms.listeners > 0 } }
     /** A Stryd or other foot pod: cadence, power, stride. Held off the same way. */
     private val pod by lazy { Footpod(this) { ftms.listeners > 0 } }
-    /** Which sensor the location-permission dialog interrupted a scan for. */
-    @Volatile private var scanAfterPermission: BleSensor? = null
+    /** Bluetooth headphones, for hearing the coach. Classic Bluetooth, not BLE. */
+    private val phones by lazy { Headphones(this) }
+    /** The scan the location-permission dialog interrupted. */
+    @Volatile private var scanAfterPermission: (() -> Unit)? = null
     /** The treadmill as a standard Bluetooth fitness machine, for Zwift and
      *  friends. Telemetry only, and silent on a radio that cannot advertise. */
     private val ftms by lazy { Ftms(this) }
@@ -1350,69 +1352,65 @@ class MainActivity : Activity() {
             return cfg.json().toString()
         }
 
-        // --- heart rate strap ---
-        @JavascriptInterface fun hrScan() {
-            // Asking is asynchronous: the dialog is still on screen when this
-            // returns. Scanning through it is the documented way to get an
-            // empty list that looks exactly like "no straps here", so the scan
-            // waits for the answer — see onRequestPermissionsResult.
-            if (ensureScanPermission(strap)) strap.scan()
+        // --- devices: heart-rate strap, foot pod, headphones ---
+        /*
+         * One Settings section for everything Bluetooth, so one scan looks for
+         * all three kinds at once. Each kind still has its own class and its
+         * own saved address; `kind` is "hr", "pod" or "phones".
+         */
+        @JavascriptInterface fun devicesScan() {
+            // Asking for location is asynchronous: the dialog is still on
+            // screen when this returns. Scanning through it is the documented
+            // way to get an empty list that looks exactly like "nothing here",
+            // so the scan waits for the answer — see onRequestPermissionsResult.
+            if (ensureScanPermission { scanAll() }) scanAll()
         }
 
-        @JavascriptInterface fun hrFound(): String = foundJson(strap)
+        @JavascriptInterface fun devicesFound(): String = JSONArray().apply {
+            fun add(kind: String, list: List<BleSensor.Found>) = list.forEach {
+                put(JSONObject().put("kind", kind).put("address", it.address)
+                    .put("name", it.name).put("rssi", it.rssi))
+            }
+            add("hr", strap.found())
+            add("pod", pod.found())
+            add("phones", phones.found())
+        }.toString()
 
-        @JavascriptInterface fun hrPair(address: String, name: String) {
-            strap.stopScan()
-            cfg.saveStrap(address, name)
-            strap.connect(address)
-            Log.i(TAG, "hr: pairing with $name")
+        @JavascriptInterface fun devicePair(kind: String, address: String, name: String) {
+            strap.stopScan(); pod.stopScan(); phones.stopScan()
+            when (kind) {
+                "hr" -> { cfg.saveStrap(address, name); strap.connect(address) }
+                "pod" -> { cfg.savePod(address, name); pod.connect(address) }
+                "phones" -> { cfg.savePhones(address, name); phones.pair(address) }
+                else -> return
+            }
+            Log.i(TAG, "$kind: pairing with $name")
         }
 
-        @JavascriptInterface fun hrForget() {
-            strap.disconnect()
-            cfg.forgetStrap()
-            Log.i(TAG, "hr: strap forgotten")
+        @JavascriptInterface fun deviceForget(kind: String) {
+            when (kind) {
+                "hr" -> { strap.disconnect(); cfg.forgetStrap() }
+                "pod" -> { pod.disconnect(); cfg.forgetPod() }
+                "phones" -> { phones.forget(cfg.phonesAddr()); cfg.forgetPhones() }
+                else -> return
+            }
+            Log.i(TAG, "$kind: forgotten")
         }
 
-        @JavascriptInterface fun hrStatus(): String = JSONObject()
+        @JavascriptInterface fun devicesStatus(): String = JSONObject()
             .put("available", strap.available)
-            .put("scanning", strap.scanning)
-            .put("connected", strap.connected)
-            .put("bpm", strap.bpm())
-            .put("battery", strap.battery)
-            .put("name", cfg.hrName())
-            .put("address", cfg.hrAddr())
-            .toString()
-
-        // --- foot pod ---
-        @JavascriptInterface fun podScan() {
-            if (ensureScanPermission(pod)) pod.scan()
-        }
-
-        @JavascriptInterface fun podFound(): String = foundJson(pod)
-
-        @JavascriptInterface fun podPair(address: String, name: String) {
-            pod.stopScan()
-            cfg.savePod(address, name)
-            pod.connect(address)
-            Log.i(TAG, "pod: pairing with $name")
-        }
-
-        @JavascriptInterface fun podForget() {
-            pod.disconnect()
-            cfg.forgetPod()
-            Log.i(TAG, "pod: forgotten")
-        }
-
-        @JavascriptInterface fun podStatus(): String = JSONObject()
-            .put("available", pod.available)
-            .put("scanning", pod.scanning)
-            .put("connected", pod.connected)
-            .put("cadence", pod.cadence())
-            .put("watts", pod.watts())
-            .put("battery", pod.battery)
-            .put("name", cfg.podName())
-            .put("address", cfg.podAddr())
+            .put("scanning", strap.scanning || pod.scanning || phones.scanning)
+            .put("hr", JSONObject()
+                .put("name", cfg.hrName()).put("address", cfg.hrAddr())
+                .put("connected", strap.connected).put("battery", strap.battery)
+                .put("bpm", strap.bpm()))
+            .put("pod", JSONObject()
+                .put("name", cfg.podName()).put("address", cfg.podAddr())
+                .put("connected", pod.connected).put("battery", pod.battery)
+                .put("cadence", pod.cadence()).put("watts", pod.watts()))
+            .put("phones", JSONObject()
+                .put("name", cfg.phonesName()).put("address", cfg.phonesAddr())
+                .put("connected", phones.connected(cfg.phonesAddr())))
             .toString()
 
         /**
@@ -1638,13 +1636,17 @@ class MainActivity : Activity() {
         if (cfg.podAddr().isBlank()) pod.disconnect() else pod.connect(cfg.podAddr())
     }
 
-    /** What a scan found, for the Settings list. */
-    private fun foundJson(sensor: BleSensor): String = JSONArray().apply {
-        sensor.found().forEach {
-            put(JSONObject().put("address", it.address)
-                .put("name", it.name).put("rssi", it.rssi))
-        }
-    }.toString()
+    /** Reconnect saved headphones; most do it themselves, this is the nudge. */
+    private fun applyPhones() {
+        if (cfg.phonesAddr().isNotBlank()) phones.connect(cfg.phonesAddr())
+    }
+
+    /** One Settings scan looks for every kind of device at once. */
+    private fun scanAll() {
+        strap.scan()
+        pod.scan()
+        phones.scan()
+    }
 
     /**
      * A BLE scan on API 23–30 returns an empty list, not an error, without a
@@ -1652,14 +1654,14 @@ class MainActivity : Activity() {
      * applies — and an empty list is exactly what "no straps here" looks like,
      * which makes it the single most confusing way for this feature to fail.
      */
-    private fun ensureScanPermission(forScan: BleSensor): Boolean {
+    private fun ensureScanPermission(then: () -> Unit): Boolean {
         if (android.os.Build.VERSION.SDK_INT < 23) return true
         val perm = android.Manifest.permission.ACCESS_COARSE_LOCATION
         if (checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return true
         }
         Log.i(TAG, "ble: asking for location permission so a BLE scan can return results")
-        scanAfterPermission = forScan
+        scanAfterPermission = then
         requestPermissions(arrayOf(perm), SCAN_PERMISSION)
         return false
     }
@@ -1672,7 +1674,7 @@ class MainActivity : Activity() {
         if (code != SCAN_PERMISSION) return
         val granted = results.firstOrNull() ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (granted) scanAfterPermission?.scan()
+        if (granted) scanAfterPermission?.invoke()
         else Log.w(TAG, "ble: location refused, a BLE scan will find nothing")
         scanAfterPermission = null
     }
@@ -2273,6 +2275,7 @@ class MainActivity : Activity() {
         applyBrightness()
         applyStrap()
         applyPod()
+        applyPhones()
 
         web = WebView(this).apply {
             settings.javaScriptEnabled = true

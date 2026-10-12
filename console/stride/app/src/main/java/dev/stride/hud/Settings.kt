@@ -84,6 +84,10 @@ class Settings(context: Context) {
         const val POD_ADDR = "pod_addr"
         const val POD_NAME = "pod_name"
 
+        // --- headphones ---
+        const val PHONES_ADDR = "phones_addr"
+        const val PHONES_NAME = "phones_name"
+
         // --- display ---
         const val SLEEP_MIN = "sleep_min"
         const val CLOCK_24 = "clock_24"
@@ -392,6 +396,19 @@ class Settings(context: Context) {
         prefs.edit().remove(POD_ADDR).remove(POD_NAME).apply()
     }
 
+    // --- headphones -----------------------------------------------------------
+
+    fun phonesAddr(): String = prefs.getString(PHONES_ADDR, "") ?: ""
+    fun phonesName(): String = prefs.getString(PHONES_NAME, "") ?: ""
+
+    fun savePhones(addr: String, name: String) {
+        prefs.edit().putString(PHONES_ADDR, addr).putString(PHONES_NAME, name).apply()
+    }
+
+    fun forgetPhones() {
+        prefs.edit().remove(PHONES_ADDR).remove(PHONES_NAME).apply()
+    }
+
     // --- display --------------------------------------------------------------
 
     fun sleepMs(): Long = prefs.getInt(SLEEP_MIN, 5) * 60_000L
@@ -447,6 +464,8 @@ class Settings(context: Context) {
         .put(HR_NAME, hrName())
         .put(POD_ADDR, podAddr())
         .put(POD_NAME, podName())
+        .put(PHONES_ADDR, phonesAddr())
+        .put(PHONES_NAME, phonesName())
         .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
         .put(BRIGHTNESS, prefs.getString(BRIGHTNESS, "normal"))
