@@ -5,10 +5,10 @@
   position: absolute;
   top: 140px;
   bottom: 0;
-  width: 240px;
+  width: 190px; /* just wider than "12.5" at 92px, so it centres close to the edge */
   display: flex;
   flex-direction: column;
-  padding: 6px 12px 14px;
+  padding: 6px 0 14px;
   text-align: center;
 }
 .left {
