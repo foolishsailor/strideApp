@@ -180,7 +180,7 @@ the authority.
 |---|---|---|---|---|
 | 10 | `000A` | `DEVICE_TYPE` | 4 treadmill, 5 incline trainer | R |
 | **102** | `0066` | **`SYSTEM_MODE`** | 0 boot, 1 idle, **2 DMK = safety key out**, 3 workout, 4 maintenance, 5 error | **never write** |
-| 103 | `0067` | `IDLE_SYSTEM_MODE_LOCK` | bool, a lock-out flag | avoid |
+| 103 | `0067` | `IDLE_SYSTEM_MODE_LOCK` | bool, the idle lock-out. **Set, every start is refused** (see below) | W, **clear only** |
 | 105 / 106 | `0069` / `006A` | `USER_WEIGHT_KG` / `MAX_USER_WEIGHT_KG` | kg | W / R |
 | 109 | `006D` | `KEY_COOKED` | physical keys: 1 STOP, 2 START, 3/4 speed ±, 5/6 incline ± … | R |
 | 111 | `006F` | `VOLUME_PERCENT` | | W |
@@ -280,8 +280,9 @@ So that a protocol layer can refuse these outright:
 5. **`WRITE`** to `SYSTEM_MODE` 102, `CALIBRATE_GRADE` 415, `BELT_REPLACED`
    267, motor-replaced and calibrate-motor flags, activation, disconnect,
    update-related flags, ANT licence, any raw drive/incline/resistance motor or
-   throttle parameter (2301–2514, 701–725), and, until understood,
-   `IDLE_SYSTEM_MODE_LOCK` 103 and `HEART_BEAT_INTERVAL` 161.
+   throttle parameter (2301–2514, 701–725), `HEART_BEAT_INTERVAL` 161, and
+   `IDLE_SYSTEM_MODE_LOCK` 103 with any value but 0 (clearing it is what lets
+   the belt start; see the idle lock-out above).
 
 Writes to 301, 401 and 602 are legitimate but **move the machine**. Make them
 only with someone at the treadmill, the safety key on, and STOP in reach.
@@ -345,6 +346,19 @@ writing only `TARGET_KPH` (301), `TARGET_GRADE_PERCENT` (401) and
 | 602 = 3 `RUNNING` | `PAUSED` | Accepted. The belt restarts at the board's held target |
 | 602 = 0 `NONE` | `PAUSED` | Accepted. `SYSTEM_MODE` → 1, idle |
 | 602 any | safety key out | Refused, code 7 (write value not allowed) |
+| 602 = 3 `RUNNING` | `NONE`, `IDLE_SYSTEM_MODE_LOCK` = 1 | Refused, code 7, **with the key in** (12/10/2026) |
+| 103 = 0 | idle, locked | Accepted. The lock reads 0 and the next `RUNNING` starts the belt (12/10/2026) |
+
+**The idle lock-out (12/10/2026).** The belt ran at lunchtime and refused
+every start all afternoon: STRIDE's `RUNNING` and the board's own START key
+alike, code 7, while `SYSTEM_MODE` read an ordinary 1, the safety key was
+sensed in and out normally, and incline still moved. It survived a power cycle
+and an older STRIDE build. `IDLE_SYSTEM_MODE_LOCK` read **1**. Writing 0
+cleared it at once and the belt started. iFit's console clears the FitPro 1
+equivalent at startup on any treadmill with a START key (see
+FITPRO_PROTOCOL.md, `IdleModeLockout`); with iFit disabled nothing did. What
+set it is not known: most likely the board itself, after sitting idle. STRIDE
+now clears it whenever it reads 1, and never sets it.
 
 What this means for anything driving it:
 
