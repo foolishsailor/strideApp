@@ -52,6 +52,7 @@
   flex: 1;
   min-height: 0;
   margin: 4px 0;
+  padding: 28px 0; /* so the first and last stops can sit clear of the fade */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
