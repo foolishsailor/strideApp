@@ -18,17 +18,33 @@ export const RailStop = memo(function RailStop({ value, selected, onPick }: {
   );
 });
 
-/** A side of the screen given to one control: incline on the left, speed on
- *  the right. The reading on top, then + and − fixed at either end of a list
- *  of stops you can scroll and press. Higher is up, so + sits over the list. */
-export function ValueRail({
-  side, label, value, unit, target, stops, selected, focus, onPick, onStep, fine, coarse, muted,
-}: {
-  side: 'left' | 'right';
+/** A rail's reading: "INCLINE / 6.5 / % · target 6.5". Sits at one end of
+ *  the top bar, directly over its rail. */
+export function RailReading({ label, value, unit, target }: {
   label: string;
   value: string;
   unit: string;
   target: string;
+}) {
+  return (
+    <div className={styles.reading}>
+      <Label className={styles.label}>{label}</Label>
+      <Numeral size="display" className={styles.value}>{value}</Numeral>
+      <div className={styles.target}>
+        {unit} · target <b>{target}</b>
+      </div>
+    </div>
+  );
+}
+
+/** A side of the screen given to one control: incline on the left, speed on
+ *  the right, from the bottom of the top bar down. + and − fixed at either
+ *  end of a list of stops you can scroll and press. Higher is up, so + sits
+ *  over the list. */
+export function ValueRail({
+  side, stops, selected, focus, onPick, onStep, fine, coarse, muted,
+}: {
+  side: 'left' | 'right';
   /** Ascending; drawn highest first. */
   stops: readonly number[];
   /** The stop the target is exactly on, if any. */
@@ -61,13 +77,6 @@ export function ValueRail({
 
   return (
     <div className={cx(styles.rail, styles[side], muted && styles.muted)}>
-      <div className={styles.reading}>
-        <Label className={styles.label}>{label}</Label>
-        <Numeral size="display" className={styles.value}>{value}</Numeral>
-        <div className={styles.target}>
-          {unit} · target <b>{target}</b>
-        </div>
-      </div>
       <Button size="rail" onStep={onStep} fine={fine} coarse={coarse}>+</Button>
       <div
         ref={list}

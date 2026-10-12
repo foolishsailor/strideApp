@@ -1,13 +1,18 @@
-/* The top dock, 0 – 140: the metrics tight to the top, the status under
-   them. The clock and date (TopBar) sit in the corners either side. No panel
-   of its own, like the side rails. */
+/* The top bar, 0 – 128, edge to edge: incline reading, the metrics with the
+   status under them, speed reading. The rails start where it ends. No panel
+   of its own. */
 .strip {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  height: 140px;
+  height: 128px;
   padding-top: 8px;
+  display: flex;
+  align-items: flex-start;
+}
+.middle {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;

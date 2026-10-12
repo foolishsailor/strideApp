@@ -1,14 +1,14 @@
-/* The side docks, 140 – 800, under the metric band. No panel of their own:
-   the readings and their controls sit straight on the backdrop, centred.
-   The touch rows are the full width of the rail. */
+/* The side docks, from the bottom of the top bar (128) to the bottom of the
+   screen. No panel of their own: the controls sit straight on the backdrop,
+   centred. The touch rows are the full width of the rail. */
 .rail {
   position: absolute;
-  top: 140px;
+  top: 128px;
   bottom: 0;
   width: 150px; /* narrow, so the contents centre close to the edge */
   display: flex;
   flex-direction: column;
-  padding: 6px 0 14px;
+  padding: 0 0 14px;
   text-align: center;
 }
 .left {
@@ -23,8 +23,11 @@
   padding: 0;
 }
 
+/* The same width as a rail, so the reading centres over its own controls. */
 .reading {
   flex: none;
+  width: 150px;
+  text-align: center;
 }
 .reading .label {
   font-size: 15px;
