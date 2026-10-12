@@ -34,8 +34,7 @@ Android tablet talking to a separate motor board, so I replaced what runs on
 the tablet and left the motor board alone.
 
 The belt and the deck now work with no login, no subscription and no internet.
-If you want it, everything the machine knows turns up in Home Assistant as
-ordinary entities. I built it with Claude Code alongside me, and there's a
+Runs go to TrailMate if you connect it. I built it with Claude Code alongside me, and there's a
 [full write-up of how the jailbreak works](https://theidea.works/blog/jailbreak-nordictrack-treadmill/)
 if you'd rather read the story than the steps.
 
@@ -53,34 +52,10 @@ and it now pairs with Zwift over Bluetooth FTMS.
 | | |
 |---|---|
 | **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided runs, and draws them in the TrailMate app's design. |
-| **`homeassistant/`** | Optional scripts for the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
 | **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
-There used to be an `ios/` folder. That's now its own thing,
-**[AH for HA](https://github.com/keranm/ah-for-ha)**, which pushes Apple Health
-into Home Assistant and has no treadmill in it at all. It grew to 39 metrics,
-rings, sleep stages and workouts, and most people who want that will never own
-a treadmill.
-
-STRIDE kept the half it cares about. An outdoor run can still become a
-gradient profile the deck replays, because that arrives over MQTT and the
-console has never cared who published it.
-
----
-
-## Home Assistant needs nothing installed
-
-Put your broker details into Settings → Home Assistant on the treadmill and a
-**Treadmill** device shows up, with speed, incline, distance, elapsed, pulse,
-calories, mode and workout, plus a device per person as they run. The console
-publishes its own MQTT discovery, so there's no integration, no YAML and no
-custom component.
-
-Build whatever dashboard you like from it. There's no STRIDE dashboard you have
-to accept.
-
-The `homeassistant/` scripts are for the extras: the reminders, and an
-opinionated health dashboard if you want a starting point.
+Routes, outdoor runs turned into a gradient profile the deck replays, are
+cached on the console and will come from TrailMate.
 
 ---
 
@@ -142,11 +117,8 @@ In outline:
    and `adb install -r` it, or build your own with `console/stride/run.sh`.
    Pick one and stay on it — they're signed with different keys, so swapping
    later means uninstalling and losing your settings.
-8. **Optional:** enter broker details on the console to get the treadmill into
-   Home Assistant.
 
-Stop after step 7 and you've got a treadmill with no subscription. Steps 1 to 7
-need nothing installed on the Home Assistant side.
+That's a treadmill with no subscription.
 
 If you'd rather not drive it by hand, point Claude Code at this repo, give
 it the treadmill's IP address, and ask it to follow the install guide over ADB.
@@ -156,24 +128,9 @@ That's how most of my own installs have gone.
 
 ## Configuration
 
-**The console configures itself.** Broker details, who runs, units, warm-up,
+**The console configures itself.** Who runs, units, warm-up, TrailMate,
 heart rate, display: all of it lives in Settings on the treadmill's own
 screen. No config files, no rebuild.
-
-**The Home Assistant side reads one file:**
-
-```sh
-cp homeassistant/stride.conf.example homeassistant/stride.conf
-```
-
-Every key is documented in the example. Leave anything blank and that subject
-is simply absent, so no scale, no blood-pressure cuff, no phone.
-
-**For weekly and monthly totals**, copy
-[`homeassistant/packages/stride.yaml`](homeassistant/packages/stride.yaml) into
-your Home Assistant config. The console's distance counter resets every run,
-so the accumulating has to happen in HA. That file also creates the helpers the
-reminders need.
 
 ---
 
@@ -258,7 +215,7 @@ Gen 6 modding guide that steps 1.1 to 1.4 follow.
 
 STRIDE is an independent project, built for compatibility with hardware its
 authors own. Not affiliated with or endorsed by iFIT, ICON Health & Fitness,
-NordicTrack, ProForm, Apple or Home Assistant. Trademarks belong to their
+NordicTrack, ProForm or Apple. Trademarks belong to their
 owners and are used here only to say what this works with.
 
 This repository contains no code from any of those companies.

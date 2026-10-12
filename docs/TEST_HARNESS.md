@@ -1,7 +1,7 @@
 # Test harness: a treadmill in software
 
-Watch STRIDE's metrics, hill drawing, guided runs, FTMS and Home Assistant
-output without standing on anything, and without a belt that can move.
+Watch STRIDE's metrics, hill drawing, guided runs and FTMS output without
+standing on anything, and without a belt that can move.
 
 **Debug builds only.** A release build has no simulator and ignores every
 command here.
@@ -13,8 +13,8 @@ simulator on, STRIDE talks to it instead of the USB board. The USB board is
 **never opened**, so the real belt and deck cannot move whatever the harness
 does. It speaks real [FitPro 2](../protocol/FITPRO2_PROTOCOL.md) frames, so
 everything above the USB pipe runs as it would on the treadmill: the FitPro 2
-translation, the safety logic, the watchdog, metrics, the hill, guided runs,
-FTMS and MQTT.
+translation, the safety logic, the watchdog, metrics, the hill, guided runs
+and FTMS.
 
 It behaves the way the X22i was measured to:
 
@@ -74,7 +74,7 @@ The poll loop's stall hook is here too, for the watchdog:
 - **HOME during a cool-down left the belt to the runaway check.** HOME sent
   IDLE, which is not a way out of running, so the belt turned on behind the
   welcome screen until `enforceStopped` caught it. That stopped it, but logged
-  a "belt running unattended" incident and an MQTT alert every time. Found on
+  a "belt running unattended" incident every time. Found on
   the emulator, 12/10/2026. **Fixed:** HOME now sends PAUSE to a moving belt
   and IDLE once it has stopped. Re-run on the emulator: belt paused at once,
   idle 4 s later, no runaway logged.

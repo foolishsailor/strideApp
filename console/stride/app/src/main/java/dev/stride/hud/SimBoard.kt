@@ -9,7 +9,7 @@ import android.util.Log
  * It speaks the real wire format — FitPro2Board talks to it exactly as it
  * talks to the X22i, through FitProConnection — so everything above the USB
  * pipe is exercised: the FitPro 2 translation, the safety logic, metrics, the
- * hill drawing, guided runs, FTMS and Home Assistant.
+ * hill drawing, guided runs and FTMS.
  *
  * It behaves the way the X22i was measured to behave (protocol/FITPRO2_PROTOCOL.md):
  * no speed under ~1.5 km/h; an idle board refuses a target speed; PAUSED stops

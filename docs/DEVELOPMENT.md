@@ -23,7 +23,7 @@ For the rules on code that moves the belt, read
 | | Needs | Good for | Belt can move |
 |---|---|---|---|
 | **1. Browser preview** | A browser | Designing screens: HTML, CSS, layout | No |
-| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, guided runs, FTMS, MQTT, safety logic | No |
+| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, guided runs, FTMS, safety logic | No |
 | **3. Real console** | A console you can reach with `adb` | The truth: real board, real belt | **Yes** |
 
 Work in 1 and 2. Go to 3 to confirm, belt empty first.
@@ -39,7 +39,7 @@ Work in 1 and 2. Go to 3 to confirm, belt empty first.
 | JDK | **17** | Gradle 8.9 does not run on newer JDKs |
 | Android SDK | platform `android-34`, build-tools `34.0.0` | building |
 | Android Emulator + `system-images/android-33/google_apis/x86_64` | — | option 2. Android 13 matches the Gen 7 console |
-| Python | 3.9+ | `tools/sim.py`, the Home Assistant scripts |
+| Python | 3.9+ | `tools/sim.py` |
 | Bash | — | the `.sh` scripts. Git Bash on Windows |
 
 Android Studio installs everything above except Python. Without it:
@@ -284,7 +284,6 @@ installed, belt idle" is worth knowing; so is "not run on yet".
 | `treadmills/` | What each generation and machine is like |
 | `tools/unchain.sh` | Takes a console from iFit to STRIDE |
 | `tools/sim.py` | Drives the simulator |
-| `homeassistant/` | Optional reminders, dashboard |
 
 ---
 

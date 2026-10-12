@@ -39,7 +39,7 @@ import kotlin.concurrent.thread
  * Settings' — so [Settings.json], which is handed to the settings page and is
  * the nearest thing here to "everything about this console", cannot carry one
  * even by accident. Nothing here puts a token in a log line, in [statusJson],
- * in a Snapshot (which goes to Home Assistant), or anywhere else that leaves
+ * in a Snapshot (which goes to the page and FTMS), or anywhere else that leaves
  * this class. The settings page learns whether somebody is linked and the
  * TrailMate first name they linked as, and that is all.
  *

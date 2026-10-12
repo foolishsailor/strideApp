@@ -1,8 +1,6 @@
 # --- local configuration, never committed -----------------------------------
-# Home Assistant URL, token and broker credentials.
-homeassistant/stride.conf
-# Broker credentials injected into the console build, and the Android SDK
-# path, which is a home directory and differs per machine.
+# Signing details for the console build, and the Android SDK path, which is a
+# home directory and differs per machine.
 console/*/local.properties
 
 # The release signing key. It belongs outside the repo entirely — see the

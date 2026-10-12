@@ -10,17 +10,16 @@ import java.io.File
 /**
  * Every run this console has recorded, per runner, kept on the console.
  *
- * **Why this is on the treadmill and not in Home Assistant.** The summary screen
- * is the one place a run gets looked at, and it is looked at while standing on
- * the belt, three seconds after stopping. Anything it needs has to be there with
- * no broker, no phone and no network — the same rule the rest of the console
- * follows. Home Assistant still gets every session over MQTT and still keeps the
+ * **Why this is on the treadmill.** The summary screen is the one place a run
+ * gets looked at, and it is looked at while standing on the belt, three seconds
+ * after stopping. Anything it needs has to be there with no phone and no
+ * network — the same rule the rest of the console follows. TrailMate keeps the
  * long-term picture; this is the copy that makes "most climb you have done"
  * answerable when the wifi is out.
  *
  * It is also, incidentally, the first workout log the console has ever kept. Up
  * to 17 August 2026 the only thing it persisted was the route cache, so a run
- * that was not published to HA left no trace anywhere once the ring buffer
+ * left no trace anywhere once the ring buffer
  * rolled — which is exactly what happened to the first thirty-five minutes of
  * that day's session.
  *

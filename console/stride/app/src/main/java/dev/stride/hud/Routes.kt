@@ -9,16 +9,11 @@ import java.io.File
 /**
  * Routes converted from real outdoor runs, cached on the console.
  *
- * These arrive over MQTT from Home Assistant, which got them from the phone.
- * They are **cached to disk on arrival**, and that is the whole reason this
- * class exists rather than a `@Volatile` field like the one holding the person
- * registry: the console can boot with no network at all. A route fetched at
- * workout time would not be there, and the failure would arrive at the worst
- * possible moment — standing on the belt, having chosen a run.
- *
- * MQTT retains the topic, so a console that boots *with* a network gets the
- * routes from the broker without Home Assistant needing to be up. The disk copy
- * covers the case where the broker is unreachable too.
+ * They will arrive from TrailMate (see [accept]). They are **cached to disk on
+ * arrival**, and that is the whole reason this class exists rather than a
+ * `@Volatile` field: the console can boot with no network at all. A route
+ * fetched at workout time would not be there, and the failure would arrive at
+ * the worst possible moment — standing on the belt, having chosen a run.
  *
  * There is no GPS here and never will be. What arrives is a gradient profile:
  * `[startM, endM, incline]` triples against distance travelled. The phone
@@ -42,11 +37,11 @@ class Routes(context: Context) {
     }
 
     /**
-     * A payload from Home Assistant.
+     * A new set of routes: the whole list, as JSON. Nothing calls this yet;
+     * it is where routes from TrailMate will land.
      *
      * Validated before it replaces anything. A malformed payload that
-     * overwrote the cache would take the routes away until the phone next
-     * synced, and the console would have thrown away a good copy to store a bad
+     * overwrote the cache would take the routes away until the next sync, and the console would have thrown away a good copy to store a bad
      * one — so a parse failure keeps what is already here and says so.
      */
     fun accept(payload: String) {

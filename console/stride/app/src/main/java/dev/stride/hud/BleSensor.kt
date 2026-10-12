@@ -31,9 +31,8 @@ import java.util.UUID
  * Written for the strap and lifted out unchanged when the foot pod arrived, so
  * the dates and measurements in the comments below are the strap's.
  *
- * **These connections are the console's own.** They do not go through Home
- * Assistant and do not care whether the broker is up: a treadmill in a shed
- * with no network is still a treadmill.
+ * **These connections are the console's own.** They need no network: a
+ * treadmill in a shed with no network is still a treadmill.
  *
  * **Reconnection is left to `autoConnect = true`; the first connection is not.**
  * A sensor goes out of range every time its wearer steps off, and the

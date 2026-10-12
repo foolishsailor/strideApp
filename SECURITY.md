@@ -30,21 +30,21 @@ running something nobody is looking after.
 These are design decisions, not oversights. Knowing them is most of the
 security model.
 
-**Your network is the boundary.** MQTT to Home Assistant is plain TCP with a
-username and password. Nothing here is safe to expose to the internet, and nothing here
-tries to be. Keep the console and the broker on a network you trust.
+**Your network is the boundary.** Nothing on the console is safe to expose to
+the internet, and nothing here tries to be. Keep it on a network you trust.
+TrailMate is reached over HTTPS.
 
 **ADB is a key to the treadmill.** Installing STRIDE means enabling ADB, and
 anyone who can reach it can start the belt. It is authenticated — the console
 only accepts host keys it has been shown — so keep that machine's ADB key as
 you would an SSH key, and do not authorise a host you do not control.
 
-**The console holds credentials in the clear.** The broker password lives in
-the app's private storage, readable by root and by anything with the app's
-UID. A release build (`./run.sh release`) is not `debuggable`, which is what
-keeps other software on the console out of it; a debug build has no such
-protection and should stay on the bench. The settings screen is never sent the
-stored password, only whether one exists.
+**The console holds credentials in the clear.** Each runner's TrailMate token
+lives in the app's private storage, readable by root and by anything with the
+app's UID. A release build (`./run.sh release`) is not `debuggable`, which is
+what keeps other software on the console out of it; a debug build has no such
+protection and should stay on the bench. The settings screen is never sent a
+token, only whether somebody is connected.
 
 **The physical safety key outranks everything.** No amount of software failure
 should be able to keep the belt running when that key is pulled. If you find a
@@ -56,4 +56,4 @@ way it can, that is the most serious report this project can receive.
   standing at the treadmill can already press the buttons.
 - The treadmill's own firmware and its stock software. Vulnerabilities there
   belong to their vendor, though we would like to hear about them.
-- Home Assistant, Mosquitto, or any other component you point this at.
+- TrailMate, Garmin Connect, or any other service runs are sent on to.

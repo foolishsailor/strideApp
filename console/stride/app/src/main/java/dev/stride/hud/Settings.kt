@@ -10,25 +10,25 @@ import org.json.JSONObject
  *
  * The console shipped with a household baked into it. Not as configuration
  * anyone had chosen to inline, but as the ordinary residue of building
- * something for one house: four names in an HTML array, a broker in
- * `local.properties`, kilometres everywhere, and behaviour gated on one
+ * something for one house: four names in an HTML array, kilometres
+ * everywhere, and behaviour gated on one
  * person's name, so a second person in the same house silently got a
  * different product.
  *
  * Three rules this file exists to hold:
  *
  * * **A default must be a working treadmill.** Nothing here is required. With
- *   no broker set and no people added, the deck still runs and still counts.
- *   Home Assistant is an addition, never a dependency — so a fresh install is
- *   usable before it is configured.
+ *   no people added, the deck still runs and still counts, so a fresh install
+ *   is usable before it is configured.
  *
  * * **Preferences are not permissions.** Anything the *board* reports —
  *   incline range, speed range — is read from the machine and is not in here.
  *   Storing a max incline someone typed would be storing a way to ask the deck
  *   for something it cannot do.
  *
- * * **Per-person things belong to the person.** Publishing is a property of a
- *   runner, not of the console, which is the whole fix for the name comparison.
+ * * **Per-person things belong to the person.** A runner's age, history and
+ *   TrailMate link are theirs, not the console's, which is the whole fix for
+ *   the name comparison.
  *
  * Stored in SharedPreferences because it is a handful of scalars and one small
  * list, read at start-up and on every settings save. A database would be a
@@ -43,8 +43,9 @@ class Settings(context: Context) {
 
     /**
      * Carry an older console's preferences forward. The default person used
-     * to be saved as `default_walker`, and the removed coach left five keys
-     * behind; the first is moved, the rest are dropped. Once done, nothing
+     * to be saved as `default_walker`, and the removed coach and Home
+     * Assistant link left keys behind (the broker password among them); the
+     * first is moved, the rest are dropped. Once done, nothing
      * here finds anything to do.
      */
     private fun migrate() {
@@ -55,7 +56,9 @@ class Settings(context: Context) {
             dirty = true
         }
         for (old in listOf("default_walker", "coach_on", "coach_talk", "coach_voice",
-                           "coach_remote", "coach_milestones")) {
+                           "coach_remote", "coach_milestones", "seeded", "ha_enabled",
+                           "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
+                           "mqtt_prefix")) {
             if (prefs.contains(old)) { e.remove(old); dirty = true }
         }
         if (dirty) e.apply()
@@ -72,15 +75,6 @@ class Settings(context: Context) {
 
         // --- units ---
         const val UNITS = "units"           // "km" | "mi"
-
-        // --- home assistant ---
-        const val HA_ENABLED = "ha_enabled"
-        const val MQTT_HOST = "mqtt_host"
-        const val MQTT_PORT = "mqtt_port"
-        const val MQTT_USER = "mqtt_user"
-        const val MQTT_PASS = "mqtt_pass"
-        const val MQTT_TLS = "mqtt_tls"
-        const val MQTT_PREFIX = "mqtt_prefix"
 
         // --- deck ---
         const val WARMUP_MIN = "warmup_min"
@@ -136,19 +130,10 @@ class Settings(context: Context) {
 
     /**
      * One runner.
-     *
-     * @param publish  do their runs leave the console for Home Assistant
-     *
-     * Publishing is closer to consent than to a preference, and it is the
-     * reason a household member can use the treadmill without appearing on
-     * somebody else's dashboard.
      */
     data class Person(
         val id: String,
         val name: String,
-        val publish: Boolean,
-        /** `person.jane_doe`, or empty for somebody who exists only here. */
-        val haPerson: String = "",
         /**
          * Years, or 0 for "has not said" — which is the default and stays the
          * default. It buys one thing: heart-rate zones, via the usual
@@ -163,8 +148,6 @@ class Settings(context: Context) {
     ) {
         fun json(): JSONObject = JSONObject()
             .put("id", id).put("name", name)
-            .put("publish", publish)
-            .put("ha_person", haPerson)
             .put("age", age)
 
         /**
@@ -180,16 +163,13 @@ class Settings(context: Context) {
     /**
      * A stable identity, fixed when somebody is added and never derived again.
      *
-     * The id used to *be* the name — `slug(who)` at publish time — which meant
-     * a rename silently orphaned every reading taken under the old spelling.
-     * "Kez" becoming "Sam" started a second person's history and left the
-     * first one frozen in Home Assistant looking like somebody who had stopped
-     * running.
+     * The id used to *be* the name, which meant a rename silently orphaned
+     * every reading taken under the old spelling: "Kez" becoming "Sam" started
+     * a second person's history.
      *
      * The name is now a label. The id is the thing, and it is deliberately
-     * still the slug *at creation*, so existing devices — `stride_person_sam`
-     * and `stride_person_alex`, with real history behind them — keep working
-     * untouched rather than needing a migration.
+     * still the slug *at creation*, so existing ids, with real history and
+     * TrailMate links behind them, keep working untouched.
      */
     private fun freshId(name: String, taken: Set<String>): String {
         val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
@@ -200,7 +180,7 @@ class Settings(context: Context) {
         return "${base}_$n"
     }
 
-    fun addPerson(name: String, haPerson: String = ""): Person? {
+    fun addPerson(name: String): Person? {
         val clean = name.trim().take(20)
         if (clean.isBlank()) return null
         val list = people().toMutableList()
@@ -208,12 +188,6 @@ class Settings(context: Context) {
         val p = Person(
             id = freshId(clean, list.map { it.id }.toSet()),
             name = clean,
-            // Somebody who is not in Home Assistant has nothing there to be
-            // recorded against, so it starts off. It can be turned on — it
-            // simply creates a device with no matching person, which is a
-            // reasonable thing to want for a housemate with no HA account.
-            publish = haPerson.isNotEmpty(),
-            haPerson = haPerson,
         )
         list += p
         savePeople(list)
@@ -236,13 +210,11 @@ class Settings(context: Context) {
                 val name = o.getString("name")
                 Person(
                     // Older entries predate stable ids; fall back to the slug
-                    // they were already being published under.
+                    // they were already known by.
                     id = o.optString("id").ifBlank {
                         name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
                     },
                     name = name,
-                    publish = o.optBoolean("publish", true),
-                    haPerson = o.optString("ha_person"),
                     // Absent for everyone who existed before zones did, which
                     // is the same as declining to say — see Person.age.
                     age = o.optInt("age", 0),
@@ -267,14 +239,6 @@ class Settings(context: Context) {
     fun person(name: String): Person? = people().firstOrNull { it.name == name }
     fun personById(id: String): Person? = people().firstOrNull { it.id == id }
 
-    /**
-     * May this runner's run be published.
-     *
-     * **Unknown runners may not.** A guest is someone who has not agreed to
-     * anything, so their run stays on the console.
-     */
-    fun publishFor(name: String): Boolean = person(name)?.publish ?: false
-
     fun defaultRunner(): String = prefs.getString(DEFAULT_RUNNER, ASK) ?: ASK
     fun allowGuest(): Boolean = prefs.getBoolean(ALLOW_GUEST, true)
 
@@ -282,74 +246,6 @@ class Settings(context: Context) {
 
     fun units(): String = prefs.getString(UNITS, "km") ?: "km"
     fun metric(): Boolean = units() == "km"
-
-    // --- home assistant -------------------------------------------------------
-
-    /**
-     * Off until somebody sets a broker.
-     *
-     * The old build compiled credentials in from `local.properties`, so a clone
-     * without those keys produced an app that could not connect — which the
-     * comment there called "the right way to fail", and was, for one house. For
-     * anyone else it is an app that ships someone else's password or does not
-     * work. Runtime configuration is the only version of this that can be
-     * released.
-     */
-    fun haEnabled(): Boolean = prefs.getBoolean(HA_ENABLED, false) && mqttHost().isNotBlank()
-
-    fun mqttHost(): String = prefs.getString(MQTT_HOST, "") ?: ""
-    fun mqttPort(): Int = prefs.getInt(MQTT_PORT, 1883)
-    fun mqttUser(): String = prefs.getString(MQTT_USER, "") ?: ""
-    fun mqttPass(): String = prefs.getString(MQTT_PASS, "") ?: ""
-    fun mqttTls(): Boolean = prefs.getBoolean(MQTT_TLS, false)
-    fun mqttPrefix(): String = (prefs.getString(MQTT_PREFIX, "stride") ?: "stride")
-        .trim().trim('/').ifBlank { "stride" }
-
-    fun brokerUri(): String =
-        "${if (mqttTls()) "ssl" else "tcp"}://${mqttHost()}:${mqttPort()}"
-
-    /**
-     * First run only: adopt whatever was compiled in, then never look again.
-     *
-     * Moving the broker from `BuildConfig` to settings would otherwise take a
-     * working console offline the moment it was updated — Home Assistant would
-     * simply stop hearing from a treadmill that had been publishing happily for
-     * a week, with nothing on screen to say why. That is a bad way to ship an
-     * improvement.
-     *
-     * So `local.properties` becomes a *seed* rather than the source. A dev
-     * build carries it in and this copies it to settings once, where it can
-     * then be edited on the console like everything else. A public build has no
-     * such keys, so `secret()` yields empty strings, nothing is seeded, and
-     * Home Assistant stays off until somebody fills it in — which is the
-     * behaviour that made the compiled-in version defensible in the first
-     * place, now without shipping anyone's password.
-     *
-     * Keyed on a marker rather than on the fields being blank, so clearing the
-     * broker on purpose is not undone at the next start-up.
-     */
-    fun seedFromBuildConfig() {
-        if (prefs.getBoolean("seeded", false)) return
-        prefs.edit().putBoolean("seeded", true).apply()
-
-        val uri = BuildConfig.MQTT_BROKER
-        if (uri.isBlank()) return
-
-        // "tcp://host:1883" — the shape build.gradle.kts writes.
-        val bare = uri.substringAfter("://")
-        val host = bare.substringBefore(":")
-        val port = bare.substringAfter(":", "1883").toIntOrNull() ?: 1883
-        if (host.isBlank()) return
-
-        prefs.edit()
-            .putString(MQTT_HOST, host)
-            .putInt(MQTT_PORT, port)
-            .putString(MQTT_USER, BuildConfig.MQTT_USER)
-            .putString(MQTT_PASS, BuildConfig.MQTT_PASS)
-            .putBoolean(MQTT_TLS, uri.startsWith("ssl"))
-            .putBoolean(HA_ENABLED, true)
-            .apply()
-    }
 
     // --- deck -----------------------------------------------------------------
 
@@ -452,23 +348,6 @@ class Settings(context: Context) {
         .put(DEFAULT_RUNNER, defaultRunner())
         .put(ALLOW_GUEST, allowGuest())
         .put(UNITS, units())
-        .put(HA_ENABLED, prefs.getBoolean(HA_ENABLED, false))
-        .put(MQTT_HOST, mqttHost())
-        .put(MQTT_PORT, mqttPort())
-        .put(MQTT_USER, mqttUser())
-        // Deliberately not the password.
-        //
-        // This object is handed to the settings page, and anything that can
-        // read the page can read it — which on a debug build is anyone with
-        // the DevTools socket. The screen only ever needed to know *whether*
-        // a password is stored, so that is all it gets. The key is absent
-        // rather than empty on purpose: a reader that wants the password now
-        // gets `undefined` and fails loudly, where "" would quietly read as
-        // "no password set". See field() in stride-settings.js for the other
-        // half — an untouched box does not clear what it cannot see.
-        .put("mqtt_pass_set", mqttPass().isNotEmpty())
-        .put(MQTT_TLS, mqttTls())
-        .put(MQTT_PREFIX, mqttPrefix())
         .put(WARMUP_MIN, prefs.getInt(WARMUP_MIN, 2))
         .put(COOLDOWN_MIN, prefs.getInt(COOLDOWN_MIN, 2))
         .put(WARMUP_KPH, prefs.getFloat(WARMUP_KPH, 2.0f).toDouble())
@@ -482,8 +361,8 @@ class Settings(context: Context) {
         .put(PHONES_ADDR, phonesAddr())
         .put(PHONES_NAME, phonesName())
         // The address, never a token: those are not in these preferences at
-        // all (see TrailMate), for the same reason the MQTT password is
-        // withheld above.
+        // all (see TrailMate). Anything that can read the settings page can
+        // read this object, which on a debug build is anyone with DevTools.
         .put(TRAILMATE_URL, trailmateUrl())
         .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
@@ -499,11 +378,10 @@ class Settings(context: Context) {
     fun set(key: String, value: String) {
         val e = prefs.edit()
         when (key) {
-            ALLOW_GUEST, HA_ENABLED, MQTT_TLS,
-            CLOCK_24, KEEP_AWAKE ->
+            ALLOW_GUEST, CLOCK_24, KEEP_AWAKE ->
                 e.putBoolean(key, value == "true" || value == "1")
 
-            MQTT_PORT, WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->
+            WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->
                 e.putInt(key, value.toIntOrNull() ?: 0)
 
             WARMUP_KPH ->

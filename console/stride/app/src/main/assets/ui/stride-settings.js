@@ -323,9 +323,8 @@
     return s;
   }
 
-  /* What a stored password looks like from here. The console does not send
-     the password itself — Settings.json() sends `mqtt_pass_set` instead — so
-     this is a statement that one exists, never the thing itself. */
+  /* What a stored password looks like from here, should a password field ever
+     need to say one exists without being handed the thing itself. */
   var SECRET_MASK = '••••••••';
 
   function field(key, value, short, type) {
@@ -338,8 +337,8 @@
     // noise here. The on-screen keyboard owns the value.
     f.setAttribute('readonly', 'readonly');
     // Saved when the keyboard closes, not per keystroke — a bridge call per
-    // character would write a broker host of "1", "19", "192"… and try to
-    // connect to each one.
+    // character would write a server address of "h", "ht", "htt"… and try
+    // each one.
     f.sxCommit = function () {
       var v = f.value.trim();
       // A password box that was left alone must not wipe the password. This
@@ -390,7 +389,7 @@
     'asdfghjkl'.split(''),
     'zxcvbnm'.split('')
   ];
-  /* Everything a broker host, a topic prefix or a password realistically needs,
+  /* Everything a server address, a name or a password realistically needs,
      and nothing else — a full symbol plane would be another shift layer to
      find. */
   var KB_SYMS = ['.', '-', '_', ':', '/', '@', '#', '!'];
@@ -498,7 +497,6 @@
   var ICONS = {
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
     devices: 'M7 7l10 10-5 5V2l5 5L7 17',
-    ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     screen: 'M3 4h18v12H3zM8 20h8M12 16v4',
     routes: 'M3 18l6-3 6 3 6-3V6l-6 3-6-3-6 3zM9 15V6M15 18V9',
@@ -508,7 +506,6 @@
   var SECTIONS = [
     ['people', 'Who runs',      paneWho],
     ['devices', 'Devices',       paneDevices],
-    ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
     ['screen', 'Display',        paneScreen],
@@ -540,11 +537,6 @@
       (S.people || []).forEach(function (p) {
         var c = el('button', 'sx-person' + (p.name === S.default_runner ? ' sx-on' : ''));
         var bits = [];
-        // Being linked is a different fact from being published, and the one
-        // people actually ask about: is this the same person Home Assistant
-        // knows? Somebody with no link is not broken — they simply only exist
-        // here, and saying so is better than leaving it to be guessed.
-        bits.push(p.ha_person ? 'linked' : 'console only');
         var t = tmPerson(tst, p.id);
         if (t.linked) bits.push(t.reconnect ? 'TrailMate: reconnect' : 'TrailMate');
         c.innerHTML = '<div class="sx-av">' + p.name.charAt(0).toUpperCase() + '</div>' +
@@ -583,7 +575,7 @@
         if (!name) return;
         try { S = JSON.parse(bridge().addPerson(name)); } catch (e) {}
         detail.innerHTML = '';
-        drawPeople(); drawDefault(); drawHa();
+        drawPeople(); drawDefault();
       };
       input.setAttribute('readonly', 'readonly');
       input.sxCapitalise = true;
@@ -610,25 +602,10 @@
     function editPerson(p) {
       detail.innerHTML = '';
       detail.appendChild(el('div', 'sx-gh', p.name));
-      detail.appendChild(row('Home Assistant',
-        p.ha_person
-          ? 'Linked, so runs recorded here line up with the person Home '
-            + 'Assistant already knows.'
-          : 'Not linked. This person exists only on the console — recording '
-            + 'them still works, it just creates a device with no matching '
-            + 'person in Home Assistant.',
-        el('div', 'sx-ro', p.ha_person
-          ? '<b>' + p.ha_person + '</b>' : 'console only')));
       detail.appendChild(row('Age',
         'Only used for heart-rate zones on the summary. Leaving it unset costs ' +
         'nothing else, and the estimate behind it is rough anyway.',
         ageStepper(p)));
-      detail.appendChild(row('Record to Home Assistant',
-        'Their distance, time and calories, published under their own name.',
-        toggle(null, p.publish, function (on) {
-          try { S = JSON.parse(bridge().setPersonFlag(p.name, 'publish', on)); } catch (e) {}
-          p.publish = on; drawPeople();
-        })));
       // Redrawn from the tick while it is on screen: a link in progress
       // changes under it, from somebody's phone.
       if (has('trailmateStatus')) {
@@ -647,45 +624,18 @@
         press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           try { S = JSON.parse(bridge().removePerson(p.name)); } catch (e) {}
           tmShowing = null;
-          detail.innerHTML = ''; drawPeople(); drawDefault(); drawHa();
+          detail.innerHTML = ''; drawPeople(); drawDefault();
         })));
     }
 
     var detail = group('');
     sc.appendChild(detail);
 
-    /* Offered, never applied. A list arriving over MQTT is not permission to
-       create runners on somebody's treadmill — the person standing in front of
-       it decides, one at a time. */
-    var fromHa = group('From Home Assistant');
-    var haBox = el('div', 'sx-people');
-    fromHa.appendChild(haBox);
-    sc.appendChild(fromHa);
-
-    function drawHa() {
-      var list = [];
-      try { list = JSON.parse(bridge().haPeople()); } catch (e) {}
-      haBox.innerHTML = '';
-      fromHa.style.display = list.length ? '' : 'none';
-      list.forEach(function (h) {
-        var c = el('button', 'sx-person');
-        c.innerHTML = '<div class="sx-av">' + h.first.charAt(0).toUpperCase() + '</div>' +
-                      '<div class="sx-pn">' + h.first + '</div>' +
-                      '<div class="sx-pd">' + h.name + '</div>';
-        press(c, function () {
-          try { S = JSON.parse(bridge().addHaPerson(h.entity_id, h.first)); } catch (e) {}
-          drawPeople(); drawDefault(); drawHa();
-        });
-        haBox.appendChild(c);
-      });
-    }
-
     var g2 = group('When nobody chooses');
     var defRow = el('div');
     g2.appendChild(defRow);
     g2.appendChild(row('Guest runs',
-      'A one-off run counted on the console but never recorded against a person. ' +
-      'Guests are never published.',
+      'A one-off run counted on the console but never recorded against a person.',
       toggle('allow_guest', S.allow_guest !== false)));
     sc.appendChild(g2);
 
@@ -918,7 +868,6 @@
 
     drawPeople();
     drawDefault();
-    drawHa();
     drawQueue();
     drawTmPeople();
     pane.sxTick = function () { drawTm(); drawQueue(); drawTmPeople(); };
@@ -1052,54 +1001,6 @@
     pane.sxTick = drawPaired;   // live readings while this section is open
   }
 
-  // --- home assistant ---
-  function paneHa(pane) {
-    var sc = head(pane, 'Home Assistant',
-      'Optional. The treadmill runs perfectly well with none of this set — you lose ' +
-      'the history and the dashboards, and nothing else.');
-
-    var g = group('Connection');
-    g.appendChild(row('Publish to Home Assistant',
-      'Everything below is ignored while this is off.',
-      toggle('ha_enabled', !!S.ha_enabled)));
-    g.appendChild(row('MQTT broker', 'Host or IP of the broker, not of Home Assistant itself.',
-      field('mqtt_host', S.mqtt_host)));
-    g.appendChild(row('Port', '1883 plain, 8883 with TLS.',
-      field('mqtt_port', S.mqtt_port, true)));
-    g.appendChild(row('Username', '', field('mqtt_user', S.mqtt_user)));
-    g.appendChild(row('Password', '',
-      field('mqtt_pass', S.mqtt_pass_set ? SECRET_MASK : '', false, 'password')));
-    g.appendChild(row('Use TLS', 'Off is reasonable on a home network you control.',
-      toggle('mqtt_tls', !!S.mqtt_tls)));
-    g.appendChild(row('Topic prefix',
-      'Change only if stride/ already means something else on your broker.',
-      field('mqtt_prefix', S.mqtt_prefix)));
-
-    var stateEl = el('span', 'sx-state', '<i class="sx-dot"></i>Not tested');
-    var testWrap = el('div');
-    testWrap.style.cssText = 'display:flex;align-items:center';
-    stateEl.style.marginRight = '18px';
-    testWrap.appendChild(stateEl);
-    testWrap.appendChild(press(el('button', 'sx-pill', 'TEST'), function () {
-      stateEl.innerHTML = '<i class="sx-dot sx-busy"></i>Connecting…';
-      try { bridge().mqttTest(); } catch (e) {}
-      setTimeout(drawState, 2500);
-    }));
-    g.appendChild(row('Test the connection',
-      'Connects, publishes discovery, and reports back. Changes nothing else.', testWrap));
-    sc.appendChild(g);
-
-    function drawState() {
-      var st = {};
-      try { st = JSON.parse(bridge().mqttStatus()); } catch (e) {}
-      if (!st.enabled) stateEl.innerHTML = '<i class="sx-dot"></i>Not publishing';
-      else if (st.connected) stateEl.innerHTML = '<i class="sx-dot sx-ok"></i>Connected';
-      else stateEl.innerHTML = '<i class="sx-dot sx-bad"></i>Could not connect';
-    }
-    drawState();
-    pane.sxTick = drawState;
-  }
-
   // --- treadmill ---
   function paneDeck(pane) {
     var sc = head(pane, 'Treadmill',
@@ -1224,8 +1125,7 @@
        this reaches the serial link. */
     var gu = group('Units');
     gu.appendChild(row('Distance and speed',
-      'Everything on every screen, and everything published. The board stays ' +
-      'metric underneath.',
+      'Everything on every screen. The board stays metric underneath.',
       segment('units', [['km', 'Kilometres'], ['mi', 'Miles']], S.units || 'km')));
     sc.appendChild(gu);
 
@@ -1288,8 +1188,8 @@
     if (!routes.length) {
       var g0 = group('');
       g0.appendChild(row('No routes yet',
-        'Open STRIDE Health on your phone, go to Workouts & Routes, convert an ' +
-        'outdoor run and keep it. It arrives here on the next sync.',
+        'Routes are outdoor runs turned into ground this treadmill can run. They ' +
+        'will come from TrailMate.',
         el('div', 'sx-ro', '—')));
       sc.appendChild(g0);
       return;
@@ -1310,12 +1210,6 @@
     });
     sc.appendChild(g);
 
-    var g2 = group('Where they come from');
-    g2.appendChild(row('Home Assistant',
-      'Routes ride the same webhook as your health data and are cached here. ' +
-      'Delete or rename them on the phone; this console follows.',
-      el('div', 'sx-ro', S.ha_enabled ? 'connected' : 'not configured')));
-    sc.appendChild(g2);
   }
 
   /* The route's own profile as a small inline SVG — the ground it is, rather
@@ -1452,7 +1346,7 @@
     rebuild();
     shadowHost.style.display = 'block';
     // Only the visible section ticks — polling a bridge for a heart rate while
-    // looking at the broker settings is work nobody asked for.
+    // looking at the display settings is work nobody asked for.
     poll = setInterval(function () {
       var pane = root.querySelector('.sx-pane.sx-on');
       if (pane && pane.sxTick) pane.sxTick();

@@ -10,7 +10,7 @@ package dev.stride.hud
  * elapsed counter never returns to zero.
  *
  * The user pressing START and END is the fact we can actually trust, so that is
- * what drives the HUD, the timer, and everything published to HA. The board's
+ * what drives the HUD, the timer and the recording. The board's
  * mode is kept only for the two things it alone knows: the belt interlock and
  * the safety key.
  */
@@ -32,7 +32,7 @@ object Session {
     fun isMoving(v: Int) = v == WARMUP || v == ACTIVE || v == COOLDOWN
 }
 
-/** One frame of everything both the HUD and Home Assistant need. */
+/** One frame of everything the HUD, FTMS and the recording need. */
 data class Snapshot(
     /**
      * The pace the console is holding, km/h — the setpoint, not a measurement.
@@ -58,11 +58,6 @@ data class Snapshot(
      * Diagnosis only: nothing draws this. It exists so a belt that cannot reach
      * the commanded pace is still detectable — see [slipping] — now that the
      * dial no longer shows it.
-     *
-     * Published to Home Assistant since 8 September 2026, so the recorder keeps
-     * a trace of it. Reconstructing that run's belt speed afterwards meant
-     * differencing the whole-metre distance sensor, because this — the number
-     * the console had already worked out — was going nowhere.
      */
     val beltKph: Double = 0.0,
     /**
@@ -143,8 +138,8 @@ data class Snapshot(
     /**
      * The runner's stable profile id, or empty for a guest.
      *
-     * Sent to Home Assistant alongside [who] so it can tell whose session this
-     * is without matching on a display name. See Settings.Person.id.
+     * What the recording and TrailMate key a run off, rather than matching on
+     * a display name. See Settings.Person.id.
      */
     val whoId: String = "",
     /** Guided run, or empty on a casual one. */

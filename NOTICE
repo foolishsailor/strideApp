@@ -14,25 +14,6 @@ See LICENSE for the full text.
 Third-party components
 ================================================================================
 
-Eclipse Paho Java Client — org.eclipse.paho.client.mqttv3, version 1.2.5
---------------------------------------------------------------------------------
-Bundled unmodified in the console application (console/stride), where it is the
-MQTT client that talks to Home Assistant.
-
-Provided by the Eclipse Foundation under the terms of the Eclipse Public
-License Version 2.0 ("EPL") and the Eclipse Distribution License Version 1.0
-("EDL"):
-
-    https://www.eclipse.org/legal/epl-2.0
-    https://www.eclipse.org/org/documents/edl-v10.php
-
-Neither licence is the Apache License under which the rest of this project is
-released, and this notice is here because the EPL asks for it: if you
-redistribute a build of the console, the Paho terms travel with the copy of
-Paho inside it. Source for the library is available from the Eclipse
-Foundation at https://github.com/eclipse/paho.mqtt.java.
-
-
 Gradle Wrapper — gradle/wrapper/gradle-wrapper.jar
 --------------------------------------------------------------------------------
 Checked into console/stride and console/usbprobe so a clone can build without

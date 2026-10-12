@@ -32,15 +32,12 @@ var STORE = {
   default_runner: '',
   allow_guest: true,
   units: 'km',
-  ha_enabled: false,
-  mqtt_host: '', mqtt_port: 1883, mqtt_user: '', mqtt_pass: '',
-  mqtt_tls: false, mqtt_prefix: 'stride',
   warmup_min: 2, cooldown_min: 2, warmup_kph: 2.0,
   incline_rate: 'normal', open_lap_min: 20,
   hr_source: 'auto', hr_addr: '', hr_name: '',
   sleep_min: 5, clock_24: true, brightness: 'normal', keep_awake: true
 };
-var SCANNING = false, TESTED = false;
+var SCANNING = false;
 
 window.Stride = {
   settingsJson: function () { return JSON.stringify(STORE); },
@@ -80,13 +77,6 @@ window.Stride = {
       connected: !!STORE.hr_addr, battery: STORE.hr_addr ? 78 : -1,
       bpm: STORE.hr_addr ? 60 + Math.floor(Math.random() * 6) : 0,
       name: STORE.hr_name, address: STORE.hr_addr
-    });
-  },
-  mqttTest: function () { TESTED = true; },
-  mqttStatus: function () {
-    return JSON.stringify({
-      enabled: !!STORE.ha_enabled && !!STORE.mqtt_host,
-      connected: TESTED && !!STORE.mqtt_host, broker: STORE.mqtt_host
     });
   },
   boardLimits: function () {

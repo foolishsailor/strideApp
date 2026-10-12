@@ -5,18 +5,12 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Broker credentials come from local.properties, which git ignores, rather than
-// from constants in the source. A fresh clone therefore builds an app that
-// cannot reach the broker until someone supplies them — which is the correct
-// failure, and much better than shipping a working password to anyone who
-// clones the repo.
+// Signing details come from local.properties, which is never committed — see
+// the release signing config below.
 val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
 }
-
-fun secret(key: String, fallback: String = "") =
-    "\"${localProps.getProperty(key, fallback)}\""
 
 android {
     namespace = "dev.stride.hud"
@@ -34,16 +28,13 @@ android {
         versionCode = 4
         versionName = "0.8.0"
 
-        buildConfigField("String", "MQTT_BROKER", secret("mqtt.broker", ""))
-        buildConfigField("String", "MQTT_USER", secret("mqtt.user"))
-        buildConfigField("String", "MQTT_PASS", secret("mqtt.pass"))
     }
     /*
      * A release build is what belongs on a treadmill.
      *
      * A debug build carries `android:debuggable="true"`, which lets anything
      * else on the console attach to this process and read its store — the
-     * broker password included — and it is what turns on the WebView DevTools
+     * TrailMate tokens included — and it is what turns on the WebView DevTools
      * socket in MainActivity. Neither is a risk worth taking for a machine
      * that sits in a hallway for years.
      *
@@ -52,7 +43,7 @@ android {
      *     keytool -genkey -v -keystore ~/stride-release.jks -alias stride \
      *             -keyalg RSA -keysize 4096 -validity 10000
      *
-     * then name it in local.properties, alongside the broker credentials:
+     * then name it in local.properties:
      *
      *     stride.keystore=/Users/you/stride-release.jks
      *     stride.keystore.password=...
@@ -107,8 +98,3 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
-dependencies {
-    // Plain Java Paho client — the Android "service" variant needs AndroidX,
-    // which this app deliberately avoids.
-    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
-}

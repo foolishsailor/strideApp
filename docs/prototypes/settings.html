@@ -11,7 +11,7 @@
   lifted from assets/ui/original.html so this reads as the same product rather
   than a wireframe of a different one.
 
-  Everything here is a stand-in: nothing talks to the board, the broker or a
+  Everything here is a stand-in: nothing talks to the board or a
   strap. The point is the shape — what belongs in settings at all, how it is
   grouped, and whether it can be driven with a finger while standing on a deck.
 
@@ -306,64 +306,7 @@ body::before{
         <div class="note">
           Nothing here today — pulse comes only from the grips via the board's
           <code>PULSE</code> field. A strap is a separate Bluetooth connection the console
-          makes itself, so it keeps working if Home Assistant is down.
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= HOME ASSISTANT ================= -->
-    <div class="pane" data-p="ha">
-      <div class="ph">Home Assistant</div>
-      <div class="psub">Optional. The treadmill runs perfectly well with none of this set —
-        you lose the history and the dashboards, and nothing else.</div>
-      <div class="scroll">
-        <div class="group">
-          <div class="gh">Connection</div>
-          <div class="row">
-            <div class="lbl"><div class="n">Publish to Home Assistant</div>
-              <div class="d">Everything below is ignored while this is off.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">MQTT broker</div>
-              <div class="d">Host or IP of the broker, not of Home Assistant itself.</div></div>
-            <div class="ctl"><input class="fld" value="homeassistant.local"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Port</div><div class="d">1883 plain, 8883 with TLS.</div></div>
-            <div class="ctl"><input class="fld short" value="1883"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Username</div></div>
-            <div class="ctl"><input class="fld" value="stride"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Password</div></div>
-            <div class="ctl"><input class="fld" type="password" value="hunter2hunter2"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Use TLS</div>
-              <div class="d">Off is reasonable on a home network you control.</div></div>
-            <div class="ctl"><div class="sw" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Topic prefix</div>
-              <div class="d">Change only if <code>stride/</code> already means something else on your broker.</div></div>
-            <div class="ctl"><input class="fld" value="stride"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Test the connection</div>
-              <div class="d">Connects, publishes discovery, disconnects. Changes nothing.</div></div>
-            <div class="ctl" style="display:flex;align-items:center;gap:18px">
-              <span class="state" id="hastate"><i class="dot ok"></i>Connected</span>
-              <button class="pill" id="test">TEST</button>
-            </div>
-          </div>
-        </div>
-        <div class="note">
-          Broker, user and password are compiled in from <code>local.properties</code> today, so
-          a public build either ships someone else's credentials or cannot connect at all.
-          <b>Neither is releasable.</b>
+          makes itself, so it needs no network.
         </div>
       </div>
     </div>
@@ -517,7 +460,6 @@ body::before{
 const SECTIONS = [
   ['people', 'Who runs',      'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
   ['hr',     'Heart rate',     'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z'],
-  ['ha',     'Home Assistant', 'M3 11l9-8 9 8M5 10v10h14V10'],
   ['deck',   'Treadmill',      'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3'],
   ['ui',     'Interface',      'M3 4h18v14H3zM3 9h18M9 9v9'],
   ['screen', 'Display',        'M3 4h18v12H3zM8 20h8M12 16v4'],
@@ -542,7 +484,7 @@ navs.addEventListener('click', e => {
 
 /* ---- people ------------------------------------------------------------ */
 const PEOPLE = [
-  { name: 'Sam',  note: 'to Home Assistant' },
+  { name: 'Sam',  note: 'TrailMate' },
   { name: 'Alex',   note: 'console only' },
   { name: 'Jo',  note: 'Console only' },
   { name: 'Robin', note: 'Console only' },

@@ -2,7 +2,7 @@ import type { Units } from '../store/settings';
 import { nf } from './format';
 
 /* Kilometres or miles, from Settings → Display → Units. Only ever the
-   display: the board, Kotlin, Home Assistant and TrailMate are metric
+   display: the board, Kotlin, FTMS and TrailMate are metric
    throughout, and every number that goes back to Kotlin is converted to
    km/h on the way. */
 

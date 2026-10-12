@@ -25,8 +25,6 @@ To undo everything: factory reset the console.
 | A treadmill | NordicTrack or ProForm, FitPro motor board, Android console. Check [Step 0](#step-0-check-your-treadmill). |
 | A computer | macOS, Linux or Windows, with `adb` and Python 3.9+. On Windows, run the `.sh` scripts in Git Bash. See [Windows](#windows). |
 | JDK 17 + Android SDK | Only if you build it yourself. There is a [signed APK](https://github.com/keranm/strideApp/releases/latest) if you would rather not — see [1.7](#17-install-stride). |
-| Home Assistant | Optional. Needs an MQTT broker. |
-| An iPhone | Optional. Apple Health only. |
 
 Allow about an hour for Part 1, ten minutes for Part 2.
 
@@ -336,8 +334,8 @@ apksigner verify --print-certs stride-*.apk
 
 Anything else did not come from here.
 
-It ships with no broker credentials of anyone's — they are compiled out, and
-the console is where you set your own in step 2.1.
+It ships with no credentials of anyone's: TrailMate is connected per person, on
+the console, in Settings.
 
 #### Option B — build it yourself
 
@@ -353,7 +351,7 @@ SDK via `ANDROID_HOME` or `~/Library/Android/sdk`.
 
 **Read what it prints.** Without a signing key in `local.properties` it builds
 a *debug* APK and says so. A debug build is `debuggable`, which lets anything
-else on the console read this app's stored settings — broker password
+else on the console read this app's stored settings — TrailMate tokens
 included — and it opens the WebView DevTools socket. That is fine on a bench
 and is not what you want on a machine that sits in a hallway for years. To
 build the same thing the release is, generate a key and use `./run.sh release`;
@@ -401,90 +399,6 @@ Everything is on the treadmill's own screen. There are no config files.
 
 ✅ Clip the safety key, choose a workout, and check the belt starts and the
 distance climbs.
-
-**Stop here if you do not use Home Assistant.**
-
----
-
-## Part 2. Home Assistant
-
-### 2.1 Connect the treadmill
-
-Requires the [MQTT integration](https://www.home-assistant.io/integrations/mqtt/)
-and a broker. Nothing from this repository is installed for this step.
-
-1. On the console, go to **Settings → Home Assistant**.
-2. Enter broker host, port, username, password.
-3. Tap **Test**.
-
-✅ A **Treadmill** device appears under Settings → Devices with speed, incline,
-distance, elapsed, pulse, calories, mode and workout. A second device appears
-per person the first time they run.
-
-Build whatever dashboard you like from those entities. There is no custom
-component to install.
-
-### 2.2 Optional: weekly and monthly totals
-
-The console's distance counter resets every run, so totals accumulate in Home
-Assistant.
-
-1. Copy [`homeassistant/packages/stride.yaml`](../homeassistant/packages/stride.yaml)
-   into your config as `packages/stride.yaml`.
-2. Add to `configuration.yaml`:
-
-   ```yaml
-   homeassistant:
-     packages: !include_dir_named packages
-   ```
-
-3. Restart Home Assistant.
-
-✅ `sensor.treadmill_distance_weekly` exists and is not `unavailable`.
-
-If it is unavailable, your treadmill device is named something other than
-`Treadmill`. Set `treadmill_prefix` in `stride.conf` and the `source:` lines in
-the package to match.
-
-> **Gap:** this file is valid YAML and mirrors a working configuration, but has
-> not been installed on a clean Home Assistant.
-
-### 2.3 Optional: reminders
-
-```sh
-cd homeassistant
-cp stride.conf.example stride.conf
-```
-
-1. Open `stride.conf`. Every key is documented in the file. Leave a key blank to
-   skip that subject.
-2. Run what you want:
-
-   ```sh
-   python3 stride_reminders.py      # weigh-in and blood-pressure reminders
-   python3 stride_persons.py        # publishes your HA people to the console
-   ```
-
-✅ The reminder automations appear under Settings → Automations.
-
-After `stride_persons.py`, the console's **Settings → Who runs** lists your
-Home Assistant people under *From Home Assistant*.
-
----
-
-## Part 3. Apple Health (iPhone)
-
-Optional. Nothing else depends on it.
-
-Use **[AH for HA](https://github.com/keranm/ah-for-ha)**, which is a separate
-project with its own guide. There is nothing in this repository to install for
-it.
-
-AH for HA also publishes outdoor runs as gradient profiles over MQTT, which
-STRIDE replays on the deck.
-
-> `homeassistant/stride_health_webhook.py` is frozen. Setting this up for the
-> first time? You do not need it.
 
 ---
 
@@ -536,7 +450,6 @@ Most likely to be wrong:
 
 - **Steps 1.1 to 1.4.** Written up after the fact. Nobody has followed this page
   on a freshly reset machine.
-- **Step 2.2.** Never installed on a clean Home Assistant.
 - **Every ✅ check.** If one does not happen, that is the bug.
 - **Anything you had to work out that is not written down.**
 

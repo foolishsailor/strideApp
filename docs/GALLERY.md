@@ -22,8 +22,7 @@ suggestion and the belt doesn't act on it.
 On the treadmill's own screen. No config files, no rebuild.
 
 ### Who runs
-Everyone gets their own totals. Recording is per person, and can be linked to
-a Home Assistant `person`.
+Everyone gets their own totals, history and TrailMate link.
 
 ![Who runs](screenshots/settings-who-walks.png)
 
