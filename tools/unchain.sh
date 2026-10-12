@@ -170,6 +170,17 @@ else
     say "No STRIDE APK yet — build it with console/stride/run.sh, then re-run this"
 fi
 
+# Android 10+ blocks an app opening itself from a boot receiver unless it may
+# display over other apps — so without this a Gen 7 (Android 13) powers on to
+# the Android launcher and STRIDE waits to be found. Same permission iFit's
+# eru held. The launcher stays the home app, and everything else on the
+# console stays reachable.
+if [ "$(sh_ getprop ro.build.version.sdk | tr -d '\r')" -ge 29 ] 2>/dev/null &&
+   sh_ pm list packages | grep -q dev.stride.hud; then
+    say "Letting STRIDE open itself at power-on (display over other apps)"
+    sh_ appops set dev.stride.hud SYSTEM_ALERT_WINDOW allow
+fi
+
 if [ "${STRIDE_KIOSK:-1}" = "1" ] && sh_ pm list packages | grep -q dev.stride.hud; then
     say "Making STRIDE the home app"
     # The alias ships disabled: two home apps and no preference between them
