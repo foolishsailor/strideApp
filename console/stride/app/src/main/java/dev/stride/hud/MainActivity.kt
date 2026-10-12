@@ -1121,6 +1121,9 @@ class MainActivity : Activity() {
          * this is the cheap second attempt at the moment the screen changes.
          */
         @JavascriptInterface fun home() {
+            // Taken before anything is reset: is there a belt that may still be
+            // turning? Mid-walk, in the cool-down, or still winding down.
+            val wasMoving = Session.isMoving(session) || stopping || beltStillKph() >= STOPPED_KPH
             session = Session.WELCOME
             workout = "none"
             summaryLine = ""
@@ -1141,14 +1144,26 @@ class MainActivity : Activity() {
                 parkDeckAndFan()
             }
             targetKph = 0.0
+            /* IDLE is not a way out of running: the board ignores it (FitPro 1)
+             * or its effect on a moving belt is unproven (FitPro 2), and PAUSE
+             * is the legal exit — see pause(). HOME pressed during a cool-down
+             * used to send IDLE, leave the belt turning behind the welcome
+             * screen, and let enforceStopped catch it as a runaway: stopped,
+             * but logged as an incident with an MQTT alert every time. Found
+             * with the simulated treadmill, 12/10/2026.
+             *
+             * So a belt that may be moving gets PAUSE, and IDLE follows once
+             * it has stopped — see idleStep. */
             pendingWrite = buildMap {
                 put(FitPro.Field.KPH, 0.0)
-                put(FitPro.Field.WORKOUT_MODE, FitPro.Mode.IDLE.toDouble())
+                put(FitPro.Field.WORKOUT_MODE,
+                    (if (wasMoving) FitPro.Mode.PAUSE else FitPro.Mode.IDLE).toDouble())
                 // Only when we are the ones levelling the deck. An incline set
                 // by hand on the summary screen is a choice about the next
                 // walk, and DONE is not the moment to throw it away.
                 if (parked) put(FitPro.Field.GRADE, 0.0)
             }
+            idleWhenStopped = wasMoving
             repaint()
         }
 
@@ -2690,7 +2705,7 @@ class MainActivity : Activity() {
             val writes = enforceStopped(beltStillKph())
                 ?: enforceLevel(lastActualGrade)
                 ?: enforceFanOff()
-                ?: queued ?: decelStep() ?: rampStep()
+                ?: queued ?: decelStep() ?: rampStep() ?: idleStep()
 
             if (writes != null) lastWriteMs = SystemClock.elapsedRealtime()
 
@@ -2873,6 +2888,26 @@ class MainActivity : Activity() {
             }
             Thread.sleep(POLL_MS)
         }
+    }
+
+    /** HOME paused a moving belt; IDLE goes once it has stopped. See home(). */
+    @Volatile private var idleWhenStopped = false
+
+    /**
+     * The second half of HOME on a moving belt: IDLE, once the belt is still.
+     *
+     * Queued rather than returned, so that a refusal is retried and given up on
+     * by the same rules as any other write. A walk started in the meantime
+     * cancels it — that walk is in charge of the board now.
+     */
+    private fun idleStep(): Map<FitPro.Field, Double>? {
+        if (!idleWhenStopped) return null
+        if (Session.isMoving(session)) { idleWhenStopped = false; return null }
+        if (beltStillKph() >= STOPPED_KPH) return null
+        idleWhenStopped = false
+        pendingWrite = mapOf(FitPro.Field.WORKOUT_MODE to FitPro.Mode.IDLE.toDouble())
+        Log.i(TAG, "home: belt stopped — board back to idle")
+        return null
     }
 
     /**
