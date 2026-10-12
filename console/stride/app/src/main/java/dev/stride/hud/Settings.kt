@@ -67,6 +67,9 @@ class Settings(context: Context) {
         const val WARMUP_KPH = "warmup_kph"
         const val INCLINE_RATE = "incline_rate"   // "gentle" | "normal" | "quick"
         const val OPEN_LAP_MIN = "open_lap_min"
+        /** The belt's measured speed table, as JSON. See [BeltCalibration].
+         *  Written only through [saveBeltCalibration], never by [set]. */
+        const val BELT_CAL = "belt_cal"
 
         // --- coach ---
         const val COACH_ON = "coach_on"
@@ -358,6 +361,17 @@ class Settings(context: Context) {
     fun inclineEveryMs(): Long =
         INCLINE_RATES[prefs.getString(INCLINE_RATE, "normal")]?.second ?: 3000L
 
+    /**
+     * How far this belt is from the speed it is asked for, measured with a foot
+     * pod. A property of the machine, not of a person, and it outlives
+     * [resetSettings] the way people do: it was measured, not chosen.
+     */
+    fun beltCalibration(): BeltCalibration = BeltCalibration.parse(prefs.getString(BELT_CAL, null))
+
+    fun saveBeltCalibration(cal: BeltCalibration) {
+        prefs.edit().putString(BELT_CAL, cal.json().toString()).apply()
+    }
+
     // --- coach ----------------------------------------------------------------
 
     fun coachOn(): Boolean = prefs.getBoolean(COACH_ON, true)
@@ -517,11 +531,13 @@ class Settings(context: Context) {
         e.apply()
     }
 
-    /** Settings only. People, totals and history are not touched. */
+    /** Settings only. People, totals, history and the belt calibration are not touched. */
     fun resetSettings() {
         val keep = prefs.getString(PEOPLE, null)
+        val belt = prefs.getString(BELT_CAL, null)
         prefs.edit().clear()
             .putString(PEOPLE, keep)
+            .putString(BELT_CAL, belt)
             .apply()
     }
 }

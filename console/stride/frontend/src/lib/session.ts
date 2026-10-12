@@ -178,3 +178,40 @@ export const coachHoldMs = (line: string): number => Math.min(18000, Math.max(90
  *  turning and a pace would read as hours. */
 export const paceSecPerKm = (kph: number | undefined): number =>
   kph && kph >= 0.5 ? Math.round(3600 / kph) : 0;
+
+/* ---- belt calibration ----------------------------------------------------- */
+
+export const KM_PER_MILE = 1.609344;
+
+/** Seconds per mile or per kilometre at a speed, or 0 when barely moving. */
+export const paceSec = (kph: number | undefined, miles: boolean): number =>
+  kph && kph >= 0.5 ? (3600 / kph) * (miles ? KM_PER_MILE : 1) : 0;
+
+/** "9:05 /mi" — the way a Stryd shows it. */
+export function paceText(kph: number | undefined, miles: boolean): string {
+  const s = Math.round(paceSec(kph, miles));
+  if (!s) return '–';
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /${miles ? 'mi' : 'km'}`;
+}
+
+/** The pace step the calibration panel moves in, seconds. */
+export const PACE_STEP_SEC = 5;
+
+/** The next round pace from here, faster or slower, as km/h. A pace off the
+ *  grid lands on it first, so 9:03 goes to 9:00 or 9:05, never 8:58. */
+export function stepPace(kph: number, miles: boolean, faster: boolean): number {
+  const p = Math.round(paceSec(kph, miles));
+  if (!p) return kph;
+  const onGrid = p % PACE_STEP_SEC === 0;
+  const base = onGrid ? p : (faster ? Math.ceil(p / PACE_STEP_SEC) : Math.floor(p / PACE_STEP_SEC)) * PACE_STEP_SEC;
+  const next = faster ? base - PACE_STEP_SEC : base + PACE_STEP_SEC;
+  return next > 0 ? (3600 * (miles ? KM_PER_MILE : 1)) / next : kph;
+}
+
+/** How much more than the dial the board is sent, signed: "+5.6%" makes up a
+ *  belt that runs 5.6% slow. */
+export function beltOffset(kph: number, belt: number): string {
+  if (!(kph > 0) || !(belt > 0)) return '–';
+  const pct = (belt / kph - 1) * 100;
+  return `${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(1)}%`;
+}

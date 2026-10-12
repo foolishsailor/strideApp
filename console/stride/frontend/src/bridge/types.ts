@@ -47,6 +47,36 @@ export interface SessionState {
   /** The finished walk on its way to TrailMate: sending | sent | waiting |
    *  failed | reconnect, or empty when it is not going (TrailMate.kt). */
   trailmate?: string;
+  /** A belt calibration in progress, or null. */
+  calib?: Calibration | null;
+}
+
+/** A saved calibration point: to really get `kph`, the board is sent `belt`. */
+export interface CalibrationPoint {
+  kph: number;
+  belt: number;
+}
+
+/** A belt calibration in progress (CalibrationLive in Session.kt). km/h throughout. */
+export interface Calibration {
+  /** The true speed being calibrated: what the dial says. */
+  kph: number;
+  /** What the board is being sent for it. */
+  belt: number;
+  /** What the saved table would send for `kph`. */
+  tableBelt: number;
+  /** The pod's average since the belt last changed, or 0. */
+  podKph: number;
+  /** Seconds of steady readings behind `podKph`. */
+  podSecs: number;
+  /** Enough readings for "Use Stryd reading". */
+  ready: boolean;
+  /** A pod is connected and reading. */
+  pod: boolean;
+  /** Paces per mile rather than per kilometre. */
+  miles: boolean;
+  points: CalibrationPoint[];
+  note: string;
 }
 
 /** One stretch of a guided walk, resolved by Plan.kt. Times in seconds. */
@@ -97,6 +127,11 @@ export interface StrideBridge {
   hushCoach(): void;
   dim(on: boolean): void;
   routes(): string;
+  /** Belt calibration — see BeltCalibration.kt. The panel drives these. */
+  calNudge(delta: number): void;
+  calUseStryd(): void;
+  calSave(): void;
+  calDone(): void;
   /** {minGrade, maxGrade, minKph, maxKph} as JSON. Not stubbed in a browser. */
   boardLimits?(): string;
 }

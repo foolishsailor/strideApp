@@ -1139,6 +1139,8 @@
       stepper('open_lap_min', S.open_lap_min || 20, 5, 45, 5, 'min')));
     sc.appendChild(g3);
 
+    if (has('calibrationJson')) sc.appendChild(beltCalibration());
+
     var g4 = group('Reported by the board');
     var lim = { minGrade: 0, maxGrade: 0, minKph: 0, maxKph: 0 };
     try { lim = JSON.parse(bridge().boardLimits()); } catch (e) {}
@@ -1149,6 +1151,72 @@
       el('div', 'sx-ro', '<b>' + lim.minKph.toFixed(1) + '</b> to <b>' +
         lim.maxKph.toFixed(1) + '</b> km/h')));
     sc.appendChild(g4);
+  }
+
+  /* "9:05 /mi", the way a Stryd shows it. */
+  function paceText(kph, miles) {
+    if (!(kph >= 0.5)) return '–';
+    var s = Math.round(3600 / kph * (miles ? 1.609344 : 1));
+    return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2) + ' /' + (miles ? 'mi' : 'km');
+  }
+
+  /* "+5.6%": how much more than the dial the board is sent. */
+  function beltOffset(kph, belt) {
+    var pct = (belt / kph - 1) * 100;
+    return (pct >= 0 ? '+' : '−') + Math.abs(pct).toFixed(1) + '%';
+  }
+
+  /* The belt measured against a foot pod — see BeltCalibration.kt. The points
+     are taken on the walk screen; this lists them and lets them go. */
+  function beltCalibration() {
+    var g = group('Belt speed calibration');
+    var start = press(el('button', 'sx-pill sx-go', 'START'), function () {
+      try { bridge().calibrate(); } catch (e) {}
+      close();
+    });
+    g.appendChild(row('Calibrate with your Stryd',
+      'Starts the belt. Hold a pace, move the belt until the Stryd agrees, and save. ' +
+      'Several paces across your range make it most accurate: speeds between and beyond ' +
+      'them are worked out from the points. Distance is corrected too.', start));
+    var box = el('div');
+    g.appendChild(box);
+
+    function draw(json) {
+      var st = { points: [] };
+      try { st = JSON.parse(json || bridge().calibrationJson()); } catch (e) {}
+      var pts = st.points || [];
+      box.innerHTML = '';
+      if (!st.pod) {
+        box.appendChild(el('div', 'sx-empty',
+          'No foot pod connected. Pair your Stryd in Devices first.'));
+      }
+      if (!pts.length) {
+        box.appendChild(el('div', 'sx-empty',
+          'Not calibrated. The belt runs at the speed the board believes.'));
+        return;
+      }
+      pts.forEach(function (p) {
+        var r = el('div', 'sx-dev');
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + paceText(p.kph, st.miles) +
+          ' · ' + p.kph.toFixed(2) + ' km/h</div><div class="sx-d">Belt sent ' +
+          p.belt.toFixed(2) + ' km/h · ' + beltOffset(p.kph, p.belt) + '</div></div>';
+        r.appendChild(press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
+          var next = null;
+          try { next = bridge().calibrationRemove(p.kph); } catch (e) {}
+          draw(next);
+        }));
+        box.appendChild(r);
+      });
+      box.appendChild(row('Start again', 'Forget every point. The board is believed again.',
+        press(el('button', 'sx-pill sx-warn', 'CLEAR ALL'), function () {
+          var next = null;
+          try { next = bridge().calibrationClear(); } catch (e) {}
+          draw(next);
+        })));
+    }
+
+    draw();
+    return g;
   }
 
   // --- coach ---
