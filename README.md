@@ -99,10 +99,12 @@ Other Gen 6 NordicTrack and ProForm consoles on the same board are probably
 fine, because the protocol looks like a family rather than a single model, but
 nobody has tried.
 
-A second machine, a **Gen 7** incline trainer (Android 13, FitPro 2 board,
-incline −6 to +40 %, speed 1.5 to 20 km/h), has STRIDE driving its belt and
-deck, tested with nobody on it. See the Gen 7 notes in
-[INSTALL.md](docs/INSTALL.md). You also need a console you can reach with `adb`, and that's
+A second machine, a **Gen 7** NordicTrack X22i incline trainer (Android 13,
+FitPro 2 board, incline −6 to +40 %, speed 1.5 to 20 km/h), has STRIDE driving
+its belt and deck, tested with nobody on it.
+
+**[treadmills/](treadmills/README.md)** has a page per generation and per
+machine: board, protocol, quirks, and exactly what was tested. Add yours. You also need a console you can reach with `adb`, and that's
 the part that varies most by model and year.
 
 [`console/usbprobe`](console/usbprobe) asks your board what it is and changes

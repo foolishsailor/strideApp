@@ -53,7 +53,9 @@ STRIDE is confirmed on one machine:
 - **New:** Gen 7, on the FitPro 2 board. One machine, tested with the belt empty.
 - **Required:** an Android console you can reach with `adb`.
 
-One Gen 7 machine has been through Part 1, with STRIDE driving it belt-empty:
+One Gen 7 machine, a NordicTrack X22i, has been through Part 1, with STRIDE
+driving it belt-empty. Every machine and generation known so far is in
+[treadmills/](../treadmills/README.md).
 
 | | |
 |---|---|
@@ -380,6 +382,12 @@ and your workout history with it.
   down to 0 **pauses the belt** while the workout carries on, and raising it
   again restarts from 1.5. STOP and the safety key work as on Gen 6.
 - The fan tile is not connected to the fan on Gen 7 yet.
+- **Powering on:** run `unchain.sh` with `STRIDE_KIOSK=0`. It grants STRIDE
+  *display over other apps*, which is what Android 13 needs before it lets
+  STRIDE open itself at boot. The Android launcher stays the home screen, so
+  other apps stay reachable. Pin STRIDE to the dock (long-press it in the app
+  list and drag it down) for one-tap access. Give the console a minute after
+  changes like these before switching off at the wall.
 - Tested with the belt empty: start, speed, zero, pause, resume, STOP, incline
   and the safety key. Try the same yourself before stepping on.
 
