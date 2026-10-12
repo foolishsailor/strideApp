@@ -23,9 +23,9 @@
 
 > **Gen 7.** The jailbreak works, and STRIDE drives the Gen 7's motor board,
 > which speaks a different protocol, [FitPro 2](protocol/FITPRO2_PROTOCOL.md).
-> It was tested on a Gen 7 incline trainer with iFit builds from August 2026,
-> **with the belt empty**: start, speed, pause, STOP, incline and the safety key.
-> The steps are in [INSTALL.md](docs/INSTALL.md), marked Gen 7. One machine so far.
+> It runs on a Gen 7 NordicTrack X22i with iFit builds from August 2026. It was
+> tested with the belt empty first, and has since been walked on. The steps are
+> in [INSTALL.md](docs/INSTALL.md), marked Gen 7. One machine so far.
 
 
 I got tired of iFit on my NordicTrack. Manual mode, a 400 m loop, and an
@@ -100,8 +100,8 @@ fine, because the protocol looks like a family rather than a single model, but
 nobody has tried.
 
 A second machine, a **Gen 7** NordicTrack X22i incline trainer (Android 13,
-FitPro 2 board, incline −6 to +40 %, speed 1.5 to 20 km/h), has STRIDE driving
-its belt and deck, tested with nobody on it.
+FitPro 2 board, incline −6 to +40 %, speed 1.5 to 20 km/h), is walked on with
+STRIDE driving its belt and deck.
 
 **[treadmills/](treadmills/README.md)** has a page per generation and per
 machine: board, protocol, quirks, and exactly what was tested. Add yours. You also need a console you can reach with `adb`, and that's

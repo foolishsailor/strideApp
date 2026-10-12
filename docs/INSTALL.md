@@ -8,11 +8,11 @@ motorised treadmill.
 
 > **Gen 7.** Part 1 **works on Gen 7**. It was tested on 11/10/2026 on a Gen 7
 > incline trainer with iFit builds dated 25/08/2026. Privileged mode, ADB over
-> Wireless debugging and disabling iFit all worked, and STRIDE drove the belt
-> and deck with the belt empty. Its motor board speaks a different protocol,
+> Wireless debugging and disabling iFit all worked. STRIDE drove the belt and
+> deck, first with the belt empty and since then with its owner walking on it.
+> Its motor board speaks a different protocol,
 > [FitPro 2](../protocol/FITPRO2_PROTOCOL.md), which STRIDE now speaks too. Gen 7
-> differences are marked **Gen 7** below. One machine, belt-empty testing:
-> treat it as new.
+> differences are marked **Gen 7** below. One machine so far: treat it as new.
 
 To undo everything: factory reset the console.
 
@@ -50,11 +50,11 @@ STRIDE is confirmed on one machine:
 | Ranges reported | incline -3 to +12 %, speed 1.6 to 20 km/h |
 
 - **Likely to work:** other Gen 6 NordicTrack and ProForm consoles on a FitPro board.
-- **New:** Gen 7, on the FitPro 2 board. One machine, tested with the belt empty.
+- **New:** Gen 7, on the FitPro 2 board. One machine, walked on.
 - **Required:** an Android console you can reach with `adb`.
 
-One Gen 7 machine, a NordicTrack X22i, has been through Part 1, with STRIDE
-driving it belt-empty. Every machine and generation known so far is in
+One Gen 7 machine, a NordicTrack X22i, has been through Part 1 and is walked
+on under STRIDE. Every machine and generation known so far is in
 [treadmills/](../treadmills/README.md).
 
 | | |
@@ -388,8 +388,9 @@ and your workout history with it.
   other apps stay reachable. Pin STRIDE to the dock (long-press it in the app
   list and drag it down) for one-tap access. Give the console a minute after
   changes like these before switching off at the wall.
-- Tested with the belt empty: start, speed, zero, pause, resume, STOP, incline
-  and the safety key. Try the same yourself before stepping on.
+- Tested first with the belt empty (start, speed, zero, pause, resume, STOP,
+  incline, the safety key, the watchdog), then walked on. Do the empty-belt run
+  yourself before stepping on.
 
 ### 1.8 Set up STRIDE
 

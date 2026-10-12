@@ -29,8 +29,8 @@ interrupt endpoints IN `0x81` / OUT `0x01`, 64 bytes.
 
 ## How far it got
 
-Tested 11/10/2026, all with the belt empty and a hand on the safety key, from
-a Windows PC.
+Tested 11/10/2026 from a Windows PC: first everything below with the belt
+empty and a hand on the safety key, then walked on.
 
 - [x] Factory reset
 - [x] Privileged mode: the challenge code appeared on the 25/08/2026 iFit builds
@@ -45,7 +45,7 @@ a Windows PC.
 - [x] App force-closed mid-run: belt stopped at once
 - [x] App stalled mid-run: watchdog stopped the belt in 3.5 s
 - [x] Powers on into STRIDE, with the Android launcher kept
-- [ ] Walked on it
+- [x] Walked on it
 
 ## Quirks
 

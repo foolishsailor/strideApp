@@ -37,7 +37,8 @@ stalls for three seconds mid-workout, a separate watchdog lets go of the board,
 which stops the belt, and the workout is left paused until somebody presses
 RESUME. If the app dies outright, the board stops the belt on its own. A
 console frozen solid, app and watchdog together, is not covered yet: that is
-the safety key's job. All of this was tested on one Gen 7, belt empty.
+the safety key's job. All of this was tested on one Gen 7 with the belt
+empty, before anyone walked on it.
 
 **Automatic stops ramp down** at 2 km/h per second. The first guided walk cut
 the belt from 4.2 km/h to zero the moment the plan ended, which was enough to

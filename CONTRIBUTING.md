@@ -13,8 +13,8 @@ wouldn't have.
 is a page in [`treadmills/`](treadmills/README.md), copied from its template.
 
 Right now the known-good list is two machines: a NordicTrack C 1750 (Gen 6,
-FitPro) in daily use, and a NordicTrack X22i (Gen 7, FitPro 2) tested with the
-belt empty. That's the single biggest thing standing between this working
+FitPro) in daily use, and a NordicTrack X22i (Gen 7, FitPro 2), newer but
+walked on. That's the single biggest thing standing between this working
 on my treadmill and working on yours. I'm not buying more treadmills to find
 out, so the list can only come from other people.
 

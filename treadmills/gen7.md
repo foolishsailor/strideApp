@@ -1,7 +1,8 @@
 # Gen 7 consoles
 
-STRIDE drives a Gen 7 as of 11/10/2026, tested on one machine with the belt
-empty: [NordicTrack X22i](nordictrack-x22i-gen7.md). Treat it as new.
+STRIDE drives a Gen 7 as of October 2026, on one machine, the
+[NordicTrack X22i](nordictrack-x22i-gen7.md). It was tested with the belt empty
+first and has since been walked on. Treat it as new.
 
 ## At a glance
 
