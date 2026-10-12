@@ -1195,11 +1195,16 @@
           'Not calibrated. The belt runs at the speed the board believes.'));
         return;
       }
+      // Display → Units, the same setting the walk screen follows.
+      var miles = S.units === 'mi';
+      var sp = function (kph) {
+        return (miles ? kph / 1.609344 : kph).toFixed(2) + (miles ? ' mph' : ' km/h');
+      };
       pts.forEach(function (p) {
         var r = el('div', 'sx-dev');
-        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + paceText(p.kph, st.miles) +
-          ' · ' + p.kph.toFixed(2) + ' km/h</div><div class="sx-d">Belt sent ' +
-          p.belt.toFixed(2) + ' km/h · ' + beltOffset(p.kph, p.belt) + '</div></div>';
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + paceText(p.kph, miles) +
+          ' · ' + sp(p.kph) + '</div><div class="sx-d">Belt sent ' +
+          sp(p.belt) + ' · ' + beltOffset(p.kph, p.belt) + '</div></div>';
         r.appendChild(press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           var next = null;
           try { next = bridge().calibrationRemove(p.kph); } catch (e) {}

@@ -21,6 +21,18 @@ describe('belt calibration', () => {
     expect(paceSec(stepPace(at(543), true, false), true)).toBeCloseTo(545, 6);
   });
 
+  it('takes bigger steps at a stroll, so a running pace is reachable', () => {
+    // 2 km/h is about 48:17 /mi: the old 5 s step left it at 2.00 km/h.
+    const from = 2;
+    expect(paceSec(stepPace(from, true, true), true)).toBeCloseTo(48 * 60, 6);
+    expect(stepPace(from, true, true)).toBeGreaterThan(2.005);
+    // 15:30 → 15:00 → 14:55: the step shrinks on the way in.
+    const at = (s: number) => (3600 * 1.609344) / s;
+    expect(paceSec(stepPace(at(930), true, true), true)).toBeCloseTo(900, 6);
+    expect(paceSec(stepPace(at(900), true, true), true)).toBeCloseTo(895, 6);
+    expect(paceSec(stepPace(at(900), true, true, 3), true)).toBeCloseTo(885, 6);
+  });
+
   it('signs the belt offset', () => {
     expect(beltOffset(10, 10.56)).toBe('+5.6%');
     expect(beltOffset(10, 9.8)).toBe('−2.0%');

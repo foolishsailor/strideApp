@@ -209,18 +209,34 @@ export function paceText(kph: number | undefined, miles: boolean): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /${miles ? 'mi' : 'km'}`;
 }
 
-/** The pace step the calibration panel moves in, seconds. */
-export const PACE_STEP_SEC = 5;
+/**
+ * The pace step the calibration panel moves in, seconds, for a pace. Five
+ * seconds is the right grain at a running pace and useless at a stroll: from
+ * 48 minutes a mile it is 0.004 km/h, which the belt rounds away, and reaching
+ * 9:00 would take hundreds of presses. So the step grows with the pace.
+ */
+export function paceStepSec(sec: number): number {
+  if (sec <= 15 * 60) return 5;
+  if (sec <= 30 * 60) return 30;
+  return 60;
+}
 
-/** The next round pace from here, faster or slower, as km/h. A pace off the
- *  grid lands on it first, so 9:03 goes to 9:00 or 9:05, never 8:58. */
-export function stepPace(kph: number, miles: boolean, faster: boolean): number {
-  const p = Math.round(paceSec(kph, miles));
+/** The next round pace from here, faster or slower, as km/h, `count` steps
+ *  on. A pace off the grid lands on it first, so 9:03 goes to 9:00 or 9:05,
+ *  never 8:58. */
+export function stepPace(kph: number, miles: boolean, faster: boolean, count = 1): number {
+  let p = Math.round(paceSec(kph, miles));
   if (!p) return kph;
-  const onGrid = p % PACE_STEP_SEC === 0;
-  const base = onGrid ? p : (faster ? Math.ceil(p / PACE_STEP_SEC) : Math.floor(p / PACE_STEP_SEC)) * PACE_STEP_SEC;
-  const next = faster ? base - PACE_STEP_SEC : base + PACE_STEP_SEC;
-  return next > 0 ? (3600 * (miles ? KM_PER_MILE : 1)) / next : kph;
+  for (let i = 0; i < count; i++) {
+    // Faster takes the step of where it is going, so 15:30 → 15:00 → 14:55.
+    const step = paceStepSec(faster ? p - 1 : p);
+    const onGrid = p % step === 0;
+    const base = onGrid ? p : (faster ? Math.ceil(p / step) : Math.floor(p / step)) * step;
+    const next = faster ? base - step : base + step;
+    if (next <= 0) break;
+    p = next;
+  }
+  return (3600 * (miles ? KM_PER_MILE : 1)) / p;
 }
 
 /** How much more than the dial the board is sent, signed: "+5.6%" makes up a
