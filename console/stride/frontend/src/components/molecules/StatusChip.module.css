@@ -1,0 +1,21 @@
+.chip {
+  color: var(--colour-accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: var(--font-small);
+  border: 2px solid currentColor;
+  border-radius: var(--radius-sm);
+  padding: 5px 20px;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.running {
+  background: rgba(93, 255, 155, 0.12);
+  color: var(--colour-good);
+}
+.welcome {
+  color: var(--colour-ink-faint);
+}
+.paused {
+  color: var(--colour-accent-warm);
+}

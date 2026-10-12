@@ -1,0 +1,24 @@
+.card {
+  flex: none;
+  position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  outline: none;
+  background: rgba(22, 37, 90, 0.5);
+  border: 2px solid var(--colour-track-line);
+  color: var(--colour-ink);
+  font-family: inherit;
+  text-align: center;
+  transition: background var(--motion-quick), border-color var(--motion-quick), transform 0.08s;
+}
+.card:active,
+.card:global(.down) {
+  transform: scale(0.97);
+  background: rgba(57, 224, 255, 0.2);
+}
+.selected {
+  border-color: var(--colour-accent);
+  background: rgba(57, 224, 255, 0.14);
+}
+.lg { border-radius: var(--radius-lg); }
+.xl { border-radius: var(--radius-xl); }

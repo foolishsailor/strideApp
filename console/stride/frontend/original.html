@@ -1,0 +1,31 @@
+<!doctype html>
+<!--
+  STRIDE "Original" — GENERATED FILE.
+  Source: console/stride/frontend. Edit there and run `npm run build`;
+  changes made to the built copy in assets/ui are overwritten.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280,height=800,initial-scale=1">
+<title>STRIDE</title>
+</head>
+<body>
+<div id="root"></div>
+<!-- Shared by all five interfaces and loaded as siblings in assets/ui. Classic
+     scripts, so they have run before the module below. -->
+<script src="stride-core.js"></script>
+<script src="stride-settings.js"></script>
+<!-- The module below is deferred, but Kotlin starts calling in as soon as the
+     page loads. Hold the latest call to each entry point until the app takes
+     over (bridge/kotlin.ts replays them); a dropped plan() would leave a guided
+     walk drawing flat ground. -->
+<script>
+  window.__early = {};
+  ['render', 'plan', 'coach'].forEach(function (n) {
+    window[n] = function (v) { window.__early[n] = v; };
+  });
+</script>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

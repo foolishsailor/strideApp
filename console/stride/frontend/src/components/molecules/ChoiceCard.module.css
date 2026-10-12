@@ -1,0 +1,42 @@
+.card {
+  width: 288px;
+  height: 224px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.person {
+  width: 212px;
+  height: 210px;
+}
+
+.glyph {
+  font-size: 66px;
+  line-height: 1;
+}
+.initial {
+  width: 84px;
+  height: 84px;
+  border-radius: 42px;
+  border: 2px solid var(--colour-accent);
+  color: var(--colour-accent);
+  font-size: 38px;
+  font-weight: 200;
+  line-height: 82px;
+  text-align: center;
+}
+.name {
+  margin-top: 18px;
+  font-size: var(--font-title);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.person .name {
+  margin-top: 16px;
+}
+.hint {
+  margin-top: 8px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+}

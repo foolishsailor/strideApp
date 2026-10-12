@@ -1,0 +1,14 @@
+.scrim {
+  background: rgba(5, 11, 31, 0.98);
+  z-index: var(--layer-overlay);
+}
+.alert {
+  color: var(--colour-alert);
+}
+.message {
+  margin-top: 14px;
+  font-weight: 400;
+}
+.actions {
+  margin-top: 46px;
+}

@@ -1,0 +1,43 @@
+/* ---- tone ---------------------------------------------------------------- */
+.ink { color: var(--colour-ink); }
+.dim { color: var(--colour-ink-dim); }
+.faint { color: var(--colour-ink-faint); }
+.accent { color: var(--colour-accent); }
+.warm { color: var(--colour-accent-warm); }
+.alert { color: var(--colour-alert); }
+
+/* ---- label --------------------------------------------------------------- */
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.label.caption { font-size: var(--font-caption); }
+.label.label { font-size: var(--font-label); }
+.label.small { font-size: var(--font-small); letter-spacing: 0.22em; }
+.label.title { font-size: var(--font-title); letter-spacing: 0.22em; }
+
+/* ---- numeral ------------------------------------------------------------- */
+.numeral {
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.metric { font-size: var(--font-metric); font-weight: 300; line-height: normal; }
+.display { font-size: var(--font-display); font-weight: 200; }
+.hero { font-size: var(--font-hero); font-weight: 200; line-height: 0.9; }
+.glow { text-shadow: 0 0 44px rgba(57, 224, 255, 0.45); }
+.unit {
+  font-size: 17px;
+  color: var(--colour-ink-dim);
+  margin-left: 4px;
+}
+
+/* ---- heading and prose ---------------------------------------------------- */
+.heading { font-weight: 200; }
+.page { font-size: 62px; letter-spacing: 0.01em; }
+.section { font-size: 52px; letter-spacing: 0.02em; }
+
+.prose { font-weight: 300; }
+.prose.small { font-size: var(--font-small); }
+.prose.body { font-size: var(--font-body); }
+.prose.lead { font-size: var(--font-lead); }
+.prose.ask { font-size: 24px; }
