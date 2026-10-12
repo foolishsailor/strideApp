@@ -87,11 +87,11 @@ is which.
 **Tests** load the real `stride-core.js`, so the track maths, formatters and
 touch handling under test are the ones the console runs.
 
-## The walk screen
+## The run screen
 
 The active treadmill screen (`screens/workout`) docks everything to the
 edges. A full-width bar along the top holds incline at its left end, speed at
-its right and the walk's numbers between them in two rows: elapsed, distance,
+its right and the run's numbers between them in two rows: elapsed, distance,
 pace, heart rate, cadence and power large; calories, climb, stride and pod
 speed smaller, either side of the status. Cadence, power, stride and pod
 speed come from a foot pod (Footpod.kt; Settings → Devices) and show a dash

@@ -12,7 +12,7 @@ export interface DisplaySettings {
   units: Units;
   /** 24-hour clock, or 12 with am/pm. */
   clock24: boolean;
-  /** Idle minutes before the panel sleeps between walks. */
+  /** Idle minutes before the panel sleeps between runs. */
   sleepMin: number;
   warmupMin: number;
   cooldownMin: number;

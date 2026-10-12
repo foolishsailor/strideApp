@@ -78,7 +78,7 @@ fi
 echo ">>> built $(du -h "$APK" | cut -f1)"
 if [ "$VARIANT" = "debug" ]; then
   echo "    debug build: debuggable, DevTools on. Fine for the bench."
-  echo "    For the machine you actually walk on, set up signing and run: ./run.sh release"
+  echo "    For the machine you actually run on, set up signing and run: ./run.sh release"
 fi
 
 [ "${1:-}" = "build" ] && exit 0

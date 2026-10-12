@@ -74,7 +74,7 @@ in, so another FitPro machine has a fair chance.
 
 ## Known limits
 
-- FTMS incline and heart rate work but have not been walked through a full
+- FTMS incline and heart rate work but have not been run through a full
   session yet.
 - `Belt Short Of Pace` compares the setpoint against the odometer, and the
   odometer counts the drive roller. A belt slipping over that roller moves

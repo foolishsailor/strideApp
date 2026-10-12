@@ -6,7 +6,7 @@
 <title>STRIDE — faceted terrain spike</title>
 <style>
 /* ---------------------------------------------------------------------------
-   SPIKE — faceted low-poly terrain for the guided-walk path.
+   SPIKE — faceted low-poly terrain for the guided-run path.
 
    Question this exists to answer: does a flat-shaded triangle mesh read as
    landscape at arm's length while moving, in the interface blues, without
@@ -231,7 +231,7 @@ let camMode = 'fp';
 
    Without this the meander is unusable head-on: the path wanders +/-14 m, and
    14 m of lateral offset 10 m ahead is 980 px off the side of a 732 px canvas.
-   Someone walking a path looks *along* it, so the camera turns with the path's
+   Someone running a path looks *along* it, so the camera turns with the path's
    heading and the world swings past instead. The meander then reads as the
    ground rotating, which is both correct and far more legible than a line
    leaving the frame. */
@@ -244,7 +244,7 @@ function setYaw(w){
 }
 
 /* Project a world point: u metres ahead, latW absolute lateral metres, h metres
-   of height. bend0/rise0 are the walker's own lateral and vertical origin, so
+   of height. bend0/rise0 are the runner's own lateral and vertical origin, so
    everything is relative to where they are standing. */
 function projectPt(u, latW, h, bend0, rise0){
   if (camMode === 'obl'){
@@ -398,7 +398,7 @@ let HAZE    = [26, 44, 98];       /* distance lifts *up* out of the black
                                      work in a dark room */
 let SKY_TOP = [4, 9, 26], SKY_HZN = [22, 38, 86];
 
-/* Light from over the walker's left shoulder, shallow, so slopes facing the
+/* Light from over the runner's left shoulder, shallow, so slopes facing the
    path catch it and the far sides of ridges fall away. */
 const LX = -0.46, LY = 0.83, LZ = -0.30;
 

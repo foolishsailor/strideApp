@@ -7,14 +7,14 @@ import org.json.JSONException
 import java.io.File
 
 /**
- * Routes converted from real outdoor walks, cached on the console.
+ * Routes converted from real outdoor runs, cached on the console.
  *
  * These arrive over MQTT from Home Assistant, which got them from the phone.
  * They are **cached to disk on arrival**, and that is the whole reason this
  * class exists rather than a `@Volatile` field like the one holding the person
  * registry: the console can boot with no network at all. A route fetched at
  * workout time would not be there, and the failure would arrive at the worst
- * possible moment — standing on the belt, having chosen a walk.
+ * possible moment — standing on the belt, having chosen a run.
  *
  * MQTT retains the topic, so a console that boots *with* a network gets the
  * routes from the broker without Home Assistant needing to be up. The disk copy
@@ -111,11 +111,11 @@ class Routes(context: Context) {
 }
 
 /**
- * A route as the deck will walk it.
+ * A route as the deck will run it.
  *
  * Segments are in **metres travelled**, not seconds elapsed, and that is the
  * substantive difference from `Plan.Template`. Replaying a route on a clock
- * while walking slower indoors than out means hitting the hill late and never
+ * while running slower indoors than out means hitting the hill late and never
  * finishing the route; driving it by distance means the ground arrives where it
  * did outdoors however fast you take it.
  */
@@ -129,12 +129,12 @@ data class Route(
     data class Segment(val startM: Double, val endM: Double, val incline: Double)
 
     /**
-     * The same route walked out and then walked home.
+     * The same route run out and then run home.
      *
-     * A recorded walk is usually one way — the 30 minutes from the hospital to
-     * the front door is a fine walk and a poor workout, because it is over when
+     * A recorded run is usually one way — the 30 minutes from the hospital to
+     * the front door is a fine run and a poor workout, because it is over when
      * you have done it once. Turning round is what you would do outdoors, and
-     * it is a different walk from going round twice: the hill you climbed on
+     * it is a different run from going round twice: the hill you climbed on
      * the way out is the hill you come down on the way back, and the flat bit
      * you enjoyed at the start is the drag at the end.
      *
@@ -155,7 +155,7 @@ data class Route(
      *    that does not end where it started is not twice anything. It comes out
      *    as the sum of the absolute rise of every segment.
      *
-     * Per walk, never stored: the loop button on the picker chooses it for this
+     * Per run, never stored: the loop button on the picker chooses it for this
      * session and the cached route is untouched.
      */
     fun outAndBack(): Route {
@@ -172,7 +172,7 @@ data class Route(
                     segments = segments + back)
     }
 
-    /** The incline at a given distance into the walk. */
+    /** The incline at a given distance into the run. */
     fun inclineAt(metres: Double): Double {
         if (segments.isEmpty()) return 0.0
         for (s in segments) if (metres < s.endM) return s.incline

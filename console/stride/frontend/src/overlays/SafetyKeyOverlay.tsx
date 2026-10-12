@@ -6,7 +6,7 @@ import { Button, Overlay } from '../components/primitives';
  *  appears; the overlay exists to explain why nothing is responding.
  *
  *  The board only pulses its key-out mode on removal, so the key coming back
- *  cannot be sensed — the walker says so. If it is still out, the next poll
+ *  cannot be sensed — the runner says so. If it is still out, the next poll
  *  raises this again. */
 export function SafetyKeyOverlay() {
   const dmk = useField('dmk');

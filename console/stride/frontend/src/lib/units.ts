@@ -20,9 +20,9 @@ export const speedUnit = (u: Units): string => (u === 'mi' ? 'mph' : 'km/h');
 /** One decimal place, the way the dial shows it. */
 export const speedText = (kph: number | undefined, u: Units): string => speedIn(kph ?? 0, u).toFixed(1);
 
-/** The distance walked so far, as the strip and summary show it: whole metres,
+/** The distance run so far, as the strip and summary show it: whole metres,
  *  or miles to two places. */
-export function walked(m: number, u: Units): { value: string; unit: string } {
+export function distanceRun(m: number, u: Units): { value: string; unit: string } {
   return u === 'mi' ? { value: (m / 1000 / KM_PER_MI).toFixed(2), unit: 'mi' } : { value: nf(m), unit: 'm' };
 }
 

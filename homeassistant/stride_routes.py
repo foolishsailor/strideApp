@@ -21,7 +21,7 @@ A route reaches the treadmill by a path with three hops and one surprise:
 The surprise is the retain flag. `stride/routes` is a *retained* topic, so the
 broker keeps the last payload forever and hands it to the console the moment it
 connects — which is the whole reason the console can boot with no network and
-still offer you a walk. It also means the routes outlive Home Assistant
+still offer you a run. It also means the routes outlive Home Assistant
 restarts, broker restarts and reflashes of the console, and that nothing on the
 phone can tell you what is actually up there.
 
@@ -105,7 +105,7 @@ def adb_target(serial: str = "") -> str:
 def console(serial: str = "") -> list:
     """What the treadmill has on disk, read over ADB.
 
-    The console's copy is the one that decides what you can actually walk, and
+    The console's copy is the one that decides what you can actually run, and
     it is not derivable from the broker: it updates only when a payload
     arrives, so a console that was asleep or offline keeps an older list
     indefinitely and nothing upstream can tell.
@@ -179,7 +179,7 @@ def main():
         if ids == theirs:
             print("\nbroker and console agree.")
         else:
-            print("\nthey DISAGREE — the console is what you can actually walk:")
+            print("\nthey DISAGREE — the console is what you can actually run:")
             for i in set(ids) | set(theirs):
                 if ids.get(i) != theirs.get(i):
                     print(f"   {i[:8]}  broker={ids.get(i, '—')!r}  "

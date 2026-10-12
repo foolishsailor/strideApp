@@ -1,5 +1,5 @@
 /* A drawer is the whole panel, so its children keep the positions they have
-   on the walk screen; it only ever moves. Clicks go to the children, never to
+   on the run screen; it only ever moves. Clicks go to the children, never to
    the empty panel. */
 .drawer {
   position: absolute;

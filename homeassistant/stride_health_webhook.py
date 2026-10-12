@@ -114,7 +114,7 @@ SENSORS = [
     ("physical_effort", "Physical Effort", "MET", "mdi:gauge", "measurement"),
 
     # --- the most recent workout, flattened. The full array lands on its own
-    # topic; these exist so a dashboard can show "your last walk" without
+    # topic; these exist so a dashboard can show "your last run" without
     # parsing JSON in a Jinja template. No state_class on the text ones — a
     # string with `measurement` makes the recorder complain every hour. ---
     ("last_workout_type", "Last Workout", None, "mdi:run", None),
@@ -132,7 +132,7 @@ SENSORS = [
 # and a different lifetime from a daily aggregate — see iOS.md.
 WORKOUT_TOPIC = "stride/health/workouts"
 
-# Saved routes, converted on the phone from an outdoor walk's GPS track. The
+# Saved routes, converted on the phone from an outdoor run's GPS track. The
 # track itself never arrives here — only the gradient profile, which is the
 # privacy decision recorded in the iOS notes. The console subscribes to this
 # topic and caches what it finds to disk, because it can boot with no network.
@@ -226,7 +226,7 @@ def automation() -> dict:
             {
                 # The workout array to its own topic, and only when one is
                 # present — republishing an empty list would retain over the
-                # last real set of walks.
+                # last real set of runs.
                 "if": [{"condition": "template",
                         "value_template": "{{ trigger.json.workouts is defined }}"}],
                 "then": [{

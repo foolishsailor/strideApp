@@ -52,7 +52,7 @@ export const trailmate: Theme = {
     backdropMid: alpha(surface, 0.3),
     shadowRaised: `0 8px 18px ${alpha(deep, 0.5)}`,
     shadowFloating: `0 16px 32px ${alpha(deep, 0.62)}, 0 4px 10px ${alpha(deep, 0.4)}`,
-    /* Over a film: a translucent black panel under the drawers, so the walk
+    /* Over a film: a translucent black panel under the drawers, so the run
        reads against any scene and the film still shows through. */
     fillOverApp: alpha('#000000', 0.55),
     /* Over a film every word is white: tone colours that read on the teal

@@ -64,7 +64,7 @@ class MqttPublisher(
 
 
     /**
-     * Routes converted from real outdoor walks, published by the iOS app via
+     * Routes converted from real outdoor runs, published by the iOS app via
      * `homeassistant/stride_health_webhook.py`. Retained, so a console that
      * boots with a network gets them from the broker whether or not Home
      * Assistant is up — and cached to disk by [Routes] for when it boots with
@@ -113,7 +113,7 @@ class MqttPublisher(
             // number every poll and then dropping it on the floor.
             Sensor("beltKph", "Belt Speed", "km/h", "speed", null),
             // Raw board RPM. May be a flat zero — see Snapshot.rpm. Recorded so
-            // that one walk answers the question either way.
+            // that one run answers the question either way.
             Sensor("rpm", "Belt RPM", null, null, "mdi:rotate-right"),
             Sensor("incline", "Incline", "%", null, "mdi:angle-acute"),
             Sensor("distance", "Distance", "m", "distance", null),
@@ -304,7 +304,7 @@ class MqttPublisher(
         // The belt failing to hold its pace. Rides the ordinary state topic
         // rather than a topic of its own — unlike a runaway there is nothing to
         // survive the app dying, because a belt that is short of pace is only
-        // short of pace while somebody is walking on it. A binary_sensor rather
+        // short of pace while somebody is running on it. A binary_sensor rather
         // than a number so the recorder keeps the episode's start and end
         // rather than a line that has to be thresholded back into one.
         val slip = ArrayList<String>()
@@ -366,14 +366,14 @@ class MqttPublisher(
      * The live telemetry topic stays what it is — there is one treadmill and it
      * has one speed — but a *workout* belongs to whoever was standing on it. So
      * each person gets their own HA device, and only the person currently
-     * walking has their state published; everyone else keeps their last value.
+     * running has their state published; everyone else keeps their last value.
      *
      * Distance, time and calories are `total_increasing`: they climb through a
      * session and drop to zero at the start of the next, which is exactly the
      * shape HA needs to sum them into daily, weekly and monthly totals per
      * person.
      *
-     * Discovery is published the first time someone actually walks rather than
+     * Discovery is published the first time someone actually runs rather than
      * for a fixed list, so the console never invents entities for people who
      * have never used it.
      */
@@ -390,7 +390,7 @@ class MqttPublisher(
             append("\"calories\":${"%.0f".format(s.calories)},")
             append("\"workout\":\"${s.workout}\",")
             append("\"plan\":\"${if (s.plan.isEmpty()) "casual" else s.plan}\",")
-            // Carried in the payload so Home Assistant can join a walk to its
+            // Carried in the payload so Home Assistant can join a run to its
             // person without anyone having to match on a slugged name. Empty
             // for somebody who exists only on the console.
             append("\"ha_person\":\"${person.haPerson}\"")

@@ -1,6 +1,6 @@
 # Test harness: a treadmill in software
 
-Watch STRIDE's metrics, hill drawing, guided walks, FTMS and Home Assistant
+Watch STRIDE's metrics, hill drawing, guided runs, FTMS and Home Assistant
 output without standing on anything, and without a belt that can move.
 
 **Debug builds only.** A release build has no simulator and ignores every
@@ -13,7 +13,7 @@ simulator on, STRIDE talks to it instead of the USB board. The USB board is
 **never opened**, so the real belt and deck cannot move whatever the harness
 does. It speaks real [FitPro 2](../protocol/FITPRO2_PROTOCOL.md) frames, so
 everything above the USB pipe runs as it would on the treadmill: the FitPro 2
-translation, the safety logic, the watchdog, metrics, the hill, guided walks,
+translation, the safety logic, the watchdog, metrics, the hill, guided runs,
 FTMS and MQTT.
 
 It behaves the way the X22i was measured to:
@@ -26,7 +26,7 @@ It behaves the way the X22i was measured to:
   while the state still says RUNNING.
 
 Rates (belt about 1.5 km/h/s up and 2 km/h/s down, deck 0.6 %/s), physical
-button steps and calories (ACSM walking equation, 75 kg) are reasonable
+button steps and calories (ACSM running equation, 75 kg) are reasonable
 guesses, not measurements.
 
 ## Where to run it
@@ -48,7 +48,7 @@ attached.
 |---|---|
 | `on` / `off` | Switch the simulator on or off, and restart STRIDE |
 | `status` / `watch` | The session and the board, once / every 2 s |
-| `start` | A free walk, warm-up first (as the welcome button does) |
+| `start` | A free run, warm-up first (as the welcome button does) |
 | `guided <steady\|rolling\|pyramid\|climb> [minutes]` | One of the four guided shapes, default 10 min |
 | `speed ±n` / `setspeed n` | The on-screen speed buttons / take a pace or pick a speed stop |
 | `incline ±n` / `setincline n` | The on-screen incline buttons / a stop picked from the incline rail |

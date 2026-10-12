@@ -8,7 +8,7 @@ import styles from './SleepOverlay.module.css';
  *  waking tap cannot also press whatever is now under the finger. */
 const WAKE_SUPPRESS_MS = 500;
 
-/** The dark panel. Only ever up between walks (see useIdleSleep). */
+/** The dark panel. Only ever up between runs (see useIdleSleep). */
 export function SleepOverlay() {
   const asleep = useUi((s) => s.asleep);
   const now = useNow();

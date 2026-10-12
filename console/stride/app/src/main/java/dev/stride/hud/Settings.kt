@@ -39,10 +39,32 @@ class Settings(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
 
+    init { migrate() }
+
+    /**
+     * Carry an older console's preferences forward. The default person used
+     * to be saved as `default_walker`, and the removed coach left five keys
+     * behind; the first is moved, the rest are dropped. Once done, nothing
+     * here finds anything to do.
+     */
+    private fun migrate() {
+        val e = prefs.edit()
+        var dirty = false
+        if (!prefs.contains(DEFAULT_RUNNER) && prefs.contains("default_walker")) {
+            e.putString(DEFAULT_RUNNER, prefs.getString("default_walker", ASK))
+            dirty = true
+        }
+        for (old in listOf("default_walker", "coach_on", "coach_talk", "coach_voice",
+                           "coach_remote", "coach_milestones")) {
+            if (prefs.contains(old)) { e.remove(old); dirty = true }
+        }
+        if (dirty) e.apply()
+    }
+
     companion object {
         // --- people ---
         const val PEOPLE = "people"
-        const val DEFAULT_WALKER = "default_walker"
+        const val DEFAULT_RUNNER = "default_runner"
         const val ALLOW_GUEST = "allow_guest"
 
         /** Sentinel for "do not assume, ask on the welcome screen". */
@@ -94,7 +116,7 @@ class Settings(context: Context) {
         const val KEEP_AWAKE = "keep_awake"
 
         /**
-         * How fast a guided walk may move the deck, as three named presets
+         * How fast a guided run may move the deck, as three named presets
          * rather than two millisecond fields.
          *
          * `INCLINE_STEP` and `INCLINE_EVERY_MS` are a safety-shaped pair: they
@@ -162,7 +184,7 @@ class Settings(context: Context) {
      * a rename silently orphaned every reading taken under the old spelling.
      * "Kez" becoming "Sam" started a second person's history and left the
      * first one frozen in Home Assistant looking like somebody who had stopped
-     * walking.
+     * running.
      *
      * The name is now a label. The id is the thing, and it is deliberately
      * still the slug *at creation*, so existing devices — `stride_person_sam`
@@ -171,7 +193,7 @@ class Settings(context: Context) {
      */
     private fun freshId(name: String, taken: Set<String>): String {
         val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
-            .ifBlank { "walker" }
+            .ifBlank { "runner" }
         if (base !in taken) return base
         var n = 2
         while ("${base}_$n" in taken) n++
@@ -203,7 +225,7 @@ class Settings(context: Context) {
      *
      * A console that ships with four strangers' names on the welcome screen is
      * worse than one that asks. When the list is empty the UI offers a single
-     * guest walk and a way to add somebody.
+     * guest run and a way to add somebody.
      */
     fun people(): List<Person> {
         val raw = prefs.getString(PEOPLE, null) ?: return emptyList()
@@ -236,9 +258,9 @@ class Settings(context: Context) {
             PEOPLE, JSONArray().apply { list.forEach { put(it.json()) } }.toString()
         ).apply()
         // A default that no longer names anybody would silently start every
-        // walk as a guest. Drop it and let the welcome screen ask instead.
-        if (list.none { it.name == defaultWalker() }) {
-            prefs.edit().putString(DEFAULT_WALKER, ASK).apply()
+        // run as a guest. Drop it and let the welcome screen ask instead.
+        if (list.none { it.name == defaultRunner() }) {
+            prefs.edit().putString(DEFAULT_RUNNER, ASK).apply()
         }
     }
 
@@ -253,7 +275,7 @@ class Settings(context: Context) {
      */
     fun publishFor(name: String): Boolean = person(name)?.publish ?: false
 
-    fun defaultWalker(): String = prefs.getString(DEFAULT_WALKER, ASK) ?: ASK
+    fun defaultRunner(): String = prefs.getString(DEFAULT_RUNNER, ASK) ?: ASK
     fun allowGuest(): Boolean = prefs.getBoolean(ALLOW_GUEST, true)
 
     // --- units ----------------------------------------------------------------
@@ -427,7 +449,7 @@ class Settings(context: Context) {
      */
     fun json(): JSONObject = JSONObject()
         .put("people", JSONArray().apply { people().forEach { put(it.json()) } })
-        .put(DEFAULT_WALKER, defaultWalker())
+        .put(DEFAULT_RUNNER, defaultRunner())
         .put(ALLOW_GUEST, allowGuest())
         .put(UNITS, units())
         .put(HA_ENABLED, prefs.getBoolean(HA_ENABLED, false))

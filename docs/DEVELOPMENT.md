@@ -23,7 +23,7 @@ For the rules on code that moves the belt, read
 | | Needs | Good for | Belt can move |
 |---|---|---|---|
 | **1. Browser preview** | A browser | Designing screens: HTML, CSS, layout | No |
-| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, guided walks, FTMS, MQTT, safety logic | No |
+| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, guided runs, FTMS, MQTT, safety logic | No |
 | **3. Real console** | A console you can reach with `adb` | The truth: real board, real belt | **Yes** |
 
 Work in 1 and 2. Go to 3 to confirm, belt empty first.
@@ -241,7 +241,7 @@ prompt vanishes.
 | Signed with | the debug key | your key, from `local.properties` |
 | `debuggable` | yes: settings readable, WebView DevTools on | no |
 | Simulator, stall hook | **included** | **absent** |
-| For | the bench | the machine you walk on |
+| For | the bench | the machine you run on |
 
 The four signing properties and the `keytool` line are at the top of
 `console/stride/app/build.gradle.kts`. A debug build and a release build are
@@ -253,7 +253,7 @@ losing settings.
 ## Before anyone steps on it
 
 Anything that changes how the board is driven gets this on the real machine,
-**belt empty, a hand on the safety key**, before it is walked on:
+**belt empty, a hand on the safety key**, before it is run on:
 
 1. Connects; shows live speed, incline and limits.
 2. Incline up and down.
@@ -267,7 +267,7 @@ Anything that changes how the board is driven gets this on the real machine,
 9. Power-cycle at the wall: STRIDE comes back by itself.
 
 Say in the pull request which of these you ran and on what. "Built and
-installed, belt idle" is worth knowing; so is "not walked on yet".
+installed, belt idle" is worth knowing; so is "not run on yet".
 
 ---
 

@@ -16,7 +16,7 @@ package dev.stride.hud
  */
 object Session {
     const val WELCOME = 0    // "what are we doing today?"
-    const val WARMUP = 1     // easing in at walking pace, skippable
+    const val WARMUP = 1     // easing in at running pace, skippable
     const val ACTIVE = 2     // the workout proper
     const val PAUSED = 3     // belt stopped, timer held
     const val COOLDOWN = 4   // easing back down, skippable
@@ -41,7 +41,7 @@ data class Snapshot(
      * `ActualKph` never populates on this board (see MainActivity.beltSpeed), so
      * the only alternative is an estimate built from a whole-metre odometer, and
      * showing that estimate is what made the readout wander. On 17 August 2026 a
-     * steady walk rendered nineteen different speeds in thirty-six seconds while
+     * steady run rendered nineteen different speeds in thirty-six seconds while
      * the deck was tilting — 7.9, 7.7, 7.6, 7.5, 7.4, 7.5, 7.6, 7.7, 7.6 … — and
      * pressing − at 7.6 landed on 7.4 because the drift was larger than the step.
      *
@@ -60,7 +60,7 @@ data class Snapshot(
      * dial no longer shows it.
      *
      * Published to Home Assistant since 8 September 2026, so the recorder keeps
-     * a trace of it. Reconstructing that walk's belt speed afterwards meant
+     * a trace of it. Reconstructing that run's belt speed afterwards meant
      * differencing the whole-metre distance sensor, because this — the number
      * the console had already worked out — was going nowhere.
      */
@@ -75,7 +75,7 @@ data class Snapshot(
      * neither can see it. See [slipping] for why that matters.
      *
      * May well read a flat zero, as `ACTUAL_KPH` does on this board. It is
-     * recorded rather than trusted, and nothing is built on it until a walk has
+     * recorded rather than trusted, and nothing is built on it until a run has
      * shown what it does.
      */
     val rpm: Double = 0.0,
@@ -92,7 +92,7 @@ data class Snapshot(
     val power: Int = 0,
     val strideM: Double = 0.0,
     val podKph: Double = 0.0,
-    /** Metres climbed so far this walk: rise over the ground covered. */
+    /** Metres climbed so far this run: rise over the ground covered. */
     val climbM: Double = 0.0,
     val fan: Int,
     val session: Int,
@@ -108,15 +108,15 @@ data class Snapshot(
     val maxSpeed: Double,
     val avgIncline: Double,
     val maxIncline: Double,
-    /** Averaged over the frames that had a reading, not over the walk — a
+    /** Averaged over the frames that had a reading, not over the run — a
      *  strap that connected late or dropped out must not drag the number
      *  towards zero. Both are 0 when nothing ever read. */
     val avgPulse: Int = 0,
     val maxPulse: Int = 0,
     /**
-     * The *walker's* maximum heart rate, or 0 when they have not given an age.
+     * The *runner's* maximum heart rate, or 0 when they have not given an age.
      *
-     * Not [maxPulse], which is the highest beat seen during this walk. This one
+     * Not [maxPulse], which is the highest beat seen during this run. This one
      * is a property of the person and the reason zones exist at all — see
      * Settings.Person.age. Zero is the ordinary case.
      */
@@ -131,23 +131,23 @@ data class Snapshot(
      */
     val zoneSecs: List<Int> = emptyList(),
     /**
-     * What this walk did that previous walks did not — see History.
+     * What this run did that previous runs did not — see History.
      *
-     * Computed once, when the belt stops, against this walker's own recorded
-     * sessions. Empty on the way round; empty too for a first walk, which has
+     * Computed once, when the belt stops, against this runner's own recorded
+     * sessions. Empty on the way round; empty too for a first run, which has
      * nothing to beat and should not be told it set five records.
      */
     val achievements: List<String> = emptyList(),
     /** Who tapped their name on the welcome screen. */
     val who: String = "",
     /**
-     * The walker's stable profile id, or empty for a guest.
+     * The runner's stable profile id, or empty for a guest.
      *
      * Sent to Home Assistant alongside [who] so it can tell whose session this
      * is without matching on a display name. See Settings.Person.id.
      */
     val whoId: String = "",
-    /** Guided walk, or empty on a casual one. */
+    /** Guided run, or empty on a casual one. */
     val plan: String = "",
     val segment: Int = 0,
     val segments: Int = 0,
@@ -163,21 +163,21 @@ data class Snapshot(
     /** Total plan length in seconds — one lap on a circuit. */
     val planTotalSec: Double = 0.0,
     /** Total ascent of the plan in metres, when it is known — a route carries
-     *  its own, measured from the walk it came from. Zero for templates, whose
+     *  its own, measured from the run it came from. Zero for templates, whose
      *  climb depends on how fast you take them. */
     val planClimbM: Double = 0.0,
     /** The steepest gradient anywhere in the plan. */
     val planPeakIncline: Double = 0.0,
     /**
-     * Where this walk has got to on its way to TrailMate, for the summary:
+     * Where this run has got to on its way to TrailMate, for the summary:
      * "sending", "sent", "waiting" (no network, will retry), "failed",
-     * "reconnect", or empty when it is not going — a guest, a short walk, or
+     * "reconnect", or empty when it is not going — a guest, a short run, or
      * somebody who has not connected TrailMate. See TrailMate.summaryState.
      */
     val trailmate: String = "",
     /** Plan time wrapped into the current lap. Equals elapsed unless looping. */
     val planElapsed: Double = 0.0,
-    /** Which lap of an open-ended circuit; 1 for an ordinary walk. */
+    /** Which lap of an open-ended circuit; 1 for an ordinary run. */
     val planLap: Int = 1,
     /** True when the route is a circuit with no end but STOP. */
     val planLoops: Boolean = false,
@@ -212,7 +212,7 @@ data class Snapshot(
      * and [beltKph] comes off the odometer, which counts the *drive roller*.
      * Both numbers therefore sit on the same side of a belt that is slipping
      * over that roller: the motor holds its speed, the odometer reports it
-     * faithfully, and the belt surface under the walker sags and then catches
+     * faithfully, and the belt surface under the runner sags and then catches
      * up without either number moving. On 8 September 2026 exactly that was
      * felt at the top of the last climb, and a second-by-second reconstruction
      * of the whole descent showed the roller never left 10.0 km/h. This flag
@@ -221,7 +221,7 @@ data class Snapshot(
      * So it is a motor-cannot-reach-pace detector, not a slip detector, and the
      * name is a promise it only half keeps. [rpm] is the candidate for the
      * other half. Until that proves out, the honest record of a slip is the
-     * walker saying so.
+     * runner saying so.
      */
     val slipping: Boolean
         get() = Session.isMoving(session) && speed > 0.5 && beltKph > 0.0 &&
@@ -234,7 +234,7 @@ data class Snapshot(
      * by hand.
      * Any of them may contain a quote or a backslash, and one of those dropped
      * raw into this object produces JSON the HUD cannot parse — a blank screen
-     * for the rest of the walk, from one apostrophe.
+     * for the rest of the run, from one apostrophe.
      */
     private fun esc(s: String): String = buildString(s.length) {
         for (c in s) when {

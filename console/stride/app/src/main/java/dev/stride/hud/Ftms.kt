@@ -42,7 +42,7 @@ import java.util.UUID
  *
  * **Telemetry only, on purpose.** FTMS also defines a Control Point that lets
  * the app on the other end set speed and incline. It is deliberately not here.
- * The rule the whole guided walk is built on is that nothing sets the belt
+ * The rule the whole guided run is built on is that nothing sets the belt
  * speed except the person standing on the belt (see MainActivity's setSpeed),
  * and handing that to software on another device, in another room, is a
  * different decision that nobody has asked for yet. Reading is safe. Driving

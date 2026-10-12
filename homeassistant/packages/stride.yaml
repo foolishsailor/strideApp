@@ -12,7 +12,7 @@
 # Assistant on its own. This is for the things that need accumulated history:
 # the reminders knowing when you last weighed in.
 #
-# The console's distance counter resets at the start of every walk, which is
+# The console's distance counter resets at the start of every run, which is
 # right for a session and no use for "how far this week", so the accumulating
 # happens here.
 
@@ -37,12 +37,12 @@ utility_meter:
     source: sensor.treadmill_calories
     cycle: weekly
 
-# --- how many walks this week, and how long ---------------------------------
+# --- how many runs this week, and how long ---------------------------------
 #
 # Derived from history rather than counted by automations - nothing to
 # increment, nothing to reset on a Monday, nothing to drift across a restart.
 #
-# A walk counts when the console reaches its summary screen.
+# A run counts when the console reaches its summary screen.
 sensor:
   - platform: history_stats
     name: Treadmill workouts this week

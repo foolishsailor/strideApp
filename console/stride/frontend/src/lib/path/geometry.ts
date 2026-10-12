@@ -2,7 +2,7 @@ import type { PlanStep } from '../../bridge/types';
 
 /* The path ahead, as geometry. No canvas in this file, so it can be tested.
 
-   A ribbon receding obliquely from the walker (bottom-left) up and to the
+   A ribbon receding obliquely from the runner (bottom-left) up and to the
    right. For a point u metres ahead, a perspective factor p = K / (K + u)
    shrinks it towards the vanishing end. Lateral wander and the rise or fall
    of the ground are that one factor applied to a world-space offset, which is
@@ -15,13 +15,13 @@ import type { PlanStep } from '../../bridge/types';
 export const PW = 732;
 export const PH = 404;
 
-/** Where the walker stands. */
+/** Where the runner stands. */
 export const X0 = PW * 0.12;
 export const Y0 = PH * 0.82;
 /** Screen length of the whole view. Pulled in from the corner so the far end
  *  has room for ridges on both sides of it. */
 export const SPAN = 520;
-/** Shallow on purpose. At 32° a flat walk looked like a hill; nearly level, so
+/** Shallow on purpose. At 32° a flat run looked like a hill; nearly level, so
  *  height on screen means height on the ground. */
 const THETA = (19 * Math.PI) / 180;
 export const CT = Math.cos(THETA);
@@ -44,7 +44,7 @@ export const SAMPLES_U: readonly number[] = (() => {
 })();
 
 /** Rise in metres at plan-time t (seconds). Flat with no plan, which is right
- *  for a casual walk. */
+ *  for a casual run. */
 export type Elevation = (t: number) => number;
 
 export function elevationFor(steps: readonly PlanStep[]): Elevation {
@@ -71,7 +71,7 @@ export function elevationFor(steps: readonly PlanStep[]): Elevation {
 export const bendAt = (w: number): number => Math.sin(w / 34) * 9 + Math.sin(w / 79) * 5;
 
 export interface View {
-  world: number; // metres walked
+  world: number; // metres run
   t0: number; // plan-time now, seconds
   paceMs: number; // metres per second, floored
   bend0: number;

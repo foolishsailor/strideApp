@@ -5,7 +5,7 @@ import { alpha, colour } from '../../theme/tokens';
 const MAX = 12;
 const MIN = -3;
 
-/** An incline profile drawn small: the shape of a walk on its card. */
+/** An incline profile drawn small: the shape of a run on its card. */
 export function Sparkline({ points, width = 210, height = 56, className }: {
   points: readonly number[];
   width?: number;

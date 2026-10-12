@@ -42,7 +42,7 @@ function ridge(c: Ctx, offset: number, r: Ridge, gapX: number, gapW: number) {
     const px = i * r.spacing - offset;
     if (px < -r.spacing || px > PW + r.spacing) continue;
     /* Flatten the range where the path runs off into the distance, so it has a
-       valley to emerge from rather than a peak to walk through. */
+       valley to emerge from rather than a peak to run through. */
     const near = Math.min(1, Math.abs(px - gapX) / gapW);
     const gap = 0.08 + 0.92 * near * near;
     const h = r.height * (0.55 + hash(i) * 0.65) * gap;
@@ -120,7 +120,7 @@ function polyline(c: Ctx, pts: readonly { x: number; y: number }[]) {
 
 /* ---- the ground -----------------------------------------------------------
    The solid between the path and the level plane below it: climb and the earth
-   thickens under you, descend and the path cuts into it, walk on the flat and
+   thickens under you, descend and the path cuts into it, run on the flat and
    it settles to an even lip, so the line never floats.
 
    Deliberately *not* a full ground plane. This is an oblique projection with no
@@ -208,8 +208,8 @@ function segmentMarks(c: Ctx, v: View, steps: readonly PlanStep[]) {
   }
 }
 
-/** The walker. Fixed — the world moves past, not the dot. */
-function walker(c: Ctx, me: ProjectedPoint) {
+/** The runner. Fixed — the world moves past, not the dot. */
+function runner(c: Ctx, me: ProjectedPoint) {
   // Contact shadow first: a bright disc with nothing beneath it hovers.
   c.save();
   c.translate(me.x, me.y + 7);
@@ -253,5 +253,5 @@ export function drawPath(c: Ctx, v: View, steps: readonly PlanStep[]): void {
   ribbon(c, pts);
   centreLine(c, pts);
   segmentMarks(c, v, steps);
-  walker(c, pts[0]!);
+  runner(c, pts[0]!);
 }

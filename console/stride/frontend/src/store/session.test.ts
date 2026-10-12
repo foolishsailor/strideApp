@@ -24,7 +24,7 @@ describe('Kotlin entry points', () => {
 });
 
 describe('changing screen', () => {
-  it('tidies up what belonged to the walk', () => {
+  it('tidies up what belonged to the run', () => {
     installKotlinEntryPoints();
     const stop = installModeWatcher();
     window.render({ mode: 'running' });

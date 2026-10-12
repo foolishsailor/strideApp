@@ -87,7 +87,7 @@ LAST_WEIGH = "input_datetime.stride_last_weigh_in"
 LAST_BP = "input_datetime.stride_last_bp"
 
 # Optional. Blank means the dashboard simply does not draw a target line.
-# Console walkers to show tiles for. Empty is fine: the entities exist
+# Console runners to show tiles for. Empty is fine: the entities exist
 # either way and can be found under the STRIDE devices.
 PEOPLE = [p for p in conf("console_people", "").split(",") if p]
 
@@ -341,7 +341,7 @@ RINGS_CARD = markdown(
 
 # The last workout the *watch* recorded — which is not the last treadmill
 # session, and is deliberately not merged with it. Two different machines
-# measuring two different walks.
+# measuring two different runs.
 LAST_WORKOUT_CARD = markdown(
     "{% set t = states('sensor.apple_health_last_workout') %}"
     "{% if t in ['unknown','unavailable'] %}Nothing recorded yet.{% else %}"
@@ -385,7 +385,7 @@ TODAY = {
             BP_CARD,
         ]),
         grid([
-            heading("Movement today", "mdi:walk"),
+            heading("Movement today", "mdi:run"),
             tile(STEPS_TODAY, "Steps", "mdi:shoe-print", "green"),
             tile(DIST_TODAY, "Distance", "mdi:map-marker-distance", "blue"),
             tile(ACTIVE_TODAY, "Active time", "mdi:timer-outline", "purple"),
@@ -395,7 +395,7 @@ TODAY = {
             heading("On the treadmill", "mdi:run-fast", "subtitle"),
             tile("sensor.treadmill_distance_daily", "Today"),
             tile("sensor.treadmill_distance_weekly", "This week"),
-            tile("sensor.treadmill_workouts_this_week", "Walks this week"),
+            tile("sensor.treadmill_workouts_this_week", "Runs this week"),
             markdown("[Live console →](/stride-console/workout)"),
         ]),
         grid([
@@ -518,7 +518,7 @@ HEART = {
 MOVEMENT = {
     "title": "Movement",
     "path": "movement",
-    "icon": "mdi:walk",
+    "icon": "mdi:run",
     "type": "sections",
     "max_columns": 2,
     "sections": [
@@ -534,7 +534,7 @@ MOVEMENT = {
             stats([S_STEPS], 90, "day", ["sum"], chart="bar", title="Last 90 days"),
         ], span=2),
         grid([
-            heading("Distance walked", "mdi:map-marker-distance"),
+            heading("Distance run", "mdi:map-marker-distance"),
             stats([S_DIST], 1825, "month", ["sum"], chart="bar"),
         ]),
         grid([
@@ -547,9 +547,9 @@ MOVEMENT = {
                 "Started this month, so there is not much of it yet. It is the "
                 "only series here that will be complete from the first day."
             ),
-            tile("sensor.treadmill_workouts_this_week", "Walks this week",
+            tile("sensor.treadmill_workouts_this_week", "Runs this week",
                  "mdi:counter", "green"),
-            tile("sensor.treadmill_time_walked_this_week", "Time walked",
+            tile("sensor.treadmill_time_walked_this_week", "Time run",
                  "mdi:clock-outline", "blue"),
             tile("sensor.treadmill_distance_weekly", "Distance this week",
                  "mdi:map-marker-distance", "purple"),
@@ -559,13 +559,13 @@ MOVEMENT = {
         ]),
         grid([
             heading("Who has been on it", "mdi:account-group", "subtitle"),
-            # Per-person treadmill entities appear as people actually walk —
+            # Per-person treadmill entities appear as people actually run —
             # the console publishes discovery for somebody the first time they
             # use it, so there is no fixed list to hardcode here.
             *[tile(f"sensor.stride_{p}_treadmill_distance", f"{p.title()} · distance")
               for p in PEOPLE],
             tile("sensor.stride_alex_alex_treadmill_distance", "Alex · distance"),
-            tile("sensor.stride_alex_alex_last_walk", "Alex · last walk"),
+            tile("sensor.stride_alex_alex_last_walk", "Alex · last run"),
         ]),
         grid([
             heading("Energy", "mdi:fire"),

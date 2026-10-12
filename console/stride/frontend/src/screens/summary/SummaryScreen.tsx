@@ -1,6 +1,6 @@
 import { bridge } from '../../bridge/stride';
 import { fixed1, mmss, nf } from '../../lib/format';
-import { speedText, speedUnit, walked } from '../../lib/units';
+import { speedText, speedUnit, distanceRun } from '../../lib/units';
 import { useUnits } from '../../store/settings';
 import { useSession } from '../../store/session';
 import { useWelcome } from '../../store/welcome';
@@ -8,28 +8,28 @@ import { Button, Fill, Heading, Label, Row } from '../../components/primitives';
 import { StatCard } from '../../components/molecules';
 import styles from './SummaryScreen.module.css';
 
-/* Where the walk has got to on its way to TrailMate. Nothing at all for a
-   guest, a walk too short to send, or somebody who has not connected. */
+/* Where the run has got to on its way to TrailMate. Nothing at all for a
+   guest, a run too short to send, or somebody who has not connected. */
 const TRAILMATE: Record<string, string> = {
   sending: 'Sending to TrailMate…',
   sent: 'Sent to TrailMate',
   waiting: 'Will send to TrailMate when online',
-  failed: 'TrailMate could not take this walk — see Settings',
-  reconnect: 'Reconnect TrailMate in Settings to send this walk',
+  failed: 'TrailMate could not take this run — see Settings',
+  reconnect: 'Reconnect TrailMate in Settings to send this run',
 };
 
 export function SummaryScreen() {
   const s = useSession((st) => st.snapshot);
-  const walker = useWelcome((w) => w.walker);
+  const runner = useWelcome((w) => w.runner);
   const kind = s.workout && s.workout !== 'none' ? s.workout : 'workout';
   const u = useUnits();
-  const dist = walked(s.distance ?? 0, u);
+  const dist = distanceRun(s.distance ?? 0, u);
 
   return (
     <Fill centred>
-      {/* The walker's own name, or none for a guest — better than
+      {/* The runner's own name, or none for a guest — better than
           congratulating somebody by the wrong name. */}
-      <Heading className={styles.head}>{walker ? `Nice work, ${walker}` : 'Nice work'}</Heading>
+      <Heading className={styles.head}>{runner ? `Nice work, ${runner}` : 'Nice work'}</Heading>
       <Label size="title" tone="dim" className={styles.kicker}>{kind} complete</Label>
       <Row space={16} className={styles.cards}>
         <StatCard label="Time">{mmss(s.elapsed ?? 0)}</StatCard>

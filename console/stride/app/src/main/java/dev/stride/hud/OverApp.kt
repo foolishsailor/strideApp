@@ -25,9 +25,9 @@ import java.io.ByteArrayOutputStream
 import java.lang.reflect.Proxy
 
 /**
- * Another app on the console — Netflix, mostly — with the walk over the top.
+ * Another app on the console — Netflix, mostly — with the run over the top.
  *
- * The walk screen already docks everything to an edge: numbers along the top,
+ * The run screen already docks everything to an edge: numbers along the top,
  * the rails down the sides, the controls along the bottom. So while another app
  * is open, STRIDE's page moves out of the activity and into a see-through
  * window over it. The backdrop and hero go, the numbers and controls sit in
@@ -43,7 +43,7 @@ import java.lang.reflect.Proxy
  * **Touches go through wherever there is no drawer.** The window covers the
  * screen, but only the parts the page reports through [touchable] — drawers,
  * handles, an open menu — take touches. The rest reach the app underneath, so
- * a programme can be picked or paused with the walk still on top. Two things
+ * a programme can be picked or paused with the run still on top. Two things
  * make that work, and both are why this is the one file that reaches past the
  * SDK:
  *
@@ -53,7 +53,7 @@ import java.lang.reflect.Proxy
  *   window takes touches: the drawers still work, and BACK reaches the app.
  * - From Android 12, a touch passing through another app's overlay is dropped
  *   unless that overlay is at most 80 % opaque ([PASS_THROUGH_ALPHA]). The
- *   walk is drawn at that opacity over the app, which the panel under it
+ *   run is drawn at that opacity over the app, which the panel under it
  *   makes no harder to read.
  *
  * Needs "display over other apps", which tools/unchain.sh already grants for
@@ -101,7 +101,7 @@ class OverApp(
     // --- the list ---------------------------------------------------------------
 
     /** Launchable apps as JSON: [{pkg, name, icon}], icon a PNG data URL.
-     *  Built once — icons take a moment, and the list doesn't change mid-walk. */
+     *  Built once — icons take a moment, and the list doesn't change mid-run. */
     @Synchronized
     fun list(): String = listed ?: build().also { listed = it }
 
@@ -142,7 +142,7 @@ class OverApp(
 
     // --- over and back ------------------------------------------------------------
 
-    /** Open [pkg] and put the walk over it. UI thread. */
+    /** Open [pkg] and put the run over it. UI thread. */
     fun open(pkg: String) {
         val pm = activity.packageManager
         val launch = pm.getLaunchIntentForPackage(pkg) ?: pm.getLeanbackLaunchIntentForPackage(pkg)
@@ -151,7 +151,7 @@ class OverApp(
             return
         }
         val over = AndroidSettings.canDrawOverlays(activity)
-        if (!over) Log.w(TAG, "apps: no 'display over other apps' — opening $pkg without the walk on top")
+        if (!over) Log.w(TAG, "apps: no 'display over other apps' — opening $pkg without the run on top")
         try {
             activity.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
@@ -189,7 +189,7 @@ class OverApp(
     }
 
     /** Back to STRIDE full screen, from the overlay's own button or because
-     *  the walk ended. [reclaim] does the rest when the activity resumes. */
+     *  the run ended. [reclaim] does the rest when the activity resumes. */
     fun close() {
         if (!showing || closing) return
         closing = true
@@ -280,7 +280,7 @@ class OverApp(
         try {
             InsetsHook()
         } catch (e: Exception) {
-            Log.w(TAG, "apps: no touchable region on this console — the app can't be touched under the walk", e)
+            Log.w(TAG, "apps: no touchable region on this console — the app can't be touched under the run", e)
             null
         }
     }

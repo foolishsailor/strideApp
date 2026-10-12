@@ -36,12 +36,12 @@ import java.util.UUID
  * with no network is still a treadmill.
  *
  * **Reconnection is left to `autoConnect = true`; the first connection is not.**
- * A sensor goes out of range every time its wearer walks off, and the
+ * A sensor goes out of range every time its wearer steps off, and the
  * platform's own reconnect is both cheaper and better behaved than a retry loop
  * of ours. But `autoConnect` is a *background* connection: the controller looks
  * for the device on a slow duty cycle, and for an address it has never resolved
  * before that means minutes, not seconds. Pairing measured two minutes flat on
- * this console — long enough that the walk it was paired for had already
+ * this console — long enough that the run it was paired for had already
  * finished. So the first attempt is direct, and `autoConnect` takes over only
  * once there is a connection to re-establish.
  */
@@ -98,7 +98,7 @@ abstract class BleSensor(
          * A seek is an active scan, so it is not free and must not run all day
          * on the chance that a strap in a drawer wakes up. A minute covers the
          * cases that matter — the strap slipping, the wearer stepping off the
-         * back, a console restart mid-walk — and everything past that is
+         * back, a console restart mid-run — and everything past that is
          * better served by the background connection, which costs nothing and
          * has all the time in the world.
          */
@@ -122,7 +122,7 @@ abstract class BleSensor(
          * turns for as long as a sensor is wanted. Five minutes because the
          * background connection usually does work and is much the kinder of the
          * two on the radio; the seek is what catches the strap that was in a
-         * drawer when the walk started.
+         * drawer when the run started.
          */
         const val BACKGROUND_GIVE_UP_MS = 5 * 60_000L
 
@@ -531,7 +531,7 @@ abstract class BleSensor(
             if (wanted.isBlank()) return
 
             // Go looking again rather than retrying the address blind: a sensor
-            // that dropped out mid-walk is usually back within seconds, and a
+            // that dropped out mid-run is usually back within seconds, and a
             // seek catches it as soon as it advertises. The client is reopened
             // rather than reused — a GATT that has errored never recovers, and
             // reusing it is how you get a strap that cannot reconnect until the

@@ -9,7 +9,7 @@ import android.util.Log
  * It speaks the real wire format — FitPro2Board talks to it exactly as it
  * talks to the X22i, through FitProConnection — so everything above the USB
  * pipe is exercised: the FitPro 2 translation, the safety logic, metrics, the
- * hill drawing, guided walks, FTMS and Home Assistant.
+ * hill drawing, guided runs, FTMS and Home Assistant.
  *
  * It behaves the way the X22i was measured to behave (protocol/FITPRO2_PROTOCOL.md):
  * no speed under ~1.5 km/h; an idle board refuses a target speed; PAUSED stops
@@ -268,7 +268,7 @@ class SimBoard {
         val ms = beltKph / 3.6
         distanceM += ms * dt
         if (state() == FitPro2.WorkoutState.RUNNING) runningS += dt
-        // ACSM walking equation, ml/kg/min → kcal.
+        // ACSM running equation, ml/kg/min → kcal.
         val mMin = ms * 60.0
         val grade = (v[FitPro2.Id.CURRENT_GRADE] ?: 0f) / 100.0
         val vo2 = 3.5 + 0.1 * mMin + 1.8 * mMin * maxOf(0.0, grade)

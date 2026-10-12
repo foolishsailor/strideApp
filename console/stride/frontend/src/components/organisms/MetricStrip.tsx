@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { mmss, nf } from '../../lib/format';
-import { climb as climbIn, paceSec, paceUnit, speedIn, speedUnit, stride as strideIn, walked } from '../../lib/units';
+import { climb as climbIn, paceSec, paceUnit, speedIn, speedUnit, stride as strideIn, distanceRun } from '../../lib/units';
 import { useField } from '../../store/session';
 import { useUnits } from '../../store/settings';
 import { Row } from '../primitives';
@@ -13,7 +13,7 @@ const orDash = (n: number | undefined, show: (n: number) => string = String) => 
 
 /** The bar docked along the top, full width: `left` and `right` at its ends
  *  (the incline and speed readings, over their rails), and between them the
- *  walk's numbers in two rows — the ones read mid-stride large, the rest
+ *  run's numbers in two rows — the ones read mid-stride large, the rest
  *  smaller beside the screen's status ("warming up"). Cadence, power, stride
  *  and pod speed come from a foot pod and show a dash without one. */
 export function MetricStrip({ left, right, children }: { left?: ReactNode; right?: ReactNode; children?: ReactNode }) {
@@ -29,7 +29,7 @@ export function MetricStrip({ left, right, children }: { left?: ReactNode; right
   const podKph = useField('podKph');
   const u = useUnits();
   const pace = paceSec(speed, u);
-  const dist = walked(distance, u);
+  const dist = distanceRun(distance, u);
   const up = climbIn(climb, u);
   return (
     <div className={styles.strip}>

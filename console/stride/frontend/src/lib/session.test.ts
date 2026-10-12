@@ -77,7 +77,7 @@ describe('the primary control', () => {
 });
 
 describe('copy', () => {
-  it('locates a paused guided walk by segment, a casual one by distance', () => {
+  it('locates a paused guided run by segment, a casual one by distance', () => {
     expect(pausedWhere({ elapsed: 75, segments: 9, segment: 2, segmentLabel: 'First rise' }))
       .toBe('1:15 in · First rise · 2 of 9 · the belt has stopped');
     expect(pausedWhere({ elapsed: 75, distance: 1234 })).toBe('1:15 in · 1,234 m · the belt has stopped');

@@ -233,9 +233,9 @@ body::before{
 
   <div class="panel" id="panel">
 
-    <!-- ================= WHO WALKS ================= -->
+    <!-- ================= WHO RUNS ================= -->
     <div class="pane on" data-p="people">
-      <div class="ph">Who walks</div>
+      <div class="ph">Who runs</div>
       <div class="psub">Everyone who uses this treadmill. Each person keeps their own
         distance, calories and history, and chooses whether any of it leaves the console.</div>
       <div class="scroll">
@@ -248,13 +248,13 @@ body::before{
           <div class="row">
             <div class="lbl"><div class="n">Start as</div>
               <div class="d">Who the welcome screen assumes if the belt starts without anyone tapping a name.</div></div>
-            <div class="ctl"><div class="seg" data-seg="default-walker">
+            <div class="ctl"><div class="seg" data-seg="default-runner">
               <button class="on">Sam</button><button>Alex</button><button>Ask every time</button>
             </div></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Guest walks</div>
-              <div class="d">A one-off walk that is counted on the console but never recorded against a person.</div></div>
+            <div class="lbl"><div class="n">Guest runs</div>
+              <div class="d">A one-off run that is counted on the console but never recorded against a person.</div></div>
             <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
           </div>
         </div>
@@ -388,7 +388,7 @@ body::before{
           <div class="gh">Starting and stopping</div>
           <div class="row">
             <div class="lbl"><div class="n">Warm-up</div>
-              <div class="d">Skippable. Set to zero to start every walk at your chosen pace.</div></div>
+              <div class="d">Skippable. Set to zero to start every run at your chosen pace.</div></div>
             <div class="ctl"><div class="step" data-step="2|0|10|1|min"><button>−</button><div class="v">2<small>min</small></div><button>+</button></div></div>
           </div>
           <div class="row">
@@ -402,7 +402,7 @@ body::before{
           </div>
         </div>
         <div class="group">
-          <div class="gh">Guided walks</div>
+          <div class="gh">Guided runs</div>
           <div class="row">
             <div class="lbl"><div class="n">Incline changes</div>
               <div class="d">How fast the deck is allowed to move during a plan. Slower is gentler underfoot.</div></div>
@@ -434,7 +434,7 @@ body::before{
     <!-- ================= INTERFACE ================= -->
     <div class="pane" data-p="ui">
       <div class="ph">Interface</div>
-      <div class="psub">Five ways to walk. The treadmill behaves identically in all of them —
+      <div class="psub">Five ways to run. The treadmill behaves identically in all of them —
         these change what the screen is made of, not just its colours.</div>
       <div class="scroll">
         <div class="uis" id="uis"></div>
@@ -449,12 +449,12 @@ body::before{
     <div class="pane" data-p="screen">
       <div class="ph">Display</div>
       <div class="psub">The console is a screen in a room, on all day. These are about
-        living with it rather than walking on it.</div>
+        living with it rather than running on it.</div>
       <div class="scroll">
         <div class="group">
           <div class="row">
             <div class="lbl"><div class="n">Sleep after</div>
-              <div class="d">Shows a clock. Any tap wakes it; the belt never sleeps mid-walk.</div></div>
+              <div class="d">Shows a clock. Any tap wakes it; the belt never sleeps mid-run.</div></div>
             <div class="ctl"><div class="step" data-step="5|1|60|1|min"><button>−</button><div class="v">5<small>min</small></div><button>+</button></div></div>
           </div>
           <div class="row">
@@ -471,8 +471,8 @@ body::before{
             </div></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Keep the screen on while walking</div>
-              <div class="d">Off lets it sleep even mid-walk, which saves the panel on long sessions.</div></div>
+            <div class="lbl"><div class="n">Keep the screen on while running</div>
+              <div class="d">Off lets it sleep even mid-run, which saves the panel on long sessions.</div></div>
             <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
           </div>
         </div>
@@ -501,7 +501,7 @@ body::before{
             <div class="ctl"><button class="pill warn">RESET</button></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Erase all walk history</div>
+            <div class="lbl"><div class="n">Erase all run history</div>
               <div class="d">Everything recorded on this console, for everyone. Cannot be undone.</div></div>
             <div class="ctl"><button class="pill warn">ERASE</button></div>
           </div>
@@ -515,7 +515,7 @@ body::before{
 <script>
 /* ---- nav --------------------------------------------------------------- */
 const SECTIONS = [
-  ['people', 'Who walks',      'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
+  ['people', 'Who runs',      'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
   ['hr',     'Heart rate',     'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z'],
   ['ha',     'Home Assistant', 'M3 11l9-8 9 8M5 10v10h14V10'],
   ['deck',   'Treadmill',      'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3'],
@@ -576,7 +576,7 @@ const uis = document.getElementById('uis');
 UIS.forEach(([n, b, on], i) => {
   const el = document.createElement('button');
   el.className = 'uicard' + (on ? ' on' : '');
-  el.innerHTML = `<div class="sk">${i > 0 ? '<div class="tag">NEVER WALKED</div>' : ''}</div>
+  el.innerHTML = `<div class="sk">${i > 0 ? '<div class="tag">NEVER RUN</div>' : ''}</div>
                   <div class="un">${n}</div><div class="ub">${b}</div>`;
   uis.appendChild(el);
 });

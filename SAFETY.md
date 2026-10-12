@@ -10,7 +10,7 @@ standing on it.
 
 ## What can hurt you
 
-**The belt and deck can move without you touching anything.** A guided walk
+**The belt and deck can move without you touching anything.** A guided run
 changes the incline on its own, and a warm-up ramps the belt up when a workout
 starts.
 
@@ -28,7 +28,7 @@ motor, belt and deck are unchanged.
 hardware cuts the belt, independently of anything STRIDE is doing. STRIDE
 notices and shows a screen, but it isn't what stopped the belt.
 
-**STRIDE drives the incline. It only ever suggests a speed.** A guided walk
+**STRIDE drives the incline. It only ever suggests a speed.** A guided run
 moves the deck, because the deck can't run away underneath you. It will say
 "lift to 6.4 km/h" and leave the belt where it is.
 
@@ -38,9 +38,9 @@ which stops the belt, and the workout is left paused until somebody presses
 RESUME. If the app dies outright, the board stops the belt on its own. A
 console frozen solid, app and watchdog together, is not covered yet: that is
 the safety key's job. All of this was tested on one Gen 7 with the belt
-empty, before anyone walked on it.
+empty, before anyone ran on it.
 
-**Automatic stops ramp down** at 2 km/h per second. The first guided walk cut
+**Automatic stops ramp down** at 2 km/h per second. The first guided run cut
 the belt from 4.2 km/h to zero the moment the plan ended, which was enough to
 catch someone off guard — at a run it would have put them on the floor. **The
 STOP button is exempt and stops immediately**, because that is a person

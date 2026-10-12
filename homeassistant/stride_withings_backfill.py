@@ -277,7 +277,7 @@ def daily(filename):
     """
     One row per day, stamped at local noon rounded down to the hour so it
     cannot fall into the neighbouring day, with `sum` running cumulatively —
-    that is what HA differentiates to answer "how far did I walk last week".
+    that is what HA differentiates to answer "how far did I run last week".
     """
     with open(data(filename)) as fh:
         days = sorted((dt.date.fromisoformat(r["date"]), float(r["value"]))

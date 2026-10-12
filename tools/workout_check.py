@@ -3,9 +3,9 @@
 Check a STRIDE workout against the stride.workout.v1 rules TrailMate enforces.
 
 TrailMate answers a payload that breaks any of these with 400, and the console
-then parks the walk for good, so they are worth checking from this side before
+then parks the run for good, so they are worth checking from this side before
 one is ever sent. The rules are spec 037's `contracts/api.md`, section 4, one
-check per rule; WalkRecorder.kt builds to the same list.
+check per rule; RunRecorder.kt builds to the same list.
 
     python tools/workout_check.py workout.json      # a file
     python tools/sim.py workout | python tools/workout_check.py -   # the console's last one
@@ -142,7 +142,7 @@ def check(w):
                         and isinstance(g.get("label"), str) and is_num(g.get("incline"))):
                     err(f"plan segment {i} is not {{startS, endS, label, incline}}")
                 elif not 0 <= g["startS"] < g["endS"] <= elapsed:
-                    err(f"plan segment {i} ({g['startS']}..{g['endS']}) is not inside the walk")
+                    err(f"plan segment {i} ({g['startS']}..{g['endS']}) is not inside the run")
 
     src = w.get("sources")
     if not isinstance(src, dict) or src.get("hr") not in ("strap", "grips", "none"):
@@ -163,7 +163,7 @@ def describe(w):
     tot = w.get("totals", {})
     s = w.get("samples", {})
     sensors = [k for k in OPTIONAL if k in s] or ["none"]
-    plan = (w.get("plan") or {}).get("name") or "free walk"
+    plan = (w.get("plan") or {}).get("name") or "free run"
     return (f"{w.get('workoutId')}  {w.get('startedAt')}  {tot.get('elapsedS')} s "
             f"({tot.get('movingS')} moving), {tot.get('distanceM')} m, climb {tot.get('climbM')} m, "
             f"{len(s.get('t', []))} samples, {len(w.get('pauses', []))} pause(s), "

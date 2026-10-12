@@ -16,18 +16,18 @@ import javax.net.ssl.SSLException
 import kotlin.concurrent.thread
 
 /**
- * The console's link to TrailMate: who is connected, and the walks waiting to
+ * The console's link to TrailMate: who is connected, and the runs waiting to
  * go there.
  *
- * TrailMate is where the walker's other training already lives, and it is
- * already connected to their Garmin account, so a treadmill walk that lands
+ * TrailMate is where the runner's other training already lives, and it is
+ * already connected to their Garmin account, so a treadmill run that lands
  * there goes on to Garmin Connect without the console ever having to know a
  * Garmin password. The whole contract — endpoints, codes, and the shape of a
  * workout — is spec 037's `contracts/api.md`, and this file is built to it.
  *
  * **Linking is a code on the screen, not a password on the keyboard.** The
  * console asks TrailMate for a short code and a QR, shows both, and waits;
- * the walker scans the QR with their phone, signs in there and taps Allow, and
+ * the runner scans the QR with their phone, signs in there and taps Allow, and
  * the console's next poll comes back with a token. It is the "device
  * authorisation grant" a smart TV uses (RFC 8628), for the same reason: typing
  * an email address and password on a treadmill's on-screen keyboard is
@@ -43,9 +43,9 @@ import kotlin.concurrent.thread
  * this class. The settings page learns whether somebody is linked and the
  * TrailMate first name they linked as, and that is all.
  *
- * **Walks wait on disk until they are taken.** The wifi drops, the site
+ * **Runs wait on disk until they are taken.** The wifi drops, the site
  * deploys, the console is switched off at the wall mid-upload: none of those
- * may lose a walk, so a finished workout is written to a queue directory
+ * may lose a run, so a finished workout is written to a queue directory
  * first and removed only once TrailMate has said it has it. Oldest first, one
  * at a time, with a back-off while the network is down. TrailMate recognises a
  * workout it already has by its id, so sending one twice is safe — which is
@@ -100,7 +100,7 @@ class TrailMate(context: Context, private val cfg: Settings) {
     /**
      * Forget a person's link, and tell TrailMate to revoke it.
      *
-     * In that order on purpose. The walker has asked for the console to stop
+     * In that order on purpose. The runner has asked for the console to stop
      * being able to upload as them, and that is true the moment the token is
      * gone from here, whether or not TrailMate hears about it. The `DELETE` is
      * a courtesy so the device drops off their list; a revoked token answers
@@ -232,8 +232,8 @@ class TrailMate(context: Context, private val cfg: Settings) {
     // --- the queue ------------------------------------------------------------
 
     /**
-     * What the summary screen says about the walk just finished. Empty when
-     * there is nothing to say — a guest, a walk too short to send, or someone
+     * What the summary screen says about the run just finished. Empty when
+     * there is nothing to say — a guest, a run too short to send, or someone
      * who has not connected TrailMate and has not asked to be told about it.
      */
     @Volatile private var summaryId = ""
@@ -247,16 +247,16 @@ class TrailMate(context: Context, private val cfg: Settings) {
     }
 
     /**
-     * A finished workout, from [WalkRecorder]. Kept on disk before anything is
+     * A finished workout, from [RunRecorder]. Kept on disk before anything is
      * attempted, so the attempt can fail in any way it likes.
      *
-     * Only for somebody who has connected TrailMate. Everyone else's walks
+     * Only for somebody who has connected TrailMate. Everyone else's runs
      * stay on the console, as the spec's edge cases put it — connecting later
-     * does not send old walks, because nobody asked for that.
+     * does not send old runs, because nobody asked for that.
      */
     fun enqueue(personId: String, workout: JSONObject) {
         if (!linked(personId)) {
-            Log.i(TAG, "$personId is not connected to TrailMate — walk kept on the console")
+            Log.i(TAG, "$personId is not connected to TrailMate — run kept on the console")
             return
         }
         val id = workout.optString("workoutId")
@@ -276,7 +276,7 @@ class TrailMate(context: Context, private val cfg: Settings) {
         kick()
     }
 
-    /** A parked walk goes back in the queue, for after whatever was wrong is fixed. */
+    /** A parked run goes back in the queue, for after whatever was wrong is fixed. */
     fun retry(workoutId: String) {
         val f = failedDir.listFiles()?.firstOrNull { it.name.endsWith("-$workoutId.json") } ?: return
         if (f.renameTo(File(queueDir, f.name))) {
@@ -291,14 +291,14 @@ class TrailMate(context: Context, private val cfg: Settings) {
     @Volatile private var nextTryAt = 0L
     @Volatile private var lastError = ""
 
-    /** Try now: a walk was queued, someone connected, or the network came back. */
+    /** Try now: a run was queued, someone connected, or the network came back. */
     fun kick() = synchronized(lock) {
         kicked = true
         lock.notifyAll()
     }
 
     /**
-     * Start the sender, and listen for the network coming back so a walk
+     * Start the sender, and listen for the network coming back so a run
      * queued with the wifi down goes the moment it returns rather than at
      * the end of a back-off.
      */
@@ -339,12 +339,12 @@ class TrailMate(context: Context, private val cfg: Settings) {
      *  - **200, 201** (and 409, which the spec also counts as "already have
      *    it"): sent. Removed from the queue.
      *  - **400, 413**: TrailMate will never take this one. Parked in
-     *    `failed/`, shown in Settings, and the walks behind it carry on.
+     *    `failed/`, shown in Settings, and the runs behind it carry on.
      *  - **401**: this person's token is no good. They are marked
-     *    "reconnect needed", their walks stay queued, and everybody else's
+     *    "reconnect needed", their runs stay queued, and everybody else's
      *    still go.
      *  - **429, 5xx, no answer at all**: try again later — and stop this pass,
-     *    because whatever is wrong is wrong for every walk behind it too.
+     *    because whatever is wrong is wrong for every run behind it too.
      */
     private fun send(): Long {
         for (f in queued()) {

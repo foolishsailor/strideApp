@@ -564,7 +564,7 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Minimal HID item walker. Enough to surface Report ID / Size / Count and
+     * Minimal HID item runner. Enough to surface Report ID / Size / Count and
      * usages, which is what tells us how the treadmill frames its data.
      */
     private fun decodeHidReportDescriptor(d: ByteArray): List<String> {

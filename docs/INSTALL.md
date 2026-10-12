@@ -9,7 +9,7 @@ motorised treadmill.
 > **Gen 7.** Part 1 **works on Gen 7**. It was tested on 11/10/2026 on a Gen 7
 > incline trainer with iFit builds dated 25/08/2026. Privileged mode, ADB over
 > Wireless debugging and disabling iFit all worked. STRIDE drove the belt and
-> deck, first with the belt empty and since then with its owner walking on it.
+> deck, first with the belt empty and since then with its owner running on it.
 > Its motor board speaks a different protocol,
 > [FitPro 2](../protocol/FITPRO2_PROTOCOL.md), which STRIDE now speaks too. Gen 7
 > differences are marked **Gen 7** below. One machine so far: treat it as new.
@@ -50,10 +50,10 @@ STRIDE is confirmed on one machine:
 | Ranges reported | incline -3 to +12 %, speed 1.6 to 20 km/h |
 
 - **Likely to work:** other Gen 6 NordicTrack and ProForm consoles on a FitPro board.
-- **New:** Gen 7, on the FitPro 2 board. One machine, walked on.
+- **New:** Gen 7, on the FitPro 2 board. One machine, run on.
 - **Required:** an Android console you can reach with `adb`.
 
-One Gen 7 machine, a NordicTrack X22i, has been through Part 1 and is walked
+One Gen 7 machine, a NordicTrack X22i, has been through Part 1 and is run
 on under STRIDE. Every machine and generation known so far is in
 [treadmills/](../treadmills/README.md).
 
@@ -389,15 +389,15 @@ and your workout history with it.
   list and drag it down) for one-tap access. Give the console a minute after
   changes like these before switching off at the wall.
 - Tested first with the belt empty (start, speed, zero, pause, resume, STOP,
-  incline, the safety key, the watchdog), then walked on. Do the empty-belt run
+  incline, the safety key, the watchdog), then run on. Do the empty-belt run
   yourself before stepping on.
 
 ### 1.8 Set up STRIDE
 
 Everything is on the treadmill's own screen. There are no config files.
 
-- **Settings → Who walks.** Add yourself. Nobody is pre-configured.
-- **Settings → Treadmill.** Units, warm-up, cool-down, guided-walk speed limit.
+- **Settings → Who runs.** Add yourself. Nobody is pre-configured.
+- **Settings → Treadmill.** Units, warm-up, cool-down, guided-run speed limit.
 
 ✅ Clip the safety key, choose a workout, and check the belt starts and the
 distance climbs.
@@ -419,14 +419,14 @@ and a broker. Nothing from this repository is installed for this step.
 
 ✅ A **Treadmill** device appears under Settings → Devices with speed, incline,
 distance, elapsed, pulse, calories, mode and workout. A second device appears
-per person the first time they walk.
+per person the first time they run.
 
 Build whatever dashboard you like from those entities. There is no custom
 component to install.
 
 ### 2.2 Optional: weekly and monthly totals
 
-The console's distance counter resets every walk, so totals accumulate in Home
+The console's distance counter resets every run, so totals accumulate in Home
 Assistant.
 
 1. Copy [`homeassistant/packages/stride.yaml`](../homeassistant/packages/stride.yaml)
@@ -467,7 +467,7 @@ cp stride.conf.example stride.conf
 
 ✅ The reminder automations appear under Settings → Automations.
 
-After `stride_persons.py`, the console's **Settings → Who walks** lists your
+After `stride_persons.py`, the console's **Settings → Who runs** lists your
 Home Assistant people under *From Home Assistant*.
 
 ---
@@ -480,7 +480,7 @@ Use **[AH for HA](https://github.com/keranm/ah-for-ha)**, which is a separate
 project with its own guide. There is nothing in this repository to install for
 it.
 
-AH for HA also publishes outdoor walks as gradient profiles over MQTT, which
+AH for HA also publishes outdoor runs as gradient profiles over MQTT, which
 STRIDE replays on the deck.
 
 > `homeassistant/stride_health_webhook.py` is frozen. Setting this up for the

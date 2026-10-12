@@ -61,7 +61,7 @@ body::before {
 }
 
 /* Over another app (OverApp.kt): no canvas and no lift, so the app shows
-   through everywhere the walk screen has nothing docked. The text carries a
+   through everywhere the run screen has nothing docked. The text carries a
    shadow of its own instead, for a bright scene behind it. */
 html.over-app,
 html.over-app body {

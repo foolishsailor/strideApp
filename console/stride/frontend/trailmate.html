@@ -19,7 +19,7 @@
 <!-- The module below is deferred, but Kotlin starts calling in as soon as the
      page loads. Hold the latest call to each entry point until the app takes
      over (bridge/kotlin.ts replays them); a dropped plan() would leave a guided
-     walk drawing flat ground. -->
+     run drawing flat ground. -->
 <script>
   window.__early = {};
   ['render', 'plan'].forEach(function (n) {

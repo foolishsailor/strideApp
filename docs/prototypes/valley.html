@@ -8,7 +8,7 @@
 /* ---------------------------------------------------------------------------
    SPIKE 2 — the reference valley, recreated and made to move.
 
-   Brief: the river is the path; we walk through rolling hills towards mountains
+   Brief: the river is the path; we run through rolling hills towards mountains
    we never reach. Hills roll towards us at whatever speed the belt is doing.
    Lateral movement along the meander parallaxes the backdrop.
 
@@ -361,13 +361,13 @@ function drawSky(){
 
 /* --- mountains ----------------------------------------------------------
    Three bands at fixed distances ahead of the camera, so they never get closer
-   however far you walk — the brief's "we never meet the mountains", enforced by
+   however far you run — the brief's "we never meet the mountains", enforced by
    construction rather than by tuning.
 
    Their lateral positions are absolute world metres, so as the river meanders
    the camera slides sideways beneath them and each band shifts by FOCAL*dx/dist
    — near bands more than far ones. That difference *is* the parallax. A very
-   slow drift with distance walked keeps the range from being a frozen photo. */
+   slow drift with distance run keeps the range from being a frozen photo. */
 const BANDS = [
   { dist: 2500, n: 15, spacing: 400, h: [200, 520], w: [170, 380], drift: 0.008 },
   { dist: 1650, n: 12, spacing: 370, h: [150, 400], w: [140, 330], drift: 0.016 },
@@ -639,7 +639,7 @@ function draw(){
   const t0 = performance.now();
   triCount = 0;
 
-  /* The camera walks along the river: lateral position is the river's, which is
+  /* The camera runs along the river: lateral position is the river's, which is
      what makes the backdrop parallax without any extra machinery. */
   const camLat = riverX(world);
   const camRise = riverBed(world);

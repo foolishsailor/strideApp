@@ -11,7 +11,7 @@ import java.util.UUID
  * it the number is real, but it costs both hands on the bar — so on a hill,
  * exactly when the number is worth having, it is not there. Plenty of machines
  * have no grips at all, including the C 1750 this was built on, where the field
- * sits at zero through an entire walk. A strap reads continuously, does not
+ * sits at zero through an entire run. A strap reads continuously, does not
  * care what your arms are doing, and is the only source that works everywhere.
  *
  * **Standard service, no brand support.** `0x180D` and `0x2A37` are the

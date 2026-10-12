@@ -29,7 +29,7 @@
 /* ---- the bridge Kotlin normally provides ------------------------------- */
 var STORE = {
   people: [],
-  default_walker: '',
+  default_runner: '',
   allow_guest: true,
   units: 'km',
   ha_enabled: false,
@@ -57,8 +57,8 @@ window.Stride = {
   },
   removePerson: function (n) {
     STORE.people = STORE.people.filter(function (p) { return p.name !== n; });
-    if (!STORE.people.some(function (p) { return p.name === STORE.default_walker; }))
-      STORE.default_walker = '';
+    if (!STORE.people.some(function (p) { return p.name === STORE.default_runner; }))
+      STORE.default_runner = '';
     return JSON.stringify(STORE);
   },
   setPersonFlag: function (n, f, on) {

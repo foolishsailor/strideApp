@@ -16,19 +16,19 @@ const BELT_STEP = { fine: 0.05, coarse: 0.1 };
 const PACE_STEP = { fine: 1, coarse: 2 };
 
 /**
- * Belt calibration, over the walk (see BeltCalibration.kt).
+ * Belt calibration, over the run (see BeltCalibration.kt).
  *
  * Set the pace to calibrate, let the Stryd settle, then move the belt until
  * the two agree, by hand or with one tap on USE STRYD READING. SAVE keeps it as
- * a point. An overlay rather than part of the walk screen, so its controls are
- * boxed; STOP is here too, and does exactly what the walk screen's does.
+ * a point. An overlay rather than part of the run screen, so its controls are
+ * boxed; STOP is here too, and does exactly what the run screen's does.
  */
 export function CalibrationOverlay() {
   const cal = useField('calib');
   const mode = useMode();
   const setConfirmOpen = useUi((s) => s.setConfirmOpen);
   const asked = useRef(0);
-  /* The walk screen's own units (Settings → Display), not a copy of them. */
+  /* The run screen's own units (Settings → Display), not a copy of them. */
   const u = useUnits();
   const miles = u === 'mi';
   const sp = (k: number) => `${speedIn(k, u).toFixed(2)} ${speedUnit(u)}`;

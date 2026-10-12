@@ -7,8 +7,8 @@ arming the treadmill, which is how the design screenshots in `claudeDesign/`
 were made and how any new UI should be reviewed before it is trusted.
 
     python3 tools/hud_drive.py screens            # the full set
-    python3 tools/hud_drive.py guided             # hold one guided-walk frame on screen
-    python3 tools/hud_drive.py casual             # hold one casual-walk frame on screen
+    python3 tools/hud_drive.py guided             # hold one guided-run frame on screen
+    python3 tools/hud_drive.py casual             # hold one casual-run frame on screen
     python3 tools/hud_drive.py release            # hand the screen back to Kotlin
 
 Shots land in `claudeDesign/`.
@@ -41,7 +41,7 @@ DEV = os.environ.get("STRIDE_DEVICE") or subprocess.run(
 PKG = "dev.stride.hud"
 OUT = "claudeDesign"
 
-# Where to tap to walk the pre-workout flow: profile, walk, guided. Measured
+# Where to tap to run the pre-workout flow: profile, run, guided. Measured
 # from the CSS, not from a screenshot; re-measure if the welcome screen moves.
 TAPS = [(286, 492), (476, 492), (804, 492)]
 
@@ -111,7 +111,7 @@ class Hud:
     def push(self, **over):
         s = {"speed": 6.2, "incline": 4.0, "targetSpeed": 6.2, "targetIncline": 4.0,
              "distance": 1180, "elapsed": 640, "calories": 78, "pulse": 0, "fan": 0,
-             "workout": "walk", "dmk": False, "ramping": "", "phaseLeft": 0,
+             "workout": "run", "dmk": False, "ramping": "", "phaseLeft": 0,
              "boardMode": 2, "avgSpeed": 5.9, "maxSpeed": 6.8, "avgIncline": 2.4,
              "maxIncline": 6.0, "who": "Sam", "plan": "Rolling hills", "segment": 2,
              "segments": 9, "segmentLabel": "Hill one", "segmentLeft": 96,
@@ -158,7 +158,7 @@ def main():
     hud.shot("01-welcome-who")
     adb("shell", "input", "tap", *map(str, taps[0]))    # the leftmost profile
     hud.shot("02-welcome-what")
-    adb("shell", "input", "tap", *map(str, taps[1]))    # Walk
+    adb("shell", "input", "tap", *map(str, taps[1]))    # Run
     hud.shot("03-welcome-how")
     adb("shell", "input", "tap", *map(str, taps[2]))    # Guided
     hud.shot("04-guided-picker")
@@ -174,7 +174,7 @@ def main():
     # mid-session elapsed under a WARMING UP badge produced a screenshot that
     # looked like the HUD's bug rather than the driver's, and the numbers were
     # duly written up as a fault. Every field here is one the console could
-    # actually be showing 19 seconds into a walk.
+    # actually be showing 19 seconds into a run.
     hud.push(mode="warmup", phaseLeft=74, speed=2.0, incline=0.0,
              targetSpeed=2.0, targetIncline=0.0, elapsed=19, distance=60,
              calories=6, segments=0, plan="", segment=0, segmentLabel="",
