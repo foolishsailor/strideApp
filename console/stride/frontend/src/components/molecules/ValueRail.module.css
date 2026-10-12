@@ -1,8 +1,6 @@
 /* The side docks, 140 – 800, under the metric band. No panel of their own:
-   the readings and their controls sit straight on the backdrop, pushed out
-   to the screen edge. The text runs close to the bezel; the touch rows are
-   the full width of the rail, so most of each target is well clear of the
-   ~15px strip where this digitiser is unreliable. */
+   the readings and their controls sit straight on the backdrop, centred.
+   The touch rows are the full width of the rail. */
 .rail {
   position: absolute;
   top: 140px;
@@ -11,16 +9,15 @@
   display: flex;
   flex-direction: column;
   padding: 6px 12px 14px;
+  text-align: center;
 }
 .left {
   left: 0;
-  text-align: left;
 }
 .right {
   right: 0;
-  text-align: right;
 }
-/* Buttons centre their text by default; here it hugs the edge too. */
+/* Buttons centre their text anyway; no padding to squeeze the numbers. */
 .rail :global(button) {
   text-align: inherit;
   padding: 0;
@@ -48,8 +45,8 @@
   font-weight: 600;
 }
 
-/* Between the fixed + and −, the stops. About five show, so it is plain
-   there is more to scroll. */
+/* Between the fixed + and −, the stops. About three show at this size,
+   cut off at the edge so it is plain there is more to scroll. */
 .list {
   position: relative; /* the stops measure their offsetTop from here */
   flex: 1;
@@ -60,25 +57,28 @@
   scrollbar-width: none;
   /* Let the list scroll vertically; nothing else. */
   touch-action: pan-y;
+  /* A number half out of view fades rather than being chopped off. */
+  -webkit-mask-image: linear-gradient(transparent, black 28px, black calc(100% - 28px), transparent);
 }
 .list::-webkit-scrollbar {
   display: none;
 }
 
-/* Just the number. The whole 64px row is still the target; only the box
+/* Just the number, twice the size it was, with air between. The whole
+   112px row is still the target; only the box
    around it is gone. */
 .stop {
   display: block;
   width: 100%;
-  height: 64px;
-  margin-bottom: 4px;
+  height: 112px;
+  margin-bottom: 12px;
   -webkit-tap-highlight-color: transparent;
   outline: none;
   background: transparent;
   border: none;
   color: var(--colour-ink-dim);
   font-family: inherit;
-  font-size: 48px;
+  font-size: 96px;
   font-weight: var(--weight-numeral);
   font-variant-numeric: tabular-nums;
   transition: color var(--motion-quick), font-size var(--motion-quick), transform 0.06s;
@@ -93,12 +93,9 @@
 /* The stop the target is on: bigger and in the accent, nothing drawn round it. */
 .selected {
   color: var(--colour-accent);
-  font-size: 62px;
+  font-size: 104px;
   font-weight: 600;
 }
-/* Pressed, shrink towards the edge the text hugs, not the middle. */
-.left :global(button) { transform-origin: left center; }
-.right :global(button) { transform-origin: right center; }
 
 /* Speed while the belt is stopped: shown, but not the thing to reach for. */
 .muted :global(button) {
