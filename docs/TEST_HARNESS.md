@@ -68,6 +68,13 @@ ACTIVE target=4.5 km/h grade=3.0 % plan=Pyramid | state=3 mode=3 belt=4.50 (repo
 The poll loop's stall hook is here too, for the watchdog:
 `adb shell am broadcast -a dev.stride.hud.DEBUG_STALL_POLL -p dev.stride.hud --el ms 8000`.
 
+## What it has found
+
+- **HOME during a cool-down leaves the belt to the runaway check.** The welcome
+  screen comes up while the board is still RUNNING. `enforceStopped` stops it
+  within a poll, but records a "belt running unattended" incident and an MQTT
+  runaway alert each time. Found on the emulator, 12/10/2026. Not yet changed.
+
 ## Safety
 
 - The control commands are refused unless the session is on the simulator,

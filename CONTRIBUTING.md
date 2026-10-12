@@ -29,7 +29,11 @@ where, or send a pull request that fixes it.
 
 ## Getting set up
 
-You need the Android SDK and a console you can reach over ADB.
+**[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** has the full setup for Windows,
+macOS and Linux, plus the emulator and the simulated treadmill, which together
+let you run the whole app with no treadmill at all. The short version:
+
+You need the Android SDK and a console you can reach over ADB, or an emulator.
 
 ```sh
 git clone https://github.com/keranm/strideApp.git

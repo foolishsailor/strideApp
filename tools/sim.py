@@ -128,7 +128,19 @@ def main():
 
     con = Console(a.device)
     if a.cmd in ("on", "off"):
-        print(con.broadcast(f"{PKG}.SIM", ["--ez", "on", "true" if a.cmd == "on" else "false"]))
+        # The switch lives in STRIDE, so STRIDE has to be running to take it.
+        # Straight after an install it may not be yet; start it and try again.
+        reply = ""
+        for attempt in range(6):
+            reply = con.broadcast(f"{PKG}.SIM", ["--ez", "on", "true" if a.cmd == "on" else "false"])
+            if reply.startswith("sim "):
+                break
+            if attempt == 0:
+                con.shell("am", "start", "-n", f"{PKG}/.MainActivity")
+            time.sleep(2)
+        else:
+            sys.exit(f"STRIDE did not answer ({reply!r}). Is a debug build installed?")
+        print(reply)
         con.restart()
         print("STRIDE restarted" + (" on the simulated board" if a.cmd == "on" else " on the real board"))
     elif a.cmd == "watch":
