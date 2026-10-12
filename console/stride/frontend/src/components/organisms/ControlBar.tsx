@@ -31,9 +31,9 @@ export function ControlBar() {
 
   return (
     <div className={styles.controls}>
-      <Button tone="primary" active={mode === 'running'} onTap={onPrimary}>{primaryLabel(mode)}</Button>
-      <Button onTap={() => setFanOpen(!fanOpen)}>{fanButtonLabel(fan)}</Button>
-      <Button tone="stop" muted={mode === 'cooldown'} onTap={onStop}>STOP</Button>
+      <Button size="dock" tone="primary" active={mode === 'running'} onTap={onPrimary}>{primaryLabel(mode)}</Button>
+      <Button size="dock" onTap={() => setFanOpen(!fanOpen)}>{fanButtonLabel(fan)}</Button>
+      <Button size="dock" tone="stop" muted={mode === 'cooldown'} onTap={onStop}>STOP</Button>
     </div>
   );
 }

@@ -12,7 +12,3 @@
   align-items: center;
   justify-content: center;
 }
-/* Three, not seven, so each gets more of the row. */
-.controls > * {
-  max-width: 220px;
-}
