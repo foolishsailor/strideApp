@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { bridge } from '../bridge/stride';
 import { isRestful } from '../lib/session';
 import { useSession } from '../store/session';
+import { useSettings } from '../store/settings';
 import { idleMs, markActivity, useUi } from '../store/ui';
 
 /* The console lives in the room; at rest it should be dark, not a glowing
-   slab. Only sleeps when no workout is in progress. */
-export const SLEEP_AFTER_MS = 5 * 60 * 1000;
+   slab. After Settings → Display → Sleep after, with no workout in progress,
+   it goes to standby: the backlight off (MainActivity.dim) until a tap. */
+export const sleepAfterMs = (): number => Math.max(1, useSettings.getState().sleepMin) * 60 * 1000;
 const CHECK_EVERY_MS = 5000;
 
 export function useIdleSleep(): void {
@@ -19,7 +21,7 @@ export function useIdleSleep(): void {
 
     const timer = setInterval(() => {
       const ui = useUi.getState();
-      if (!ui.asleep && isRestful(useSession.getState().mode) && idleMs() > SLEEP_AFTER_MS) {
+      if (!ui.asleep && isRestful(useSession.getState().mode) && idleMs() > sleepAfterMs()) {
         ui.setAsleep(true);
         bridge().dim(true);
       }

@@ -363,6 +363,10 @@ class MainActivity : Activity() {
 
         /** The treadmill's incline keys, a step the same as the rail's. */
         const val INCLINE_KEY_STEP = 0.5
+
+        /** How often the board is read in standby. Slow, but not stopped:
+         *  see enterStandby. */
+        const val STANDBY_POLL_MS = 2_000L
         const val KM_PER_MILE = 1.609344
 
         /**
@@ -1622,13 +1626,15 @@ class MainActivity : Activity() {
         }
 
         /** Screen sleep. The panel is the only light in the room at 6am. */
+        /**
+         * Standby, the way iFit's console did it: the backlight off, not
+         * merely dim, with the panel and its touch layer still on, so a tap
+         * anywhere brings it back. Was 2%, which left a lit slab in the room.
+         * Waking restores the brightness chosen in Display, not Android's
+         * default.
+         */
         @JavascriptInterface fun dim(on: Boolean) {
-            runOnUiThread {
-                window.attributes = window.attributes.apply {
-                    screenBrightness = if (on) 0.02f else
-                        WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                }
-            }
+            if (on) enterStandby() else leaveStandby()
         }
 
         /**
@@ -1705,6 +1711,52 @@ class MainActivity : Activity() {
         return PodReading(cadence, watts, ms * 60 / cadence, belt * 0.98)
     }
 
+    // --- standby -------------------------------------------------------------
+
+    /**
+     * As low as the console goes while a touch can still wake it.
+     *
+     * Entered from the page after Settings → Display → Sleep after, between
+     * walks only. Android's own sleep is off the table: it takes the touch
+     * layer with it, and then only the power button wakes the panel. So:
+     *  - the backlight off, the panel's biggest draw (the touch layer stays on);
+     *  - Bluetooth let go: strap, pod and headphones disconnected, the treadmill
+     *    no longer advertised;
+     *  - the board read every [STANDBY_POLL_MS] instead of five times a second,
+     *    and nothing drawn. Not stopped: that poll is what notices a belt
+     *    running with nobody on it (enforceStopped), and it stays.
+     * A Gen 7 board has no sleep state of its own to put it in.
+     *
+     * Waking undoes each, and the sensors are back in about five seconds.
+     */
+    @Volatile private var standby = false
+
+    private fun enterStandby() {
+        if (standby || Session.isMoving(session)) return
+        standby = true
+        runOnUiThread {
+            window.attributes = window.attributes.apply {
+                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_OFF
+            }
+        }
+        strap.disconnect(); pod.disconnect()
+        phones.release(cfg.phonesAddr())
+        ftms.quiet(true)
+        Log.i(TAG, "standby: backlight off, Bluetooth released, board polled every ${STANDBY_POLL_MS / 1000} s")
+    }
+
+    private fun leaveStandby() {
+        runOnUiThread {
+            window.attributes = window.attributes.apply { screenBrightness = cfg.brightness() }
+        }
+        if (!standby) return
+        standby = false
+        ftms.quiet(false)
+        applyStrap(); applyPod(); applyPhones()
+        Log.i(TAG, "standby: woken")
+        repaint()
+    }
+
     // --- the treadmill's own buttons ------------------------------------------
 
     /**
@@ -1717,6 +1769,8 @@ class MainActivity : Activity() {
      * safety key, the minimum speed, the calibration). Poll thread.
      */
     private fun physicalKey(code: Int) {
+        // The screen is dark and asleep in the page too; a tap wakes it.
+        if (standby) { Log.i(TAG, "standby: key $code ignored — tap the screen"); return }
         when (code) {
             FitPro2.Key.VOLUME_UP -> volume(+1)
             FitPro2.Key.VOLUME_DOWN -> volume(-1)
@@ -3113,6 +3167,15 @@ class MainActivity : Activity() {
         while (running) {
             pollBeat = SystemClock.elapsedRealtime()
             if (watchdogTripped) afterWatchdog()
+            // Standby: read the board every STANDBY_POLL_MS, not five times a
+            // second. Waited in short steps that keep the heartbeat fresh — the
+            // loop is slow, not stalled, and the watchdog must not think so.
+            var rested = 0L
+            while (standby && running && rested < STANDBY_POLL_MS - POLL_MS) {
+                Thread.sleep(500)
+                rested += 500
+                pollBeat = SystemClock.elapsedRealtime()
+            }
             // Debug builds only: stand in for a poll loop stuck in a network
             // call, so the watchdog can be tested on a real belt. See
             // registerDebugHooks.
@@ -3870,6 +3933,8 @@ class MainActivity : Activity() {
 
     /** Hand a state snapshot to the page. */
     private fun push(s: Snapshot) {
+        // Nothing to draw on a dark panel; leaveStandby repaints on the way out.
+        if (standby) return
         val json = s.toJson()
         runOnUiThread {
             web.evaluateJavascript("window.render($json)", null)

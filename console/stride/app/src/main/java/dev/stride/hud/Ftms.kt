@@ -330,12 +330,33 @@ class Ftms(private val context: Context) {
      * taking the console down for.
      */
     private fun restartAdvertising() {
+        if (quiet) return
         val a = adapter ?: return
         if (!a.isEnabled) return
         try { advertiser?.stopAdvertising(advertiseCallback) } catch (_: Exception) { }
         advertising = false
         try { advertise(a) } catch (e: Exception) {
             Log.w(TAG, "ftms: could not resume advertising: ${e.message}")
+        }
+    }
+
+    /** Standby: not advertising, and not coming back after a client leaves. */
+    @Volatile private var quiet = false
+
+    /**
+     * Stop or resume advertising, for the console's standby. The service
+     * stays registered, so waking is one advertisement away rather than a
+     * rebuild — [stop] ends the worker thread for good and is for shutdown.
+     */
+    fun quiet(on: Boolean) {
+        if (quiet == on) return
+        quiet = on
+        if (on) {
+            try { advertiser?.stopAdvertising(advertiseCallback) } catch (_: Exception) { }
+            advertising = false
+            Log.i(TAG, "ftms: quiet for standby")
+        } else {
+            restartAdvertising()
         }
     }
 

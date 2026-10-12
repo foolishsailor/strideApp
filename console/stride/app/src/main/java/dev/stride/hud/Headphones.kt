@@ -107,6 +107,13 @@ class Headphones(private val context: Context) {
         call("connect", dev)
     }
 
+    /** Let go of the audio link but stay paired, for the console's standby.
+     *  [connect] brings it back. */
+    fun release(address: String) {
+        val dev = device(address) ?: return
+        if (connected(address)) call("disconnect", dev)
+    }
+
     /** Disconnect and unbond, so the headphones are forgotten both ways. */
     fun forget(address: String) {
         val dev = device(address) ?: return

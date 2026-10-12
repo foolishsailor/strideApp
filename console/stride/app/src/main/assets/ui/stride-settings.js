@@ -1271,7 +1271,7 @@
 
     var g = group('');
     g.appendChild(row('Sleep after',
-      'Shows a clock. Any tap wakes it, and the belt never sleeps mid-walk.',
+      'Standby: the screen goes dark until you touch it. Never mid-walk.',
       stepper('sleep_min', S.sleep_min || 5, 1, 60, 1, 'min')));
     g.appendChild(row('Clock', '',
       segment('clock_24', [['true', '24 hour'], ['false', '12 hour']],
