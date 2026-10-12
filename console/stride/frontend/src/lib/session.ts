@@ -138,11 +138,19 @@ export function speedStops(l: Limits): number[] {
   return out;
 }
 
-/** The grades offered in a side rail, trimmed to what this board reaches — a
- *  stop it would silently clamp is a promise the screen can't keep. */
+/** The grades offered in a side rail: the board's full decline if it has
+ *  one, the hand-picked ones up to 20 %, then every 5 % above that as far as
+ *  this board goes. Trimmed to what it reaches — a stop it would silently
+ *  clamp is a promise the screen can't keep. */
 export const INCLINE_STOPS = [0, 3, 5, 8, 10, 15, 18, 20] as const;
-export const inclineStops = (l: Limits): number[] =>
-  INCLINE_STOPS.filter((v) => v >= l.minGrade && v <= l.maxGrade);
+const INCLINE_STEP_ABOVE = 5;
+export function inclineStops(l: Limits): number[] {
+  const out: number[] = l.minGrade < 0 ? [l.minGrade] : [];
+  out.push(...INCLINE_STOPS.filter((v) => v >= l.minGrade && v <= l.maxGrade));
+  const top = INCLINE_STOPS[INCLINE_STOPS.length - 1]!;
+  for (let v = top + INCLINE_STEP_ABOVE; v <= l.maxGrade; v += INCLINE_STEP_ABOVE) out.push(v);
+  return out;
+}
 
 /** The stop nearest a value: the one a rail keeps in view. */
 export function nearestStop(stops: readonly number[], v: number): number | undefined {
