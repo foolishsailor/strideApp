@@ -5,7 +5,7 @@
   position: absolute;
   top: 140px;
   bottom: 0;
-  width: 190px; /* just wider than "12.5" at 92px, so it centres close to the edge */
+  width: 190px; /* narrow, so the contents centre close to the edge */
   display: flex;
   flex-direction: column;
   padding: 6px 0 14px;
@@ -27,16 +27,16 @@
   flex: none;
 }
 .reading .label {
-  font-size: 20px;
+  font-size: 15px;
 }
-/* Big enough to read from the belt, and still "12.5" fits in 216px. */
+/* Big enough to read from the belt, and "12.5" fits the 190px rail. */
 .reading .value {
   margin-top: 4px;
-  font-size: 92px;
+  font-size: 69px;
 }
 .target {
   margin-top: 6px;
-  font-size: 18px;
+  font-size: 14px;
   color: var(--colour-ink-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -65,7 +65,7 @@
   display: none;
 }
 
-/* Just the number, twice the size it was, with air between. The whole
+/* Just the number, with air between. The whole
    112px row is still the target; only the box
    around it is gone. */
 .stop {
@@ -79,7 +79,7 @@
   border: none;
   color: var(--colour-ink-dim);
   font-family: inherit;
-  font-size: 96px;
+  font-size: 72px;
   font-weight: var(--weight-numeral);
   font-variant-numeric: tabular-nums;
   transition: color var(--motion-quick), font-size var(--motion-quick), transform 0.06s;
@@ -94,7 +94,7 @@
 /* The stop the target is on: bigger and in the accent, nothing drawn round it. */
 .selected {
   color: var(--colour-accent);
-  font-size: 104px;
+  font-size: 78px;
   font-weight: 600;
 }
 
