@@ -86,6 +86,14 @@ data class Snapshot(
     val elapsed: Double,
     val calories: Double,
     val pulse: Int,
+    /** From the foot pod (see Footpod): steps per minute, watts, metres per
+     *  step and the pod's own km/h. Zero when there is no pod or no reading. */
+    val cadence: Int = 0,
+    val power: Int = 0,
+    val strideM: Double = 0.0,
+    val podKph: Double = 0.0,
+    /** Metres climbed so far this walk: rise over the ground covered. */
+    val climbM: Double = 0.0,
     val fan: Int,
     val session: Int,
     val workout: String,
@@ -252,6 +260,11 @@ data class Snapshot(
         append("\"elapsed\":${"%.0f".format(elapsed)},")
         append("\"calories\":${"%.0f".format(calories)},")
         append("\"pulse\":$pulse,")
+        append("\"cadence\":$cadence,")
+        append("\"power\":$power,")
+        append("\"strideM\":${"%.2f".format(strideM)},")
+        append("\"podKph\":${"%.1f".format(podKph)},")
+        append("\"climbM\":${"%.0f".format(climbM)},")
         append("\"fan\":$fan,")
         append("\"workout\":\"${esc(workout)}\",")
         append("\"dmk\":$dmk,")

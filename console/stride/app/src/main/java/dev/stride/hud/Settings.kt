@@ -80,6 +80,10 @@ class Settings(context: Context) {
         const val HR_ADDR = "hr_addr"
         const val HR_NAME = "hr_name"
 
+        // --- foot pod ---
+        const val POD_ADDR = "pod_addr"
+        const val POD_NAME = "pod_name"
+
         // --- display ---
         const val SLEEP_MIN = "sleep_min"
         const val CLOCK_24 = "clock_24"
@@ -375,6 +379,19 @@ class Settings(context: Context) {
         prefs.edit().remove(HR_ADDR).remove(HR_NAME).apply()
     }
 
+    // --- foot pod -------------------------------------------------------------
+
+    fun podAddr(): String = prefs.getString(POD_ADDR, "") ?: ""
+    fun podName(): String = prefs.getString(POD_NAME, "") ?: ""
+
+    fun savePod(addr: String, name: String) {
+        prefs.edit().putString(POD_ADDR, addr).putString(POD_NAME, name).apply()
+    }
+
+    fun forgetPod() {
+        prefs.edit().remove(POD_ADDR).remove(POD_NAME).apply()
+    }
+
     // --- display --------------------------------------------------------------
 
     fun sleepMs(): Long = prefs.getInt(SLEEP_MIN, 5) * 60_000L
@@ -428,6 +445,8 @@ class Settings(context: Context) {
         .put(HR_SOURCE, hrSource())
         .put(HR_ADDR, hrAddr())
         .put(HR_NAME, hrName())
+        .put(POD_ADDR, podAddr())
+        .put(POD_NAME, podName())
         .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
         .put(BRIGHTNESS, prefs.getString(BRIGHTNESS, "normal"))

@@ -478,6 +478,7 @@
   var ICONS = {
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
     hr: 'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z',
+    pod: 'M4 16c0-3 2-5 5-5h2l3-6h3l-1 7c3 0 4 2 4 4v2H4z',
     ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     coach: 'M4 5h16v11H9l-5 4V5z',
@@ -489,6 +490,7 @@
   var SECTIONS = [
     ['people', 'Who walks',      paneWho],
     ['hr',     'Heart rate',     paneHeart],
+    ['pod',    'Foot pod',       panePod],
     ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
@@ -771,6 +773,93 @@
 
     drawPaired();
     pane.sxTick = drawPaired;   // live bpm while this section is open
+  }
+
+  // --- foot pod ---
+  function panePod(pane) {
+    var sc = head(pane, 'Foot pod',
+      'A Stryd or other foot pod gives the walk screen cadence, power, stride ' +
+      'and the pod\'s own speed. A Garmin watch only broadcasts heart rate, so ' +
+      'the console reads the pod directly.');
+
+    var g2 = group('Paired pod');
+    var pairedBox = el('div');
+    g2.appendChild(pairedBox);
+    sc.appendChild(g2);
+
+    var g3 = group('Add a pod');
+    var scanBtn = press(el('button', 'sx-pill sx-go', 'SCAN'), function () {
+      scanBtn.textContent = 'SCANNING';
+      foundBox.innerHTML = '<div class="sx-empty"><span class="sx-state">' +
+        '<i class="sx-dot sx-busy"></i>Looking for pods…</span></div>';
+      try { bridge().podScan(); } catch (e) {}
+      setTimeout(drawFound, 9000);
+    });
+    g3.appendChild(row('Scan for pods',
+      'Any pod using the standard Bluetooth running speed and cadence or power ' +
+      'services. If your watch holds the pod over Bluetooth, the pod may not ' +
+      'have room for the console too; over ANT+ it will.', scanBtn));
+    var foundBox = el('div');
+    g3.appendChild(foundBox);
+    sc.appendChild(g3);
+
+    function drawFound() {
+      scanBtn.textContent = 'SCAN AGAIN';
+      var list = [];
+      try { list = JSON.parse(bridge().podFound()); } catch (e) {}
+      foundBox.innerHTML = '';
+      if (!list.length) {
+        foundBox.appendChild(el('div', 'sx-empty',
+          'No pods found.<br>Give yours a shake or a few steps — most sleep when still.'));
+        return;
+      }
+      list.forEach(function (d) {
+        var r = el('div', 'sx-dev');
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + d.name + ' · ' +
+          d.address.slice(0, 8) + '</div><div class="sx-d">Foot pod · ' +
+          d.rssi + ' dBm</div></div>';
+        r.appendChild(press(el('button', 'sx-pill sx-go', 'PAIR'), function () {
+          try { bridge().podPair(d.address, d.name); } catch (e) {}
+          foundBox.innerHTML = '';
+          scanBtn.textContent = 'SCAN';
+          load(); drawPaired();
+        }));
+        foundBox.appendChild(r);
+      });
+    }
+
+    function drawPaired() {
+      var st = {};
+      try { st = JSON.parse(bridge().podStatus()); } catch (e) {}
+      pairedBox.innerHTML = '';
+
+      if (!st.available) {
+        pairedBox.appendChild(el('div', 'sx-empty',
+          'Bluetooth is off, or this console has none.'));
+        return;
+      }
+      if (!st.address) {
+        pairedBox.appendChild(el('div', 'sx-empty',
+          'No pod paired.<br>Wake yours and scan.'));
+        return;
+      }
+      var r = el('div', 'sx-dev' + (st.connected ? ' sx-on' : ''));
+      var bits = [st.connected ? 'Connected' : 'Not in range'];
+      if (st.battery >= 0) bits.push('battery ' + st.battery + '%');
+      if (st.watts > 0) bits.push(st.watts + ' W');
+      r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (st.name || 'Pod') +
+        ' · ' + st.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
+        '</div></div><div class="sx-bpm">' + (st.cadence > 0 ? st.cadence : '—') +
+        ' <small>spm</small></div>';
+      r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
+        try { bridge().podForget(); } catch (e) {}
+        load(); drawPaired();
+      }));
+      pairedBox.appendChild(r);
+    }
+
+    drawPaired();
+    pane.sxTick = drawPaired;   // live cadence while this section is open
   }
 
   // --- home assistant ---

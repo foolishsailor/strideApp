@@ -20,3 +20,20 @@
   font-size: 60px;
   line-height: 1.1;
 }
+.metric.inline {
+  flex-direction: row;
+  align-items: baseline;
+}
+.metric .inlineLabel {
+  margin-right: 10px;
+  font-size: 14px;
+}
+.metric .inlineValue {
+  font-size: 30px;
+  line-height: 1.2;
+}
+/* The panel the layout was drawn for is 1280 wide, and six of the large
+   numbers only fit between the readings there a size down. */
+@media (max-width: 1500px) {
+  .metric .large { font-size: 44px; }
+}

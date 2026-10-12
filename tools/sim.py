@@ -123,6 +123,7 @@ def main():
     sub.add_parser("press").add_argument("button", choices=BUTTONS)
     sub.add_parser("key").add_argument("state", choices=("out", "in"))
     sub.add_parser("pulse").add_argument("state", choices=("on", "off"))
+    sub.add_parser("pod").add_argument("state", choices=("on", "off"))
     g = sub.add_parser("guided"); g.add_argument("shape", choices=SHAPES); g.add_argument("minutes", type=int, nargs="?", default=10)
     s = sub.add_parser("scenario"); s.add_argument("name", choices=SCENARIOS); s.add_argument("arg", nargs="?")
     a = p.parse_args()
@@ -160,6 +161,8 @@ def main():
         con.ctl("press", "--es", "button", a.button)
     elif a.cmd == "key":
         con.ctl("key", "--ez", "out", "true" if a.state == "out" else "false")
+    elif a.cmd == "pod":
+        con.ctl("pod", "--ez", "on", "true" if a.state == "on" else "false")
     elif a.cmd == "pulse":
         con.ctl("pulse", "--ez", "on", "true" if a.state == "on" else "false")
     elif a.cmd == "guided":

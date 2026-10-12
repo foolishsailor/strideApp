@@ -426,6 +426,10 @@ class MainActivity : Activity() {
        console's radio cannot scan as a central and hold a peripheral link at
        the same time. See HeartRate.seek. */
     private val strap by lazy { HeartRate(this) { ftms.listeners > 0 } }
+    /** A Stryd or other foot pod: cadence, power, stride. Held off the same way. */
+    private val pod by lazy { Footpod(this) { ftms.listeners > 0 } }
+    /** Which sensor the location-permission dialog interrupted a scan for. */
+    @Volatile private var scanAfterPermission: BleSensor? = null
     /** The treadmill as a standard Bluetooth fitness machine, for Zwift and
      *  friends. Telemetry only, and silent on a radio that cannot advertise. */
     private val ftms by lazy { Ftms(this) }
@@ -1352,15 +1356,10 @@ class MainActivity : Activity() {
             // returns. Scanning through it is the documented way to get an
             // empty list that looks exactly like "no straps here", so the scan
             // waits for the answer — see onRequestPermissionsResult.
-            if (ensureScanPermission()) strap.scan()
+            if (ensureScanPermission(strap)) strap.scan()
         }
 
-        @JavascriptInterface fun hrFound(): String = JSONArray().apply {
-            strap.found().forEach {
-                put(JSONObject().put("address", it.address)
-                    .put("name", it.name).put("rssi", it.rssi))
-            }
-        }.toString()
+        @JavascriptInterface fun hrFound(): String = foundJson(strap)
 
         @JavascriptInterface fun hrPair(address: String, name: String) {
             strap.stopScan()
@@ -1383,6 +1382,37 @@ class MainActivity : Activity() {
             .put("battery", strap.battery)
             .put("name", cfg.hrName())
             .put("address", cfg.hrAddr())
+            .toString()
+
+        // --- foot pod ---
+        @JavascriptInterface fun podScan() {
+            if (ensureScanPermission(pod)) pod.scan()
+        }
+
+        @JavascriptInterface fun podFound(): String = foundJson(pod)
+
+        @JavascriptInterface fun podPair(address: String, name: String) {
+            pod.stopScan()
+            cfg.savePod(address, name)
+            pod.connect(address)
+            Log.i(TAG, "pod: pairing with $name")
+        }
+
+        @JavascriptInterface fun podForget() {
+            pod.disconnect()
+            cfg.forgetPod()
+            Log.i(TAG, "pod: forgotten")
+        }
+
+        @JavascriptInterface fun podStatus(): String = JSONObject()
+            .put("available", pod.available)
+            .put("scanning", pod.scanning)
+            .put("connected", pod.connected)
+            .put("cadence", pod.cadence())
+            .put("watts", pod.watts())
+            .put("battery", pod.battery)
+            .put("name", cfg.podName())
+            .put("address", cfg.podAddr())
             .toString()
 
         /**
@@ -1468,6 +1498,29 @@ class MainActivity : Activity() {
         "grips" -> fromBoard
         "strap" -> strap.bpm()
         else -> strap.bpm().takeIf { it > 0 } ?: fromBoard
+    }
+
+    private data class PodReading(val cadence: Int, val watts: Int, val strideM: Double, val kph: Double)
+
+    /**
+     * The foot pod's numbers, all zero without a recent reading.
+     *
+     * Under the simulator with `tools/sim.py pod on`, a stand-in worked out
+     * from the belt instead, so the screen can be built and checked on the
+     * emulator, which has no Bluetooth: cadence rising with pace, and power
+     * from a 75 kg walker at about 1.04 W/kg per m/s plus the lift against
+     * gravity on the incline. Plausible, not physiology.
+     */
+    private fun podNow(kph: Double, grade: Double): PodReading {
+        val s = sim
+        if (s == null || !s.podOn) {
+            return PodReading(pod.cadence(), pod.watts(), pod.strideM(), pod.speedKph())
+        }
+        if (kph <= 0.0) return PodReading(0, 0, 0.0, 0.0)
+        val ms = kph / 3.6
+        val cadence = Math.round(100 + 6 * kph).toInt()
+        val watts = Math.round(75 * ms * (1.04 + 9.81 * grade.coerceAtLeast(0.0) / 100)).toInt()
+        return PodReading(cadence, watts, ms * 60 / cadence, kph * 0.98)
     }
 
     // --- applying settings ----------------------------------------------------
@@ -1558,11 +1611,14 @@ class MainActivity : Activity() {
 
             Settings.HR_SOURCE, Settings.HR_ADDR -> applyStrap()
 
+            Settings.POD_ADDR -> applyPod()
+
             // A reset changes everything at once.
             "" -> {
                 Thread { applyMqttSettings() }.start()
                 applyBrightness()
                 applyStrap()
+                applyPod()
             }
         }
     }
@@ -1577,19 +1633,33 @@ class MainActivity : Activity() {
         else strap.connect(cfg.hrAddr())
     }
 
+    /** Hold a connection to the foot pod whenever one is paired. */
+    private fun applyPod() {
+        if (cfg.podAddr().isBlank()) pod.disconnect() else pod.connect(cfg.podAddr())
+    }
+
+    /** What a scan found, for the Settings list. */
+    private fun foundJson(sensor: BleSensor): String = JSONArray().apply {
+        sensor.found().forEach {
+            put(JSONObject().put("address", it.address)
+                .put("name", it.name).put("rssi", it.rssi))
+        }
+    }.toString()
+
     /**
      * A BLE scan on API 23–30 returns an empty list, not an error, without a
      * location permission. This app targets 28, so that is the rule that
      * applies — and an empty list is exactly what "no straps here" looks like,
      * which makes it the single most confusing way for this feature to fail.
      */
-    private fun ensureScanPermission(): Boolean {
+    private fun ensureScanPermission(forScan: BleSensor): Boolean {
         if (android.os.Build.VERSION.SDK_INT < 23) return true
         val perm = android.Manifest.permission.ACCESS_COARSE_LOCATION
         if (checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return true
         }
-        Log.i(TAG, "hr: asking for location permission so a BLE scan can return results")
+        Log.i(TAG, "ble: asking for location permission so a BLE scan can return results")
+        scanAfterPermission = forScan
         requestPermissions(arrayOf(perm), SCAN_PERMISSION)
         return false
     }
@@ -1602,8 +1672,9 @@ class MainActivity : Activity() {
         if (code != SCAN_PERMISSION) return
         val granted = results.firstOrNull() ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (granted) strap.scan()
-        else Log.w(TAG, "hr: location refused, a BLE scan will find nothing")
+        if (granted) scanAfterPermission?.scan()
+        else Log.w(TAG, "ble: location refused, a BLE scan will find nothing")
+        scanAfterPermission = null
     }
 
     /**
@@ -2201,6 +2272,7 @@ class MainActivity : Activity() {
         refreshWalkerHrMax()
         applyBrightness()
         applyStrap()
+        applyPod()
 
         web = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -2395,6 +2467,7 @@ class MainActivity : Activity() {
             "press" -> board.press(i.getStringExtra("button") ?: "")
             "key" -> board.key(out = i.getBooleanExtra("out", true))
             "pulse" -> board.pulseOn = i.getBooleanExtra("on", true)
+            "pod" -> board.podOn = i.getBooleanExtra("on", true)
             "status" -> {}
             else -> return "unknown command '$cmd'"
         }
@@ -3026,6 +3099,7 @@ class MainActivity : Activity() {
             if (route != null) routeTick(sessionDistance) else planTick(elapsedNow)
         }
         val step = currentStep()
+        val foot = podNow(speed, incline)
 
         return Snapshot(
             speed = speed,
@@ -3038,6 +3112,11 @@ class MainActivity : Activity() {
             elapsed = elapsedSec(),
             calories = sessionCalories,
             pulse = pulse,
+            cadence = foot.cadence,
+            power = foot.watts,
+            strideM = foot.strideM,
+            podKph = foot.kph,
+            climbM = climbM,
             fan = fanState,
             session = session,
             workout = workout,

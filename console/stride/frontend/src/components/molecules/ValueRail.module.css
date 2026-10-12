@@ -1,9 +1,9 @@
-/* The side docks, from the bottom of the top bar (128) to the bottom of the
+/* The side docks, from the bottom of the top bar (140) to the bottom of the
    screen. No panel of their own: the controls sit straight on the backdrop,
    centred. The touch rows are the full width of the rail. */
 .rail {
   position: absolute;
-  top: 128px;
+  top: 140px;
   bottom: 0;
   width: 150px; /* narrow, so the contents centre close to the edge */
   display: flex;

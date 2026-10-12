@@ -21,6 +21,13 @@ export interface SessionState {
   distance?: number;
   calories?: number;
   pulse?: number;
+  /** Foot pod: steps per minute, watts, metres per step, the pod's own km/h. */
+  cadence?: number;
+  power?: number;
+  strideM?: number;
+  podKph?: number;
+  /** Metres climbed this walk. */
+  climbM?: number;
   fan?: number;
   ramping?: string;
   phaseLeft?: number;
