@@ -856,9 +856,15 @@
       });
     }
 
-    var g3 = null, queueRow = null;
+    var g3 = null, queueRow = null, tmPeopleBox = null, tmPeopleKey = '';
     if (has('trailmateStatus')) {
       g3 = group('TrailMate');
+      // Everyone and whether they are connected, here where TrailMate is
+      // named — the per-person row inside a card is two taps from anywhere
+      // and was not found. CONNECT opens that person's card and starts the
+      // link, so the code and QR still appear in the one place they are drawn.
+      tmPeopleBox = el('div');
+      g3.appendChild(tmPeopleBox);
       queueRow = el('div');
       g3.appendChild(queueRow);
       g3.appendChild(row('TrailMate server',
@@ -866,6 +872,47 @@
         'your own; clearing it goes back to foolishrunner.com.',
         field('trailmate_url', S.trailmate_url)));
       sc.appendChild(g3);
+    }
+
+    function drawTmPeople() {
+      if (!tmPeopleBox) return;
+      var st = tmStatus() || {};
+      var people = S.people || [];
+      var key = JSON.stringify(people.map(function (p) {
+        var t = tmPerson(st, p.id);
+        return [p.id, p.name, !!t.linked, !!t.reconnect, t.account || ''];
+      }));
+      if (key === tmPeopleKey) return;
+      tmPeopleKey = key;
+      tmPeopleBox.innerHTML = '';
+      if (!people.length) {
+        tmPeopleBox.appendChild(row('Connect TrailMate',
+          'Add someone above first — each person connects their own TrailMate account. ' +
+          'Guests are never sent.', el('div')));
+        return;
+      }
+      people.forEach(function (p) {
+        var t = tmPerson(st, p.id);
+        var said, btn;
+        if (t.linked && t.reconnect) {
+          said = '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span>';
+          btn = press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { connectFor(p); });
+        } else if (t.linked) {
+          said = '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
+            (t.account ? ' as ' + esc(t.account) : '') + '</span>';
+          btn = press(el('button', 'sx-pill', 'MANAGE'), function () { editPerson(p); });
+        } else {
+          said = 'Not connected — their walks stay on the console.';
+          btn = press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { connectFor(p); });
+        }
+        tmPeopleBox.appendChild(row(esc(p.name), said, btn));
+      });
+    }
+
+    /* Open the person's card and start the link there: the code and QR are drawn by drawTm. */
+    function connectFor(p) {
+      editPerson(p);
+      call('trailmateConnect', p.id);
     }
 
     function drawQueue() {
@@ -886,7 +933,8 @@
     drawDefault();
     drawHa();
     drawQueue();
-    pane.sxTick = function () { drawTm(); drawQueue(); };
+    drawTmPeople();
+    pane.sxTick = function () { drawTm(); drawQueue(); drawTmPeople(); };
   }
 
   /* What Kotlin says about TrailMate, or null on a build without it. */
