@@ -1,5 +1,6 @@
 import { bridge } from '../bridge/stride';
 import { pausedWhere } from '../lib/session';
+import { useUnits } from '../store/settings';
 import { useSession } from '../store/session';
 import { useUi } from '../store/ui';
 import { Button, Overlay } from '../components/primitives';
@@ -7,7 +8,8 @@ import { Button, Overlay } from '../components/primitives';
 /** STOP's question. The belt is already paused by the time this shows. */
 export function PausedOverlay() {
   const open = useUi((s) => s.confirmOpen);
-  const where = useSession((s) => pausedWhere(s.snapshot));
+  const u = useUnits();
+  const where = useSession((s) => pausedWhere(s.snapshot, u));
   if (!open) return null;
 
   const answer = (fn: () => void) => () => {

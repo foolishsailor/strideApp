@@ -198,6 +198,9 @@ class MainActivity : Activity() {
          */
         const val UI_URL = "file:///android_asset/ui/trailmate.html"
 
+        /** The launch screen's field colour, painted behind the page. */
+        const val FIELD = 0xFF100F0E.toInt()
+
         const val PREFS = "stride"
         /** Debug builds: run against SimBoard instead of the USB board. */
         const val PREF_SIM = "sim"
@@ -1507,6 +1510,20 @@ class MainActivity : Activity() {
 
         /** The second, deliberate half of the tap. See [wakeBoard]. */
         @JavascriptInterface fun wakeBoard() = this@MainActivity.wakeBoard()
+
+        /** Apps the console can open: [{pkg, name, icon}]. See [OverApp]. */
+        @JavascriptInterface fun apps(): String = overApp.list()
+
+        /** Open one, with the walk over it. */
+        @JavascriptInterface fun openApp(pkg: String) = runOnUiThread { overApp.open(pkg) }
+
+        /** Over an app: the parts of the page that take touches, as JSON
+         *  [[x, y, w, h], …] in screen pixels or "all". Everything else goes
+         *  to the app underneath. */
+        @JavascriptInterface fun touchable(json: String) = runOnUiThread { overApp.touchable(json) }
+
+        /** Over an app: back to STRIDE full screen. */
+        @JavascriptInterface fun closeApp() = runOnUiThread { overApp.close() }
     }
 
     /**
@@ -2365,7 +2382,7 @@ class MainActivity : Activity() {
             /* The launch screen's field colour. The WebView paints this before
                the document does, so it is the one frame between the splash and
                the UI — matching it makes the handover invisible. */
-            setBackgroundColor(0xFF100F0E.toInt())
+            setBackgroundColor(FIELD)
             addJavascriptInterface(bridge, "Stride")
             /* A reload (the WebView recovering, or DevTools) starts the page
                from nothing, and the plan is the one thing sent once rather than
@@ -2374,6 +2391,7 @@ class MainActivity : Activity() {
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     if (planSteps.isNotEmpty()) pushPlan()
+                    if (overApp.showing) pushOverApp(true)
                 }
             }
             loadUrl(UI_URL)
@@ -2399,6 +2417,20 @@ class MainActivity : Activity() {
 
     /** The page's bridge; the test harness drives the same one. */
     private val bridge by lazy { Bridge() }
+
+    /** Netflix and the rest, with the walk drawn over them. See [OverApp]. */
+    private val overApp by lazy { OverApp(this, { web }, ::pushOverApp) }
+
+    private fun pushOverApp(on: Boolean) {
+        web.evaluateJavascript("window.overApp && window.overApp($on)", null)
+    }
+
+    /** In front again, by whatever road — the overlay's BACK, the other app's
+     *  own back button, the launcher: the page comes home. */
+    override fun onResume() {
+        super.onResume()
+        overApp.reclaim()
+    }
 
     /**
      * Debug builds, when switched on with tools/sim.py: a board in software.
@@ -3498,7 +3530,12 @@ class MainActivity : Activity() {
     /** Hand a state snapshot to the page. */
     private fun push(s: Snapshot) {
         val json = s.toJson()
-        runOnUiThread { web.evaluateJavascript("window.render($json)", null) }
+        runOnUiThread {
+            web.evaluateJavascript("window.render($json)", null)
+            // The walk is over. A summary is not for reading in a strip over a
+            // film, so STRIDE comes back to the front for it.
+            if (overApp.showing && (session == Session.SUMMARY || session == Session.WELCOME)) overApp.close()
+        }
     }
 
     /**
@@ -3873,6 +3910,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        overApp.reclaim()
         running = false
         ftms.stop()
         voice.close()

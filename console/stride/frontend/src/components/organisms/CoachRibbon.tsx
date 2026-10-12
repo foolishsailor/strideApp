@@ -36,7 +36,7 @@ export function CoachRibbon() {
   });
 
   return (
-    <div ref={ref} className={cx(styles.coach, shown && styles.shown)}>
+    <div ref={ref} data-touch={shown || undefined} className={cx(styles.coach, shown && styles.shown)}>
       <div className={styles.who}>Coach</div>
       <div className={styles.text}>{line}</div>
       <div className={styles.dismiss}>Dismiss ×</div>

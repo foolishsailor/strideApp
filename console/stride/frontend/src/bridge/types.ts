@@ -97,8 +97,27 @@ export interface StrideBridge {
   hushCoach(): void;
   dim(on: boolean): void;
   routes(): string;
+  /** Settings.kt json(): every saved setting, as JSON. */
+  settingsJson?(): string;
   /** {minGrade, maxGrade, minKph, maxKph} as JSON. Not stubbed in a browser. */
   boardLimits?(): string;
+  /** Apps the console can open, as JSON AppEntry[] (OverApp.kt). Optional:
+   *  an older APK has none of these four. */
+  apps?(): string;
+  /** Open an app, with the walk drawn over it. Kotlin answers with window.overApp. */
+  openApp?(pkg: string): void;
+  /** Over an app: the boxes that take touches, as JSON [[x, y, w, h], …] in
+   *  screen pixels, or "all". Touches anywhere else go to the app underneath. */
+  touchable?(json: string): void;
+  /** Over an app: back to STRIDE full screen. */
+  closeApp?(): void;
+}
+
+/** One app the console can open. `icon` is a PNG data URL, or empty. */
+export interface AppEntry {
+  pkg: string;
+  name: string;
+  icon?: string;
 }
 
 export interface TrackPoint {
@@ -158,6 +177,7 @@ declare global {
     render: (s: SessionState) => void;
     plan: (p: Plan) => void;
     coach: (c: CoachLine) => void;
+    overApp: (on: boolean) => void;
     /** Calls Kotlin made before the app module ran; see trailmate.html. */
     __early?: { render?: SessionState; plan?: Plan; coach?: CoachLine };
   }

@@ -1,5 +1,6 @@
 export { CoachRibbon } from './CoachRibbon';
 export { ControlBar } from './ControlBar';
+export { Drawer, Grip, toggleControls, toggleMetrics } from './Drawers';
 export { FanMenu } from './FanMenu';
 export { Hero } from './Hero';
 export { MetricStrip } from './MetricStrip';

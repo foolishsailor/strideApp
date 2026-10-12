@@ -3,6 +3,7 @@ import { App } from './App';
 import { core } from './bridge/stride';
 import { installKotlinEntryPoints, installModeWatcher, onModeChange } from './bridge/kotlin';
 import { useSession } from './store/session';
+import { loadSettings } from './store/settings';
 import { useUi } from './store/ui';
 import { initWelcome } from './store/welcome';
 import { applyTokens } from './theme/tokens';
@@ -15,6 +16,7 @@ import './theme/global.css';
 const standalone = core().stub();
 
 applyTokens();
+loadSettings();
 initWelcome();
 installKotlinEntryPoints();
 installModeWatcher();
@@ -22,7 +24,11 @@ onModeChange(useSession.getState().mode);
 
 /* Somebody may have just added themselves; the picker must not show a name
    Settings does not have. */
-document.addEventListener('stride-settings-closed', () => useUi.getState().peopleChanged());
+document.addEventListener('stride-settings-closed', () => {
+  useUi.getState().peopleChanged();
+  /* And km or miles take effect the moment Settings is put away. */
+  loadSettings();
+});
 
 createRoot(document.getElementById('root')!).render(<App />);
 

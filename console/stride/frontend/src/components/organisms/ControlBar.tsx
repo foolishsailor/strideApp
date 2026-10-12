@@ -6,13 +6,14 @@ import { Button, acknowledge } from '../primitives';
 import styles from './ControlBar.module.css';
 
 /** The control band, docked to the bottom edge between the two rails.
- *  Speed and incline live in the rails; this is start, fan and stop. Held
- *  clear of the panel edge: touches within ~15px of the bezel register
+ *  Speed and incline live in the rails; this is apps, start, fan and stop.
+ *  APPS sits at the far end from STOP, so a miss for one is never the other.
+ *  Held clear of the panel edge: touches within ~15px of the bezel register
  *  unreliably on this digitiser. */
 export function ControlBar() {
   const mode = useMode();
   const fan = useField('fan') ?? 0;
-  const { fanOpen, setFanOpen, setConfirmOpen } = useUi();
+  const { fanOpen, setFanOpen, setConfirmOpen, setAppsOpen, overApp } = useUi();
 
   const onPrimary = (e: Event) => {
     setFanOpen(false);
@@ -29,8 +30,16 @@ export function ControlBar() {
     setConfirmOpen(true);
   };
 
+  // Over another app, the same place is the way back to STRIDE.
+  const onApps = () => {
+    setFanOpen(false);
+    if (overApp) bridge().closeApp?.();
+    else setAppsOpen(true);
+  };
+
   return (
     <div className={styles.controls}>
+      {bridge().apps && <Button size="dock" className={styles.apps} onTap={onApps}>{overApp ? 'BACK' : 'APPS'}</Button>}
       <Button size="dock" tone="primary" active={mode === 'running'} onTap={onPrimary}>{primaryLabel(mode)}</Button>
       <Button size="dock" onTap={() => setFanOpen(!fanOpen)}>{fanButtonLabel(fan)}</Button>
       <Button size="dock" tone="stop" muted={mode === 'cooldown'} onTap={onStop}>STOP</Button>

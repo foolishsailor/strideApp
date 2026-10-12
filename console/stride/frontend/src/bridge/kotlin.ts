@@ -14,6 +14,9 @@ export function installKotlinEntryPoints(): void {
      on the Kotlin side: this WebView is a 2020 Chromium behind file://, and the
      platform media stack is what can be relied on to make a sound. */
   window.coach = (c) => useSession.getState().sayCoach(c);
+  /* Kotlin calls this when the page moves over another app and when it
+     comes home (OverApp.kt). */
+  window.overApp = (on) => setOverApp(!!on);
 
   /* Calls that arrived before this module ran (see trailmate.html). Plan
      first, so the first snapshot already has its ground. An early coach line
@@ -24,11 +27,25 @@ export function installKotlinEntryPoints(): void {
   if (early?.render) window.render(early.render);
 }
 
+/** Over another app the page drops its backdrop, so the app shows through
+ *  (global.css). The pickers close: they belong to the screen just left. */
+function setOverApp(on: boolean): void {
+  const ui = useUi.getState();
+  ui.setOverApp(on);
+  ui.setAppsOpen(false);
+  ui.setFanOpen(false);
+  document.documentElement.classList.toggle('over-app', on);
+  markActivity();
+}
+
 /** Housekeeping on every change of session mode — what the old showScreen()
  *  did besides swapping screens. */
 export function onModeChange(mode: SessionMode): void {
   const ui = useUi.getState();
-  if (mode === 'welcome' || mode === 'summary') ui.setFanOpen(false);
+  if (mode === 'welcome' || mode === 'summary') {
+    ui.setFanOpen(false);
+    ui.setAppsOpen(false);
+  }
   /* The ribbon belongs to the walk. A line still up when the belt stopped used
      to stay up over the summary's cards, where nothing had made room for it. */
   if (screenFor(mode) !== 'workout') useSession.getState().hideCoach();

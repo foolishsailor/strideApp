@@ -63,3 +63,9 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
+
+/* Over another app the dock's drawer has a handle where the ribbon would sit,
+   so the ribbon goes above it. */
+:global(html.over-app) .coach {
+  bottom: 184px;
+}

@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { installKotlinEntryPoints } from '../bridge/kotlin';
 import { useUi } from '../store/ui';
+import { touchableBoxes } from '../hooks/useTouchRegion';
+import { loadSettings, useSettings } from '../store/settings';
 import { useWelcome } from '../store/welcome';
 import { mockBridge } from '../test/setup';
 
@@ -13,7 +15,8 @@ const ROUTES = JSON.stringify([
 beforeEach(() => {
   installKotlinEntryPoints();
   useWelcome.setState({ step: 1, walker: '', planMode: 'shapes', minutes: 30, shape: 'rolling', route: null, loop: false });
-  useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false });
+  useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false, appsOpen: false });
+  act(() => window.overApp(false));
   act(() => window.render({ mode: 'welcome' }));
 });
 
@@ -148,5 +151,76 @@ describe('summary', () => {
     expect(screen.getByText('Nice work, Sam')).toBeTruthy();
     expect(screen.getByText('walk complete')).toBeTruthy();
     expect(screen.getByText('5.2')).toBeTruthy();
+  });
+});
+
+describe('units', () => {
+  it('shows the walk in miles when Settings says so, and still sends km/h', () => {
+    const b = mockBridge({ settingsJson: () => JSON.stringify({ units: 'mi' }) });
+    loadSettings();
+    render(<App />);
+    act(() => window.render({ mode: 'running', speed: 8, targetSpeed: 8, distance: 1609.344 }));
+    expect(screen.getAllByText('mph').length).toBeGreaterThan(0);
+    expect(screen.getByText('1.00')).toBeTruthy();
+    expect(screen.getByText('/mi')).toBeTruthy();
+    // The 6 mph stop goes to Kotlin as km/h.
+    fireEvent.click(document.querySelector('[data-stop="6"]')!);
+    expect(b.setSpeed.mock.calls[0]![0]).toBeCloseTo(6 * 1.609344, 6);
+    useSettings.setState({ units: 'km' });
+  });
+});
+
+describe('apps', () => {
+  const APPS = JSON.stringify([{ pkg: 'com.netflix.mediaclient', name: 'Netflix', icon: '' }]);
+
+  it('opens Netflix from APPS, and over it drops the hero and the backdrop', () => {
+    const b = mockBridge({ apps: () => APPS, openApp: vi.fn(), closeApp: vi.fn() });
+    render(<App />);
+    act(() => window.render({ mode: 'running', distance: 900 }));
+    press('APPS');
+    press('Netflix');
+    expect(b.openApp).toHaveBeenCalledWith('com.netflix.mediaclient');
+    expect(screen.queryByText('Netflix')).toBeNull(); // the picker has closed
+
+    act(() => window.overApp(true));
+    expect(document.documentElement.classList.contains('over-app')).toBe(true);
+    expect(screen.queryByText('laps · 400 m')).toBeNull();
+    expect(screen.getByText('STOP')).toBeTruthy();
+    press('BACK');
+    expect(b.closeApp).toHaveBeenCalled();
+
+    act(() => window.overApp(false));
+    expect(document.documentElement.classList.contains('over-app')).toBe(false);
+    expect(screen.getByText('laps · 400 m')).toBeTruthy();
+  });
+
+  it('slides the metrics and the controls away from their grips, and back', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running' }));
+    act(() => window.overApp(true));
+    const [dockGrip, stripGrip] = screen.getAllByLabelText('drawer');
+    fireEvent.click(stripGrip!);
+    expect(useUi.getState().metricsOpen).toBe(false);
+    fireEvent.click(dockGrip!);
+    expect(useUi.getState().controlsOpen).toBe(false);
+    fireEvent.click(dockGrip!);
+    fireEvent.click(stripGrip!);
+    expect(useUi.getState()).toMatchObject({ metricsOpen: true, controlsOpen: true });
+  });
+
+  it('tells Kotlin what takes touches, and everything while a question is up', () => {
+    const b = mockBridge({ apps: () => APPS, touchable: vi.fn() });
+    render(<App />);
+    act(() => window.render({ mode: 'running' }));
+    act(() => window.overApp(true));
+    expect(b.touchable).toHaveBeenLastCalledWith(expect.stringMatching(/^\[/));
+    press('STOP');
+    expect(touchableBoxes()).toBe('all');
+  });
+
+  it('has no APPS on a console whose app cannot open them', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running' }));
+    expect(screen.queryByText('APPS')).toBeNull();
   });
 });
