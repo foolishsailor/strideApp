@@ -5,7 +5,7 @@
   position: absolute;
   top: 140px;
   bottom: 0;
-  width: 190px; /* narrow, so the contents centre close to the edge */
+  width: 150px; /* narrow, so the contents centre close to the edge */
   display: flex;
   flex-direction: column;
   padding: 6px 0 14px;
@@ -29,7 +29,7 @@
 .reading .label {
   font-size: 15px;
 }
-/* Big enough to read from the belt, and "12.5" fits the 190px rail. */
+/* Big enough to read from the belt, and "12.5" fits the 150px rail. */
 .reading .value {
   margin-top: 4px;
   font-size: 69px;
@@ -66,13 +66,13 @@
 }
 
 /* Just the number, with air between. The whole
-   112px row is still the target; only the box
+   84px row is still the target; only the box
    around it is gone. */
 .stop {
   display: block;
   width: 100%;
-  height: 112px;
-  margin-bottom: 12px;
+  height: 84px;
+  margin-bottom: 9px;
   -webkit-tap-highlight-color: transparent;
   outline: none;
   background: transparent;
