@@ -1,5 +1,7 @@
 import type { PlanStep, SessionMode, SessionState } from '../bridge/types';
-import { mmss, nf } from './format';
+import type { Units } from '../store/settings';
+import { mmss } from './format';
+import { far, kphFrom, speedIn, walked } from './units';
 
 /* What the screen makes of a snapshot. Pure functions only, so every rule the
    old render() applied inline is named, tested, and shared by whichever
@@ -69,20 +71,21 @@ export const canStop = (mode: SessionMode): boolean =>
 
 /** Says where you are, not just that you stopped. Someone coming back to a
  *  paused console after answering the door wants the walk located again. */
-export function pausedWhere(s: SessionState): string {
+export function pausedWhere(s: SessionState, u: Units = 'km'): string {
   const where = [mmss(s.elapsed ?? 0) + ' in'];
   if (s.segments) where.push(`${s.segmentLabel || 'segment ' + s.segment} · ${s.segment} of ${s.segments}`);
-  else where.push(nf(s.distance ?? 0) + ' m');
+  else {
+    const d = walked(s.distance ?? 0, u);
+    where.push(d.value + ' ' + d.unit);
+  }
   where.push('the belt has stopped');
   return where.join(' · ');
 }
 
-/** "Rolling hills · 3 of 11 · 1:20 left", or metres/km for a route. */
-export function segmentSubtitle(s: SessionState): string {
+/** "Rolling hills · 3 of 11 · 1:20 left", or the ground left for a route. */
+export function segmentSubtitle(s: SessionState, u: Units = 'km'): string {
   const left = s.segmentLeft || 0;
-  const remaining = s.segmentLeftIsDistance
-    ? (left >= 1000 ? (left / 1000).toFixed(2) + ' km' : Math.round(left) + ' m')
-    : mmss(left);
+  const remaining = s.segmentLeftIsDistance ? far(left, u) : mmss(left);
   return `${s.plan} · ${s.segment} of ${s.segments} · ${remaining} left`;
 }
 
@@ -130,12 +133,24 @@ export function parseLimits(json: string | undefined): Limits {
   }
 }
 
-/** The speeds offered in a side rail: every whole km/h the belt can do.
- *  Below the board's minimum there is no slow, only stopped, so none of those. */
-export function speedStops(l: Limits): number[] {
+/** The speeds offered in a side rail: every whole km/h or mph the belt can
+ *  do, in the unit shown. Below the board's minimum there is no slow, only
+ *  stopped, so none of those. */
+export function speedStops(l: Limits, u: Units = 'km'): number[] {
   const out: number[] = [];
-  for (let v = Math.ceil(l.minKph); v <= Math.floor(l.maxKph); v++) out.push(v);
+  const lo = speedIn(l.minKph, u), hi = speedIn(l.maxKph, u);
+  for (let v = Math.ceil(lo - 1e-9); v <= Math.floor(hi + 1e-9); v++) out.push(v);
   return out;
+}
+
+/** The km/h change that moves a target of `kph` by `step` in the unit shown,
+ *  landing on that unit's 0.1 grid: 3.2 mph + 0.1 is 3.3 mph exactly, not
+ *  3.2 mph + 0.161 km/h, which the board rounds to 3.4. In km/h it is the
+ *  step itself. */
+export function speedDelta(kph: number, step: number, u: Units): number {
+  if (u === 'km') return step;
+  const next = Math.round((speedIn(kph, u) + step) * 10) / 10;
+  return kphFrom(next, u) - kph;
 }
 
 /** The grades offered in a side rail: the board's full decline if it has

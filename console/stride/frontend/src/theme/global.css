@@ -59,3 +59,24 @@ body::before {
   bottom: 0;
   left: 0;
 }
+
+/* Over another app (OverApp.kt): no canvas and no lift, so the app shows
+   through everywhere the walk screen has nothing docked. The text carries a
+   shadow of its own instead, for a bright scene behind it. */
+html.over-app,
+html.over-app body {
+  background: transparent;
+}
+html.over-app body::before {
+  display: none;
+}
+html.over-app #root {
+  text-shadow: var(--role-shadow-over-app);
+}
+/* And every word in one colour, white. The tones that tell STOP from START on
+   the teal canvas are lost against a picture, so over a film they give way.
+   !important because each component sets its own colour in its module. */
+html.over-app #root,
+html.over-app #root * {
+  color: var(--role-ink-over-app) !important;
+}

@@ -12,3 +12,9 @@
   align-items: center;
   justify-content: center;
 }
+/* Only as wide as its four letters, so the three that change their words
+   (PAUSE / RESUME, FAN III) keep the room. */
+.controls .apps {
+  flex: none;
+  width: 170px;
+}

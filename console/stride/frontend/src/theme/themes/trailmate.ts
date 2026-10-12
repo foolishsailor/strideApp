@@ -54,6 +54,15 @@ export const trailmate: Theme = {
     backdropMid: alpha(surface, 0.3),
     shadowRaised: `0 8px 18px ${alpha(deep, 0.5)}`,
     shadowFloating: `0 16px 32px ${alpha(deep, 0.62)}, 0 4px 10px ${alpha(deep, 0.4)}`,
+    /* Over a film: a translucent black panel under the drawers, so the walk
+       reads against any scene and the film still shows through. */
+    fillOverApp: alpha('#000000', 0.55),
+    /* Over a film every word is white: tone colours that read on the teal
+       canvas get lost against a picture. */
+    inkOverApp: '#FFFFFF',
+    /* Over a film there is no canvas behind the text, so it carries its own:
+       a tight edge for the strokes and a wide halo for a bright scene. */
+    shadowOverApp: `0 1px 3px ${alpha(deep, 0.95)}, 0 0 16px ${alpha(deep, 0.85)}`,
     sleepBg: '#000',
     sleepClock: '#0E3134',
     sleepHint: '#0A2628',

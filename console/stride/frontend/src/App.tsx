@@ -1,7 +1,9 @@
 import { useIdleSleep } from './hooks/useIdleSleep';
+import { useTouchRegion } from './hooks/useTouchRegion';
 import { screenFor } from './lib/session';
 import { useMode } from './store/session';
 import { CoachRibbon } from './components/organisms';
+import { AppsOverlay } from './overlays/AppsOverlay';
 import { CalibrationOverlay } from './overlays/CalibrationOverlay';
 import { PausedOverlay } from './overlays/PausedOverlay';
 import { SafetyKeyOverlay } from './overlays/SafetyKeyOverlay';
@@ -21,6 +23,7 @@ const SCREENS = {
 
 export function App() {
   useIdleSleep();
+  useTouchRegion();
   const Screen = SCREENS[screenFor(useMode())];
   return (
     <>
@@ -28,6 +31,7 @@ export function App() {
       {/* Outside the screens, so a line can fade on and off over the walk. */}
       <CoachRibbon />
       {/* In stacking order: each covers everything listed before it. */}
+      <AppsOverlay />
       <CalibrationOverlay />
       <PausedOverlay />
       <SafetyKeyOverlay />

@@ -1,5 +1,7 @@
 import { bridge } from '../../bridge/stride';
 import { fixed1, mmss, nf } from '../../lib/format';
+import { speedText, speedUnit, walked } from '../../lib/units';
+import { useUnits } from '../../store/settings';
 import { useSession } from '../../store/session';
 import { useWelcome } from '../../store/welcome';
 import { Button, Fill, Heading, Label, Prose, Row } from '../../components/primitives';
@@ -20,6 +22,8 @@ export function SummaryScreen() {
   const s = useSession((st) => st.snapshot);
   const walker = useWelcome((w) => w.walker);
   const kind = s.workout && s.workout !== 'none' ? s.workout : 'workout';
+  const u = useUnits();
+  const dist = walked(s.distance ?? 0, u);
 
   return (
     <Fill centred>
@@ -32,10 +36,10 @@ export function SummaryScreen() {
       {s.summaryLine && <Prose tone="accent" className={styles.coach}>{s.summaryLine}</Prose>}
       <Row space={16} className={styles.cards}>
         <StatCard label="Time">{mmss(s.elapsed ?? 0)}</StatCard>
-        <StatCard label="Distance" unit="m">{nf(s.distance ?? 0)}</StatCard>
+        <StatCard label="Distance" unit={dist.unit}>{dist.value}</StatCard>
         <StatCard label="Calories" unit="kcal">{nf(s.calories ?? 0)}</StatCard>
-        <StatCard label="Avg speed" unit="km/h">{fixed1(s.avgSpeed)}</StatCard>
-        <StatCard label="Max speed" unit="km/h">{fixed1(s.maxSpeed)}</StatCard>
+        <StatCard label="Avg speed" unit={speedUnit(u)}>{speedText(s.avgSpeed, u)}</StatCard>
+        <StatCard label="Max speed" unit={speedUnit(u)}>{speedText(s.maxSpeed, u)}</StatCard>
         <StatCard label="Avg incline" unit="%">{fixed1(s.avgIncline)}</StatCard>
       </Row>
       {s.trailmate && TRAILMATE[s.trailmate] && (

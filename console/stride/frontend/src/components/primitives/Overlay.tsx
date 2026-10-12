@@ -10,16 +10,19 @@ import styles from './Overlay.module.css';
  *  enough to compete with the headline over it — the one thing a paused screen
  *  cannot afford. Not fully opaque either: the workout has not gone anywhere,
  *  and a faint ghost of it says so. */
-export function Overlay({ title, titleTone, message, actions }: {
+export function Overlay({ title, titleTone, message, actions, children }: {
   title: ReactNode;
   titleTone?: Tone;
   message?: ReactNode;
   actions?: ReactNode;
+  /** Anything between the message and the answers: the APPS picker's apps. */
+  children?: ReactNode;
 }) {
   return (
     <Fill centred className={styles.scrim}>
       <Heading size="section" className={cx(titleTone === 'alert' && styles.alert)}>{title}</Heading>
       {message && <Prose className={styles.message}>{message}</Prose>}
+      {children}
       {actions && <Row className={styles.actions}>{actions}</Row>}
     </Fill>
   );

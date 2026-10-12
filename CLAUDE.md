@@ -16,5 +16,11 @@ on-screen interface in React and TypeScript in `console/stride/frontend`. See
 - **On the walk screen everything docks to an edge.** Metrics and readings go
   along the top, the incline and speed rails down the sides, and the controls
   along the bottom.
+- **Over another app (APPS, e.g. Netflix) the walk screen's edges are
+  drawers.** The metrics slide off the top and the rails and dock off the
+  sides and bottom, each pair moved by one grip (top and bottom only; no side
+  grips, no extra toggle buttons). Here, and only here, the drawers sit on a
+  translucent black panel and every word is white (`html.over-app`).
+  `OverApp.kt` explains how touches reach the app underneath.
 - Keep touch targets about 15px off the bezel: this digitiser is unreliable
   near the edge.
