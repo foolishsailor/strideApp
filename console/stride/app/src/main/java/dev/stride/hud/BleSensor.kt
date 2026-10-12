@@ -89,6 +89,9 @@ abstract class BleSensor(
         const val DISCOVERY_DELAY_MS = 600L
         const val DISCOVERY_RETRY_MS = 1_000L
         const val DISCOVERY_TRIES = 5
+        /** Connected this long without finishing setup, and the link is
+         *  rebuilt. Discovery plus three subscriptions take ~2 s when they work. */
+        const val SETUP_MS = 15_000L
 
         /**
          * How long to hunt for a sensor at full speed before going quiet.
@@ -179,8 +182,19 @@ abstract class BleSensor(
 
     @Volatile var battery = -1
         private set
-    @Volatile var connected = false
-        private set
+    /** The radio link is up. Not the same as readings flowing — see [ready]. */
+    @Volatile private var linked = false
+    /**
+     * Subscribed to everything: the setup chain after connecting finished.
+     *
+     * Each step waits on the last one's callback, and Android sometimes never
+     * sends one. On 12/10/2026 a strap and a Stryd both came back after a
+     * restart showing Connected, battery unknown, and not one reading, for as
+     * long as anyone watched. A link is only reported connected once this is
+     * true, and one that is not true [SETUP_MS] after connecting is rebuilt.
+     */
+    @Volatile private var ready = false
+    val connected: Boolean get() = linked && ready
     @Volatile var scanning = false
         private set
 
@@ -412,7 +426,7 @@ abstract class BleSensor(
         if (g == null) return
         handler.postDelayed({
             // Superseded, no longer wanted, or it landed after all.
-            if (g !== gatt || wanted.isBlank() || connected) return@postDelayed
+            if (g !== gatt || wanted.isBlank() || linked) return@postDelayed
             log("background connection never landed, looking again")
             try { g.close() } catch (e: SecurityException) { }
             gatt = null
@@ -430,7 +444,8 @@ abstract class BleSensor(
             // Closing without permission is not recoverable and not worth a crash.
         }
         gatt = null
-        connected = false
+        linked = false
+        ready = false
         clearReadings()
         battery = -1
     }
@@ -492,11 +507,24 @@ abstract class BleSensor(
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (g !== gatt) return
-            connected = newState == BluetoothProfile.STATE_CONNECTED
-            log("${if (connected) "connected" else "disconnected"} (status $status)")
+            val up = newState == BluetoothProfile.STATE_CONNECTED
+            // The same "connected" twice in a row has been seen. A second
+            // discovery on top of the first can jam the setup chain, so only
+            // a change of state starts one.
+            if (up && linked) return
+            linked = up
+            ready = false
+            log("${if (up) "connected" else "disconnected"} (status $status)")
 
-            if (connected) {
+            if (up) {
                 discover(g, attempt = 1)
+                handler.postDelayed({
+                    if (g !== gatt || !linked || ready || wanted.isBlank()) return@postDelayed
+                    warn("connected but setup never finished — reconnecting")
+                    val address = wanted
+                    disconnect()
+                    connect(address)
+                }, SETUP_MS)
                 return
             }
 
@@ -537,6 +565,7 @@ abstract class BleSensor(
                 warn("subscribe to ${d.characteristic.uuid} rejected by the sensor (status $status)")
             }
             if (pending.isNotEmpty()) { subscribeNext(g); return }
+            if (!ready) { ready = true; log("ready") }
             // Battery is a nice-to-have and is read once, after the things that
             // matter are already subscribed. Concurrent GATT operations are not
             // allowed, which is why it waits until here.
