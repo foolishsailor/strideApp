@@ -12,3 +12,11 @@
   width: 178px;
   padding: 26px 0;
 }
+.metric .largeLabel {
+  margin-bottom: 2px;
+  font-size: 16px;
+}
+.metric .large {
+  font-size: 60px;
+  line-height: 1.1;
+}

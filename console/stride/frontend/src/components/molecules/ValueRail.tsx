@@ -62,7 +62,7 @@ export function ValueRail({
   return (
     <div className={cx(styles.rail, styles[side], muted && styles.muted)}>
       <div className={styles.reading}>
-        <Label>{label}</Label>
+        <Label className={styles.label}>{label}</Label>
         <Numeral size="display" className={styles.value}>{value}</Numeral>
         <div className={styles.target}>
           {unit} · target <b>{target}</b>

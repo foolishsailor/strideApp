@@ -1,7 +1,7 @@
 .coach {
   position: absolute;
-  left: 236px;
-  right: 236px;
+  left: 256px;
+  right: 256px;
   top: 566px;
   height: 80px;
   background: var(--role-fill-floating);

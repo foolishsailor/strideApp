@@ -14,11 +14,11 @@ export function MetricStrip({ children }: { children?: ReactNode }) {
   const pulse = useField('pulse');
   return (
     <div className={styles.strip}>
-      <Row space={74} className={styles.row}>
-        <Metric label="Elapsed">{mmss(elapsed)}</Metric>
-        <Metric label="Distance" unit="m">{nf(distance)}</Metric>
-        <Metric label="Calories" unit="kcal">{nf(calories)}</Metric>
-        <Metric label="Heart rate" unit="bpm">{pulse ? pulse : '—'}</Metric>
+      <Row space={64} className={styles.row}>
+        <Metric large label="Elapsed">{mmss(elapsed)}</Metric>
+        <Metric large label="Distance" unit="m">{nf(distance)}</Metric>
+        <Metric large label="Calories" unit="kcal">{nf(calories)}</Metric>
+        <Metric large label="Heart rate" unit="bpm">{pulse ? pulse : '—'}</Metric>
       </Row>
       {children && <div className={styles.status}>{children}</div>}
     </div>

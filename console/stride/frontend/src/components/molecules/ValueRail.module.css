@@ -1,36 +1,45 @@
 /* The side docks, 140 – 800, under the metric band. No panel of their own:
-   the readings and their controls sit straight on the backdrop. Everything
-   pressable is held 16px in, because touches within ~15px of the bezel
-   register unreliably on this digitiser. */
+   the readings and their controls sit straight on the backdrop, pushed out
+   to the screen edge. The text runs close to the bezel; the touch rows are
+   the full width of the rail, so most of each target is well clear of the
+   ~15px strip where this digitiser is unreliable. */
 .rail {
   position: absolute;
   top: 140px;
   bottom: 0;
-  width: 220px;
+  width: 240px;
   display: flex;
   flex-direction: column;
-  padding: 14px 16px 18px;
+  padding: 6px 12px 14px;
 }
 .left {
   left: 0;
+  text-align: left;
 }
 .right {
   right: 0;
+  text-align: right;
+}
+/* Buttons centre their text by default; here it hugs the edge too. */
+.rail :global(button) {
+  text-align: inherit;
+  padding: 0;
 }
 
 .reading {
   flex: none;
-  height: 124px;
-  text-align: center;
 }
-/* The display size would not fit 188px; this still reads from the belt. */
-.value {
-  margin-top: 6px;
-  font-size: 68px;
+.reading .label {
+  font-size: 20px;
+}
+/* Big enough to read from the belt, and still "12.5" fits in 216px. */
+.reading .value {
+  margin-top: 4px;
+  font-size: 92px;
 }
 .target {
-  margin-top: 8px;
-  font-size: var(--font-small);
+  margin-top: 6px;
+  font-size: 18px;
   color: var(--colour-ink-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -39,13 +48,13 @@
   font-weight: 600;
 }
 
-/* Between the fixed + and −, the stops. About five and a half show, so it
-   is plain there is more to scroll. */
+/* Between the fixed + and −, the stops. About five show, so it is plain
+   there is more to scroll. */
 .list {
   position: relative; /* the stops measure their offsetTop from here */
   flex: 1;
   min-height: 0;
-  margin: 8px 0;
+  margin: 4px 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -56,20 +65,20 @@
   display: none;
 }
 
-/* Just the number. The whole 56px row is still the target; only the box
+/* Just the number. The whole 64px row is still the target; only the box
    around it is gone. */
 .stop {
   display: block;
   width: 100%;
-  height: 56px;
-  margin-bottom: 6px;
+  height: 64px;
+  margin-bottom: 4px;
   -webkit-tap-highlight-color: transparent;
   outline: none;
   background: transparent;
   border: none;
   color: var(--colour-ink-dim);
   font-family: inherit;
-  font-size: 30px;
+  font-size: 48px;
   font-weight: var(--weight-numeral);
   font-variant-numeric: tabular-nums;
   transition: color var(--motion-quick), font-size var(--motion-quick), transform 0.06s;
@@ -84,9 +93,12 @@
 /* The stop the target is on: bigger and in the accent, nothing drawn round it. */
 .selected {
   color: var(--colour-accent);
-  font-size: 40px;
+  font-size: 62px;
   font-weight: 600;
 }
+/* Pressed, shrink towards the edge the text hugs, not the middle. */
+.left :global(button) { transform-origin: left center; }
+.right :global(button) { transform-origin: right center; }
 
 /* Speed while the belt is stopped: shown, but not the thing to reach for. */
 .muted :global(button) {
