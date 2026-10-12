@@ -16,14 +16,6 @@ describe('Kotlin entry points', () => {
     expect(useSession.getState().snapshot.speed).toBe(5.4);
   });
 
-  it('only lets the coach speak over the walk', () => {
-    window.coach({ line: 'Too early' });
-    expect(useSession.getState().coach.shown).toBe(false);
-    window.render({ mode: 'running' });
-    window.coach({ line: 'Shorten your stride' });
-    expect(useSession.getState().coach).toMatchObject({ line: 'Shorten your stride', shown: true });
-  });
-
   it('builds the elevation from the plan', () => {
     window.plan({ name: 'Hill', steps: [{ start: 0, end: 100, incline: 10, label: 'up' }] });
     expect(useSession.getState().planName).toBe('Hill');
@@ -32,16 +24,14 @@ describe('Kotlin entry points', () => {
 });
 
 describe('changing screen', () => {
-  it('tidies up what belonged to the walk', () => {
+  it('tidies up what belonged to the run', () => {
     installKotlinEntryPoints();
     const stop = installModeWatcher();
     window.render({ mode: 'running' });
-    window.coach({ line: 'Nearly there' });
     useUi.setState({ fanOpen: true, confirmOpen: true });
     useWelcome.setState({ step: 3 });
 
     window.render({ mode: 'summary' });
-    expect(useSession.getState().coach.shown).toBe(false);
     expect(useUi.getState()).toMatchObject({ fanOpen: false, confirmOpen: false });
     expect(window.STRIDE_SETTINGS.close).toHaveBeenCalled();
 

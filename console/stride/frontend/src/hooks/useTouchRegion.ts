@@ -4,7 +4,7 @@ import { useSession } from '../store/session';
 import { useUi } from '../store/ui';
 
 /** Often enough to follow a drawer as it slides, cheap enough to run all
- *  walk: a handful of getBoundingClientRect calls, and Kotlin hears only
+ *  run: a handful of getBoundingClientRect calls, and Kotlin hears only
  *  about a change. */
 const EVERY_MS = 150;
 

@@ -15,11 +15,11 @@ import java.util.UUID
 import kotlin.concurrent.thread
 
 /**
- * A second-by-second recording of one walk, kept so it can go to TrailMate
+ * A second-by-second recording of one run, kept so it can go to TrailMate
  * (and from there to Garmin Connect) as a real activity.
  *
  * **Why a trace, when History deliberately is not one.** History keeps a
- * dozen figures per walk because all it has to do is say what a walk beat. An
+ * dozen figures per run because all it has to do is say what a run beat. An
  * activity in TrailMate has charts — pace, incline, heart rate, cadence and
  * power against time — and an elevation profile built from the incline, and
  * none of that can be rebuilt from a summary. So this keeps the trace, for
@@ -27,25 +27,25 @@ import kotlin.concurrent.thread
  * shape the TrailMate contract defines (spec 037, `contracts/api.md`).
  *
  * **Written as it goes.** The console is switched off at the wall and has been
- * seen to freeze mid-walk, so a recording held in memory until the end would
- * be lost in exactly the cases that end walks early. Each second is appended
+ * seen to freeze mid-run, so a recording held in memory until the end would
+ * be lost in exactly the cases that end runs early. Each second is appended
  * to `current.rec` and flushed, one JSON value per line. A power cut costs the
  * line being written, which [finalise] skips; at the next start-up [recover]
  * finds the file and turns it into a workout like any other.
  *
  * **One sample a second from a five-a-second loop.** The poll loop calls
  * [tick] every frame and a sample is kept the first time each whole second
- * comes round, on the monotonic clock. `t` counts from the start of the walk
+ * comes round, on the monotonic clock. `t` counts from the start of the run
  * *including* pauses, which is what the contract asks for: a pause is a gap in
  * `t` plus an entry in `pauses`, the way a watch records one, and moving time
  * is worked out from the two rather than counted separately.
  *
- * **Guests are not recorded**, and neither is anybody walking under a name
+ * **Guests are not recorded**, and neither is anybody running under a name
  * Settings does not know — MainActivity only calls [begin] with a profile id.
  * Whether a recording then leaves the console is TrailMate's business, not
  * this class's: see [TrailMate.enqueue].
  */
-class WalkRecorder(
+class RunRecorder(
     context: Context,
     /** Handed each finished workout, on a background thread. */
     private val onFinished: (personId: String, workout: JSONObject) -> Unit,
@@ -54,7 +54,7 @@ class WalkRecorder(
     companion object {
         private const val TAG = "StrideRecorder"
 
-        /** The contract's minimum walk. Shorter is a press of START by mistake. */
+        /** The contract's minimum run. Shorter is a press of START by mistake. */
         const val MIN_SECONDS = 60L
         const val MIN_DISTANCE_M = 100.0
 
@@ -66,16 +66,16 @@ class WalkRecorder(
          *
          * This board boots in 2010 and is corrected by NTP some minutes later —
          * see MainActivity.sessionStartWall. Rather than trusting the time the
-         * walk began at, the recording keeps writing down "the wall clock says
-         * W, and the walk is U milliseconds old", and the start is the last
-         * such pair that was sane, minus its age. A walk that starts before
+         * run began at, the recording keeps writing down "the wall clock says
+         * W, and the run is U milliseconds old", and the start is the last
+         * such pair that was sane, minus its age. A run that starts before
          * NTP and ends after it dates itself, and so does one recovered from a
          * crash, which has no monotonic clock left to compare against.
          */
         const val ANCHOR_EVERY_MS = 30_000L
     }
 
-    /** What a guided walk looked like, written into the recording at the start. */
+    /** What a guided run looked like, written into the recording at the start. */
     data class PlanInfo(
         val name: String,
         val steps: List<Plan.Step>,
@@ -106,9 +106,9 @@ class WalkRecorder(
     val recording: Boolean @Synchronized get() = out != null
 
     /**
-     * Start recording a walk for [personId].
+     * Start recording a run for [personId].
      *
-     * A recording still open at this point is a walk nobody finished — the
+     * A recording still open at this point is a run nobody finished — the
      * screen went home without passing the summary — and it is finished now
      * rather than overwritten.
      */
@@ -138,16 +138,16 @@ class WalkRecorder(
             out = FileOutputStream(current, false)
             write(head.toString())
             anchor(startUptime)
-            Log.i(TAG, "recording a walk for $personId")
+            Log.i(TAG, "recording a run for $personId")
         } catch (e: Exception) {
-            Log.w(TAG, "cannot record this walk (${e.message})")
+            Log.w(TAG, "cannot record this run (${e.message})")
             out = null
         }
     }
 
     /**
      * One frame from the poll loop. Keeps a sample the first time each second
-     * comes round while the belt is live, notes pauses, and dates the walk now
+     * comes round while the belt is live, notes pauses, and dates the run now
      * and then.
      *
      * @param strap  true when the pulse in [s] came from a chest strap rather
@@ -166,9 +166,9 @@ class WalkRecorder(
         }
         if (!Session.isMoving(s.session)) return
         if (pausedAt >= 0) {
-            // Written when it ends, not when it starts: a pause the walk ends
+            // Written when it ends, not when it starts: a pause the run ends
             // in is not a pause, it is the end, and the contract wants pauses
-            // inside the walk.
+            // inside the run.
             if (t > pausedAt) write("{\"p\":[$pausedAt,$t]}")
             pausedAt = -1L
         }
@@ -194,7 +194,7 @@ class WalkRecorder(
     }
 
     /**
-     * The walk is over: close the file and turn it into a workout, off this
+     * The run is over: close the file and turn it into a workout, off this
      * thread. Safe to call when nothing is recording.
      */
     @Synchronized
@@ -202,16 +202,16 @@ class WalkRecorder(
         if (out == null) return
         anchor(SystemClock.elapsedRealtime())
         close()
-        val done = File(dir, "walk-${System.currentTimeMillis()}.rec")
+        val done = File(dir, "run-${System.currentTimeMillis()}.rec")
         if (!current.renameTo(done)) {
             Log.w(TAG, "could not set the recording aside — leaving it for recovery")
             return
         }
-        thread(name = "walk-finalise") { finalise(done) }
+        thread(name = "run-finalise") { finalise(done) }
     }
 
     /**
-     * At start-up: anything still here is a walk the console did not live to
+     * At start-up: anything still here is a run the console did not live to
      * finish, or one it finished and did not live to send on. Both become
      * workouts now.
      */
@@ -219,13 +219,13 @@ class WalkRecorder(
     fun recover() {
         if (out != null) return
         if (current.exists()) {
-            val moved = File(dir, "walk-${System.currentTimeMillis()}-recovered.rec")
-            if (current.renameTo(moved)) Log.i(TAG, "recovering a walk that was cut off")
+            val moved = File(dir, "run-${System.currentTimeMillis()}-recovered.rec")
+            if (current.renameTo(moved)) Log.i(TAG, "recovering a run that was cut off")
         }
         val pending = dir.listFiles { f -> f.name.endsWith(".rec") }?.sortedBy { it.name }
             ?: return
         if (pending.isEmpty()) return
-        thread(name = "walk-recover") { pending.forEach { finalise(it) } }
+        thread(name = "run-recover") { pending.forEach { finalise(it) } }
     }
 
     private fun anchor(now: Long) {
@@ -239,7 +239,7 @@ class WalkRecorder(
             o.write((line + "\n").toByteArray(Charsets.UTF_8))
             o.flush()
         } catch (e: Exception) {
-            // A full disk or a dying card. The walk goes on; the recording
+            // A full disk or a dying card. The run goes on; the recording
             // simply stops here rather than taking the poll loop with it.
             Log.w(TAG, "recording stopped (${e.message})")
             close()
@@ -262,7 +262,7 @@ class WalkRecorder(
     /**
      * Read one recording back and build `stride.workout.v1` from it, to the
      * letter of the contract's rules — TrailMate answers a broken one with 400
-     * and the walk is parked, so they are kept here rather than hoped for.
+     * and the run is parked, so they are kept here rather than hoped for.
      * `tools/workout_check.py` checks the same rules from the other side.
      */
     private fun finalise(file: File) {
@@ -330,13 +330,13 @@ class WalkRecorder(
         val elapsed = samples.lastOrNull()?.t ?: 0L
         val distance = samples.lastOrNull()?.d ?: 0.0
         if (elapsed < MIN_SECONDS || distance < MIN_DISTANCE_M || samples.size < MIN_SECONDS) {
-            Log.i(TAG, "walk too short to send (${elapsed} s, ${"%.0f".format(distance)} m)")
+            Log.i(TAG, "run too short to send (${elapsed} s, ${"%.0f".format(distance)} m)")
             return null
         }
         if (anchorWall == 0L) {
             // Never once a believable date. Sent anyway it would land in
             // TrailMate in 2010; kept, it can at least be looked at.
-            Log.w(TAG, "walk has no believable date — not sent")
+            Log.w(TAG, "run has no believable date — not sent")
             file.renameTo(File(file.path + ".undated"))
             return null
         }
@@ -344,7 +344,7 @@ class WalkRecorder(
         // Floored to the second, the resolution of `t`.
         val startedAt = startMs / 1000 * 1000
 
-        // Pauses inside the walk only, in order, never overlapping.
+        // Pauses inside the run only, in order, never overlapping.
         val cleanPauses = ArrayList<LongArray>()
         for (p in pauses.sortedBy { it[0] }) {
             val s = maxOf(p[0], cleanPauses.lastOrNull()?.get(1) ?: 0L)
@@ -415,7 +415,7 @@ class WalkRecorder(
             .put("sources", JSONObject().put("hr", hrSource).put("footpod", anyPod))
 
         if (samples.size > MAX_SAMPLES) {
-            Log.w(TAG, "walk has ${samples.size} samples, over TrailMate's limit — it will be refused")
+            Log.w(TAG, "run has ${samples.size} samples, over TrailMate's limit — it will be refused")
         }
         Log.i(TAG, "workout ${h.getString("id")}: ${elapsed} s, " +
                 "${"%.0f".format(distance)} m, ${"%.1f".format(climb)} m climb, " +
@@ -430,8 +430,8 @@ class WalkRecorder(
      * the belt does — so each is pushed later by the pauses before it. A
      * route's steps are metres, so each starts at the first second the belt
      * had covered that much ground. A circuit comes round again for as long as
-     * the walk lasted. Anything the walk never reached is left out, and what
-     * it reached only part of is cut at the end of the walk.
+     * the run lasted. Anything the run never reached is left out, and what
+     * it reached only part of is cut at the end of the run.
      */
     private fun planJson(
         p: JSONObject?, samples: List<Sample>, pauses: List<LongArray>, elapsed: Long,

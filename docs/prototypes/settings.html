@@ -11,15 +11,14 @@
   lifted from assets/ui/original.html so this reads as the same product rather
   than a wireframe of a different one.
 
-  Everything here is a stand-in: nothing talks to the board, the broker or a
+  Everything here is a stand-in: nothing talks to the board or a
   strap. The point is the shape — what belongs in settings at all, how it is
   grouped, and whether it can be driven with a finger while standing on a deck.
 
   What drove the inventory: an audit of the Kotlin and the UI assets for things
   that are true of Sam's house and would be wrong for anybody else. The worst
-  of them is not a value but a branch — MainActivity gates the live coach on
-  `walker == "Sam"`, so a second person in the same household silently gets a
-  different product.
+  of them is not a value but a branch: behaviour gated on one person's name,
+  so a second person in the same household silently gets a different product.
 -->
 <style>
 :root{
@@ -234,9 +233,9 @@ body::before{
 
   <div class="panel" id="panel">
 
-    <!-- ================= WHO WALKS ================= -->
+    <!-- ================= WHO RUNS ================= -->
     <div class="pane on" data-p="people">
-      <div class="ph">Who walks</div>
+      <div class="ph">Who runs</div>
       <div class="psub">Everyone who uses this treadmill. Each person keeps their own
         distance, calories and history, and chooses whether any of it leaves the console.</div>
       <div class="scroll">
@@ -249,21 +248,15 @@ body::before{
           <div class="row">
             <div class="lbl"><div class="n">Start as</div>
               <div class="d">Who the welcome screen assumes if the belt starts without anyone tapping a name.</div></div>
-            <div class="ctl"><div class="seg" data-seg="default-walker">
+            <div class="ctl"><div class="seg" data-seg="default-runner">
               <button class="on">Sam</button><button>Alex</button><button>Ask every time</button>
             </div></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Guest walks</div>
-              <div class="d">A one-off walk that is counted on the console but never recorded against a person.</div></div>
+            <div class="lbl"><div class="n">Guest runs</div>
+              <div class="d">A one-off run that is counted on the console but never recorded against a person.</div></div>
             <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
           </div>
-        </div>
-        <div class="note">
-          <b>This is the one that matters most.</b> The live coach is currently gated on the
-          walker literally being called Sam — <code>walker == "Sam"</code> in MainActivity —
-          so a second person in the same house silently gets a different product. It should be a
-          per-person setting, which is the <i>Coaching</i> switch on each card above.
         </div>
       </div>
     </div>
@@ -313,64 +306,7 @@ body::before{
         <div class="note">
           Nothing here today — pulse comes only from the grips via the board's
           <code>PULSE</code> field. A strap is a separate Bluetooth connection the console
-          makes itself, so it keeps working if Home Assistant is down.
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= HOME ASSISTANT ================= -->
-    <div class="pane" data-p="ha">
-      <div class="ph">Home Assistant</div>
-      <div class="psub">Optional. The treadmill runs perfectly well with none of this set —
-        you lose the history, the dashboards and the talking coach, and nothing else.</div>
-      <div class="scroll">
-        <div class="group">
-          <div class="gh">Connection</div>
-          <div class="row">
-            <div class="lbl"><div class="n">Publish to Home Assistant</div>
-              <div class="d">Everything below is ignored while this is off.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">MQTT broker</div>
-              <div class="d">Host or IP of the broker, not of Home Assistant itself.</div></div>
-            <div class="ctl"><input class="fld" value="homeassistant.local"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Port</div><div class="d">1883 plain, 8883 with TLS.</div></div>
-            <div class="ctl"><input class="fld short" value="1883"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Username</div></div>
-            <div class="ctl"><input class="fld" value="stride"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Password</div></div>
-            <div class="ctl"><input class="fld" type="password" value="hunter2hunter2"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Use TLS</div>
-              <div class="d">Off is reasonable on a home network you control.</div></div>
-            <div class="ctl"><div class="sw" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Topic prefix</div>
-              <div class="d">Change only if <code>stride/</code> already means something else on your broker.</div></div>
-            <div class="ctl"><input class="fld" value="stride"></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Test the connection</div>
-              <div class="d">Connects, publishes discovery, disconnects. Changes nothing.</div></div>
-            <div class="ctl" style="display:flex;align-items:center;gap:18px">
-              <span class="state" id="hastate"><i class="dot ok"></i>Connected</span>
-              <button class="pill" id="test">TEST</button>
-            </div>
-          </div>
-        </div>
-        <div class="note">
-          Broker, user and password are compiled in from <code>local.properties</code> today, so
-          a public build either ships someone else's credentials or cannot connect at all.
-          <b>Neither is releasable.</b>
+          makes itself, so it needs no network.
         </div>
       </div>
     </div>
@@ -395,7 +331,7 @@ body::before{
           <div class="gh">Starting and stopping</div>
           <div class="row">
             <div class="lbl"><div class="n">Warm-up</div>
-              <div class="d">Skippable. Set to zero to start every walk at your chosen pace.</div></div>
+              <div class="d">Skippable. Set to zero to start every run at your chosen pace.</div></div>
             <div class="ctl"><div class="step" data-step="2|0|10|1|min"><button>−</button><div class="v">2<small>min</small></div><button>+</button></div></div>
           </div>
           <div class="row">
@@ -409,7 +345,7 @@ body::before{
           </div>
         </div>
         <div class="group">
-          <div class="gh">Guided walks</div>
+          <div class="gh">Guided runs</div>
           <div class="row">
             <div class="lbl"><div class="n">Incline changes</div>
               <div class="d">How fast the deck is allowed to move during a plan. Slower is gentler underfoot.</div></div>
@@ -438,50 +374,10 @@ body::before{
       </div>
     </div>
 
-    <!-- ================= COACH ================= -->
-    <div class="pane" data-p="coach">
-      <div class="ph">Coach</div>
-      <div class="psub">Marks your kilometres and says something occasionally. It never
-        touches the belt — every pace change is yours.</div>
-      <div class="scroll">
-        <div class="group">
-          <div class="row">
-            <div class="lbl"><div class="n">Coach</div>
-              <div class="d">Off means a silent walk with no ribbon at all.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">How much it talks</div>
-              <div class="d">Sparing marks kilometres and little else. Chatty adds pace and rhythm observations.</div></div>
-            <div class="ctl"><div class="seg" data-seg="talk">
-              <button>Sparing</button><button class="on">Normal</button><button>Chatty</button>
-            </div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Voice</div>
-              <div class="d">Only affects wording, never what it is willing to say.</div></div>
-            <div class="ctl"><div class="seg" data-seg="voice">
-              <button class="on">Supportive</button><button>Drill sergeant</button><button>Data nerd</button><button>Zen</button>
-            </div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Written by Home Assistant</div>
-              <div class="d">Off keeps every line on the console — the built-in ones, which are shorter and never late.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Announce milestones</div>
-              <div class="d">First mark at 500 m, then every kilometre.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ================= INTERFACE ================= -->
     <div class="pane" data-p="ui">
       <div class="ph">Interface</div>
-      <div class="psub">Five ways to walk. The treadmill behaves identically in all of them —
+      <div class="psub">Five ways to run. The treadmill behaves identically in all of them —
         these change what the screen is made of, not just its colours.</div>
       <div class="scroll">
         <div class="uis" id="uis"></div>
@@ -496,12 +392,12 @@ body::before{
     <div class="pane" data-p="screen">
       <div class="ph">Display</div>
       <div class="psub">The console is a screen in a room, on all day. These are about
-        living with it rather than walking on it.</div>
+        living with it rather than running on it.</div>
       <div class="scroll">
         <div class="group">
           <div class="row">
             <div class="lbl"><div class="n">Sleep after</div>
-              <div class="d">Shows a clock. Any tap wakes it; the belt never sleeps mid-walk.</div></div>
+              <div class="d">Shows a clock. Any tap wakes it; the belt never sleeps mid-run.</div></div>
             <div class="ctl"><div class="step" data-step="5|1|60|1|min"><button>−</button><div class="v">5<small>min</small></div><button>+</button></div></div>
           </div>
           <div class="row">
@@ -518,8 +414,8 @@ body::before{
             </div></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Keep the screen on while walking</div>
-              <div class="d">Off lets it sleep even mid-walk, which saves the panel on long sessions.</div></div>
+            <div class="lbl"><div class="n">Keep the screen on while running</div>
+              <div class="d">Off lets it sleep even mid-run, which saves the panel on long sessions.</div></div>
             <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
           </div>
         </div>
@@ -548,7 +444,7 @@ body::before{
             <div class="ctl"><button class="pill warn">RESET</button></div>
           </div>
           <div class="row">
-            <div class="lbl"><div class="n">Erase all walk history</div>
+            <div class="lbl"><div class="n">Erase all run history</div>
               <div class="d">Everything recorded on this console, for everyone. Cannot be undone.</div></div>
             <div class="ctl"><button class="pill warn">ERASE</button></div>
           </div>
@@ -562,11 +458,9 @@ body::before{
 <script>
 /* ---- nav --------------------------------------------------------------- */
 const SECTIONS = [
-  ['people', 'Who walks',      'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
+  ['people', 'Who runs',      'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0'],
   ['hr',     'Heart rate',     'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z'],
-  ['ha',     'Home Assistant', 'M3 11l9-8 9 8M5 10v10h14V10'],
   ['deck',   'Treadmill',      'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3'],
-  ['coach',  'Coach',          'M4 5h16v11H9l-5 4V5z'],
   ['ui',     'Interface',      'M3 4h18v14H3zM3 9h18M9 9v9'],
   ['screen', 'Display',        'M3 4h18v12H3zM8 20h8M12 16v4'],
   ['about',  'About',          'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01'],
@@ -590,8 +484,8 @@ navs.addEventListener('click', e => {
 
 /* ---- people ------------------------------------------------------------ */
 const PEOPLE = [
-  { name: 'Sam',  note: 'Coaching · to Home Assistant' },
-  { name: 'Alex',   note: 'Coaching off · console only' },
+  { name: 'Sam',  note: 'TrailMate' },
+  { name: 'Alex',   note: 'console only' },
   { name: 'Jo',  note: 'Console only' },
   { name: 'Robin', note: 'Console only' },
 ];
@@ -624,7 +518,7 @@ const uis = document.getElementById('uis');
 UIS.forEach(([n, b, on], i) => {
   const el = document.createElement('button');
   el.className = 'uicard' + (on ? ' on' : '');
-  el.innerHTML = `<div class="sk">${i > 0 ? '<div class="tag">NEVER WALKED</div>' : ''}</div>
+  el.innerHTML = `<div class="sk">${i > 0 ? '<div class="tag">NEVER RUN</div>' : ''}</div>
                   <div class="un">${n}</div><div class="ub">${b}</div>`;
   uis.appendChild(el);
 });

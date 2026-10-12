@@ -7,7 +7,7 @@
 #
 # Which one you get by default depends on whether you have set up a signing
 # key. A debug build is `debuggable`, which lets anything else on the console
-# read this app's store — broker password included — and it turns on the
+# read this app's store — TrailMate tokens included — and it turns on the
 # WebView DevTools socket. Fine on a bench, not what you want left in a
 # hallway. So: if local.properties names a keystore, this builds release; if
 # it does not, it builds debug and says so rather than asking you to set up
@@ -78,7 +78,7 @@ fi
 echo ">>> built $(du -h "$APK" | cut -f1)"
 if [ "$VARIANT" = "debug" ]; then
   echo "    debug build: debuggable, DevTools on. Fine for the bench."
-  echo "    For the machine you actually walk on, set up signing and run: ./run.sh release"
+  echo "    For the machine you actually run on, set up signing and run: ./run.sh release"
 fi
 
 [ "${1:-}" = "build" ] && exit 0

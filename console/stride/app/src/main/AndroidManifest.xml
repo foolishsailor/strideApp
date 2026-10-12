@@ -50,10 +50,9 @@
          home app, so the rest of the console — streaming apps included —
          stays reachable. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- targetSdk 28 blocks cleartext by default, which would stop MediaPlayer
-         fetching the coach's synthesised audio from Home Assistant. It has to be
-         plain HTTP: the console's clock reads 2022, so TLS validation fails on
-         anything served over HTTPS. The URL never leaves the LAN. -->
+    <!-- targetSdk 28 blocks cleartext by default, which would stop a TrailMate
+         address pointed at a dev server on the LAN (tools/trailmate_mock.py)
+         from working. Production TrailMate is HTTPS regardless. -->
     <application
         android:label="STRIDE"
         android:icon="@mipmap/ic_launcher"

@@ -8,23 +8,22 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Every walk this console has recorded, per walker, kept on the console.
+ * Every run this console has recorded, per runner, kept on the console.
  *
- * **Why this is on the treadmill and not in Home Assistant.** The summary screen
- * is the one place a walk gets looked at, and it is looked at while standing on
- * the belt, three seconds after stopping. Anything it needs has to be there with
- * no broker, no phone and no network — the same rule the rest of the console
- * follows. Home Assistant still gets every session over MQTT and still keeps the
+ * **Why this is on the treadmill.** The summary screen is the one place a run
+ * gets looked at, and it is looked at while standing on the belt, three seconds
+ * after stopping. Anything it needs has to be there with no phone and no
+ * network — the same rule the rest of the console follows. TrailMate keeps the
  * long-term picture; this is the copy that makes "most climb you have done"
  * answerable when the wifi is out.
  *
  * It is also, incidentally, the first workout log the console has ever kept. Up
- * to 17 August 2026 the only thing it persisted was the route cache, so a walk
- * that was not published to HA left no trace anywhere once the ring buffer
+ * to 17 August 2026 the only thing it persisted was the route cache, so a run
+ * left no trace anywhere once the ring buffer
  * rolled — which is exactly what happened to the first thirty-five minutes of
  * that day's session.
  *
- * **Guests are not recorded.** A walk with no profile has nobody to compare it
+ * **Guests are not recorded.** A run with no profile has nobody to compare it
  * to and nobody who has agreed to be remembered, so it is summarised and then
  * forgotten. See [record].
  */
@@ -33,21 +32,21 @@ class History(context: Context) {
     private val file = File(context.filesDir, "history.json")
 
     /**
-     * Newest first, so the reads that matter — "the last few walks" — are the
+     * Newest first, so the reads that matter — "the last few runs" — are the
      * front of the list, and the trim is a single drop from the tail.
      */
     @Volatile
-    private var walks: List<Walk> = emptyList()
+    private var runs: List<Run> = emptyList()
 
     /**
-     * One finished walk, reduced to the figures a later walk can be measured
+     * One finished run, reduced to the figures a later run can be measured
      * against.
      *
      * Deliberately not a full trace. A per-second recording of five hundred
-     * walks is a database, and the console has a summary screen to draw, not a
+     * runs is a database, and the console has a summary screen to draw, not a
      * dataset to serve. What is here is what an achievement can be built from.
      */
-    data class Walk(
+    data class Run(
         val who: String,
         val startedAt: Long,
         val elapsed: Double,
@@ -78,7 +77,7 @@ class History(context: Context) {
         companion object {
             private fun round1(v: Double) = Math.round(v * 10.0) / 10.0
 
-            fun from(o: JSONObject) = Walk(
+            fun from(o: JSONObject) = Run(
                 who = o.optString("who"),
                 startedAt = o.optLong("startedAt"),
                 elapsed = o.optDouble("elapsed", 0.0),
@@ -96,93 +95,93 @@ class History(context: Context) {
     }
 
     init {
-        walks = try {
+        runs = try {
             if (file.exists()) parse(file.readText()) else emptyList()
         } catch (e: Exception) {
             Log.w(TAG, "history unreadable (${e.message}) — starting empty")
             emptyList()
         }
-        Log.i(TAG, "loaded ${walks.size} recorded walk(s)")
+        Log.i(TAG, "loaded ${runs.size} recorded run(s)")
     }
 
-    private fun parse(text: String): List<Walk> {
+    private fun parse(text: String): List<Run> {
         val arr = JSONArray(text.trim().ifBlank { "[]" })
-        val out = ArrayList<Walk>(arr.length())
+        val out = ArrayList<Run>(arr.length())
         for (i in 0 until arr.length()) {
-            arr.optJSONObject(i)?.let { out.add(Walk.from(it)) }
+            arr.optJSONObject(i)?.let { out.add(Run.from(it)) }
         }
         return out
     }
 
     /**
-     * Add a finished walk and work out what was notable about it.
+     * Add a finished run and work out what was notable about it.
      *
-     * The comparison happens **before** the walk is stored, because a walk
+     * The comparison happens **before** the run is stored, because a run
      * compared against a list that already contains it beats nothing and every
      * session would come back with no achievements at all.
      *
-     * Returns the achievement lines, newest walk already accounted for.
+     * Returns the achievement lines, newest run already accounted for.
      */
     @Synchronized
-    fun record(walk: Walk): List<String> {
-        if (walk.who.isBlank()) {
-            Log.i(TAG, "guest walk — summarised but not recorded")
+    fun record(run: Run): List<String> {
+        if (run.who.isBlank()) {
+            Log.i(TAG, "guest run — summarised but not recorded")
             return emptyList()
         }
-        if (walk.distance < MIN_DISTANCE_M || walk.elapsed < MIN_ELAPSED_S) {
-            Log.i(TAG, "walk too short to record (${"%.0f".format(walk.distance)} m)")
+        if (run.distance < MIN_DISTANCE_M || run.elapsed < MIN_ELAPSED_S) {
+            Log.i(TAG, "run too short to record (${"%.0f".format(run.distance)} m)")
             return emptyList()
         }
-        val previous = walks.filter { it.who == walk.who }
-        val earned = achievements(walk, previous)
+        val previous = runs.filter { it.who == run.who }
+        val earned = achievements(run, previous)
 
-        walks = (listOf(walk) + walks).take(KEEP)
+        runs = (listOf(run) + runs).take(KEEP)
         save()
-        Log.i(TAG, "recorded walk for ${walk.who} " +
+        Log.i(TAG, "recorded run for ${run.who} " +
                 "(${previous.size + 1} total), ${earned.size} achievement(s)")
         return earned
     }
 
     /**
-     * What this walk did that the ones before it did not.
+     * What this run did that the ones before it did not.
      *
      * Rules, in order of how much they are worth saying out loud. Capped at
      * [MAX_SHOWN] because a summary listing six records is a summary nobody
-     * reads, and because a first big walk after a quiet month genuinely does
+     * reads, and because a first big run after a quiet month genuinely does
      * beat everything at once.
      *
-     * A walker with fewer than [MIN_FOR_RECORDS] previous walks gets no
+     * A runner with fewer than [MIN_FOR_RECORDS] previous runs gets no
      * record-breaking lines. Everything is a personal best when there is one
-     * walk to compare against, and being told so is worth nothing — so early
+     * run to compare against, and being told so is worth nothing — so early
      * sessions get the consistency lines instead, which are true from the start.
      */
-    private fun achievements(walk: Walk, previous: List<Walk>): List<String> {
+    private fun achievements(run: Run, previous: List<Run>): List<String> {
         val out = ArrayList<String>()
         val n = previous.size
 
         if (n >= MIN_FOR_RECORDS) {
-            if (walk.distance > previous.maxOf { it.distance })
+            if (run.distance > previous.maxOf { it.distance })
                 out.add("Furthest you have gone")
-            if (walk.climbM > previous.maxOf { it.climbM } && walk.climbM >= MIN_CLIMB_M)
+            if (run.climbM > previous.maxOf { it.climbM } && run.climbM >= MIN_CLIMB_M)
                 out.add("Most climb in one workout")
-            if (walk.elapsed > previous.maxOf { it.elapsed })
+            if (run.elapsed > previous.maxOf { it.elapsed })
                 out.add("Longest time on the belt")
-            if (walk.maxIncline > previous.maxOf { it.maxIncline } && walk.maxIncline > 0)
+            if (run.maxIncline > previous.maxOf { it.maxIncline } && run.maxIncline > 0)
                 out.add("Steepest you have taken it")
-            if (walk.avgSpeed > previous.maxOf { it.avgSpeed })
+            if (run.avgSpeed > previous.maxOf { it.avgSpeed })
                 out.add("Fastest average pace")
 
             // Worth more than any single record: the same work at a lower heart
             // rate is the one number here that means fitness rather than effort.
-            // Guarded hard — it needs a strap on both walks, a comparable pace,
+            // Guarded hard — it needs a strap on both runs, a comparable pace,
             // and a gap big enough not to be a warm day.
             val comparable = previous.filter {
-                it.avgPulse > 0 && Math.abs(it.avgSpeed - walk.avgSpeed) < 0.4
+                it.avgPulse > 0 && Math.abs(it.avgSpeed - run.avgSpeed) < 0.4
             }
-            if (walk.avgPulse > 0 && comparable.size >= 3) {
+            if (run.avgPulse > 0 && comparable.size >= 3) {
                 val was = comparable.take(5).map { it.avgPulse }.average()
-                if (was - walk.avgPulse >= HR_IMPROVEMENT_BPM) {
-                    out.add("Same pace, ${Math.round(was - walk.avgPulse)} bpm lower")
+                if (was - run.avgPulse >= HR_IMPROVEMENT_BPM) {
+                    out.add("Same pace, ${Math.round(was - run.avgPulse)} bpm lower")
                 }
             }
         }
@@ -195,30 +194,30 @@ class History(context: Context) {
         // powered up minutes before the belt did cannot say what day it is, and
         // "3 days in a row" computed from a clock reading 2010 is not a smaller
         // version of the truth, it is a different number.
-        if (walk.startedAt > 0L) {
-            val week = walksSince(walk.who, walk.startedAt - WEEK_MS) + 1
+        if (run.startedAt > 0L) {
+            val week = runsSince(run.who, run.startedAt - WEEK_MS) + 1
             if (week >= 3) out.add("$week workouts this week")
-            val streak = dayStreak(walk.who, walk.startedAt)
+            val streak = dayStreak(run.who, run.startedAt)
             if (streak >= 3) out.add("$streak days in a row")
         }
 
         return out.take(MAX_SHOWN)
     }
 
-    private fun walksSince(who: String, since: Long) =
-        walks.count { it.who == who && it.startedAt >= since }
+    private fun runsSince(who: String, since: Long) =
+        runs.count { it.who == who && it.startedAt >= since }
 
     /**
-     * Consecutive days ending today, counting the walk just finished.
+     * Consecutive days ending today, counting the run just finished.
      *
-     * Calendar days rather than 24-hour blocks: a walk at 7 am and the next at
-     * 9 pm the following day is two days in a row to anybody who walks, whatever
+     * Calendar days rather than 24-hour blocks: a run at 7 am and the next at
+     * 9 pm the following day is two days in a row to anybody who runs, whatever
      * the thirty-eight hours between them say.
      */
     private fun dayStreak(who: String, endingAt: Long): Int {
         // Undated workouts carry no day, so they cannot extend or break a
         // streak — see MainActivity.sessionStartWall.
-        val days = walks.filter { it.who == who && it.startedAt > 0L }
+        val days = runs.filter { it.who == who && it.startedAt > 0L }
                         .map { dayOf(it.startedAt) }.toHashSet()
         var streak = 1
         var day = dayOf(endingAt)
@@ -236,14 +235,14 @@ class History(context: Context) {
         return cal.timeInMillis / 86_400_000L
     }
 
-    /** The most recent walks for one person, newest first. */
+    /** The most recent runs for one person, newest first. */
     @Synchronized
-    fun recent(who: String, limit: Int): List<Walk> =
-        walks.filter { it.who == who }.take(limit)
+    fun recent(who: String, limit: Int): List<Run> =
+        runs.filter { it.who == who }.take(limit)
 
     private fun save() {
         val arr = JSONArray()
-        for (w in walks) arr.put(w.json())
+        for (w in runs) arr.put(w.json())
         try {
             // Written whole and moved into place: a console losing power
             // mid-write is an ordinary event here, and a half-written history
@@ -263,19 +262,19 @@ class History(context: Context) {
         private const val TAG = "StrideHistory"
 
         /**
-         * How many walks to keep.
+         * How many runs to keep.
          *
-         * Two years of daily walking, and about 120 KB of JSON. The trim exists
+         * Two years of daily running, and about 120 KB of JSON. The trim exists
          * so the file cannot grow without limit on a console that never gets
          * looked at, not because anything here is expensive.
          */
         const val KEEP = 750
 
-        /** Shorter than this is an interruption, not a session — see Coach.SUMMARY_MIN_MS. */
+        /** Shorter than this is an interruption, not a session. */
         const val MIN_DISTANCE_M = 300.0
         const val MIN_ELAPSED_S = 180.0
 
-        /** Below this a "most climb" record is measuring a flat walk's rounding. */
+        /** Below this a "most climb" record is measuring a flat run's rounding. */
         const val MIN_CLIMB_M = 10.0
 
         /** Records need something to be a record against. */

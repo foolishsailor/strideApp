@@ -1,6 +1,6 @@
 # NordicTrack C 1750 (Gen 6)
 
-The machine STRIDE was built on, and walked on most days since.
+The machine STRIDE was built on, and run on most days since.
 
 ## The machine
 
@@ -24,5 +24,5 @@ FitPro, USB `0x213C`/`0x0002` "ICON Generic HID", device id `0x04`.
 
 ## How far it got
 
-Everything: daily use, guided walks, Home Assistant, Zwift over FTMS. See
+Everything: daily use, guided runs, Zwift over FTMS. See
 [gen6.md](gen6.md) for the generation's quirks.

@@ -19,7 +19,7 @@ function LoopMark({ on }: { on: boolean }) {
   );
 }
 
-/** A walk to choose: its name, a line about it, and the shape of its ground.
+/** A run to choose: its name, a line about it, and the shape of its ground.
  *  Pass `loop` to offer the there-and-back mark (routes only). */
 export function PlanCard({ name, blurb, points, selected, loop, onTap }: {
   name: string;

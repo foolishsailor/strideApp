@@ -1,7 +1,7 @@
 import type { PlanStep, SessionMode, SessionState } from '../bridge/types';
 import type { Units } from '../store/settings';
 import { mmss } from './format';
-import { far, kphFrom, speedIn, walked } from './units';
+import { far, kphFrom, speedIn, distanceRun } from './units';
 
 /* What the screen makes of a snapshot. Pure functions only, so every rule the
    old render() applied inline is named, tested, and shared by whichever
@@ -35,8 +35,8 @@ export const isRestful = (mode: SessionMode | null): boolean =>
   mode === null || mode === 'welcome' || mode === 'summary';
 
 /** The chip says what you're *doing*. "running" is the internal name of the
- *  active session state, which read as wrong on every walk. Colour still keys
- *  off the state, so walking and running are both green. */
+ *  active session state, which read as wrong on every run. Colour still keys
+ *  off the state, so running and running are both green. */
 export function modeLabel(mode: SessionMode, ramping?: string): string {
   if (mode === 'warmup') return 'warming up';
   if (mode === 'cooldown') return 'cooling down';
@@ -70,12 +70,12 @@ export const canStop = (mode: SessionMode): boolean =>
   mode === 'warmup' || mode === 'running' || mode === 'paused';
 
 /** Says where you are, not just that you stopped. Someone coming back to a
- *  paused console after answering the door wants the walk located again. */
+ *  paused console after answering the door wants the run located again. */
 export function pausedWhere(s: SessionState, u: Units = 'km'): string {
   const where = [mmss(s.elapsed ?? 0) + ' in'];
   if (s.segments) where.push(`${s.segmentLabel || 'segment ' + s.segment} · ${s.segment} of ${s.segments}`);
   else {
-    const d = walked(s.distance ?? 0, u);
+    const d = distanceRun(s.distance ?? 0, u);
     where.push(d.value + ' ' + d.unit);
   }
   where.push('the belt has stopped');
@@ -89,22 +89,6 @@ export function segmentSubtitle(s: SessionState, u: Units = 'km'): string {
   return `${s.plan} · ${s.segment} of ${s.segments} · ${remaining} left`;
 }
 
-export interface Suggestion {
-  verb: 'lift to' | 'ease to' | 'hold';
-  kph: number;
-  /** The hill is the walker's until the next stretch. */
-  manualIncline: boolean;
-}
-
-/** The coach's suggested pace, phrased against the current target. */
-export function suggestion(s: SessionState): Suggestion | null {
-  const kph = s.suggestPace ?? 0;
-  if (!(kph > 0)) return null;
-  const delta = kph - (s.targetSpeed || 0);
-  const verb = delta > 0.15 ? 'lift to' : delta < -0.15 ? 'ease to' : 'hold';
-  return { verb, kph, manualIncline: !s.inclineAuto };
-}
-
 /** Warm-up and cool-down are both two minutes — WARMUP_MS / COOLDOWN_MS. */
 export const PHASE_SECONDS = 120;
 
@@ -113,7 +97,7 @@ export function phaseProgress(left: number): number {
 }
 
 /** What is coming, phrased as a preview and never as live plan state. A
- *  warm-up that reads "2 of 9 · 1:36 left" is claiming to be a walk that has
+ *  warm-up that reads "2 of 9 · 1:36 left" is claiming to be a run that has
  *  not started yet. */
 export function phasePreview(mode: SessionMode, steps: readonly PlanStep[]): string {
   if (mode !== 'warmup') return '';
@@ -178,16 +162,12 @@ export const FAN_LEVELS = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'AUTO'] as const;
 const FAN_SHORT = ['', 'I', 'II', 'III', 'A'];
 export const fanButtonLabel = (fan: number): string => (fan ? 'FAN ' + (FAN_SHORT[fan] ?? '') : 'FAN');
 
-/** No name here: the welcome screen is the question "who is walking". */
+/** No name here: the welcome screen is the question "who is running". */
 export function greeting(hour: number): string {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
 }
-
-/** How long a coach line stays up: long enough to read twice at a walk, and
- *  scaled with the sentence so a long line is never cut short. */
-export const coachHoldMs = (line: string): number => Math.min(18000, Math.max(9000, 5000 + line.length * 90));
 
 /** Seconds per kilometre at a belt speed, or 0 when the belt is barely
  *  turning and a pace would read as hours. */

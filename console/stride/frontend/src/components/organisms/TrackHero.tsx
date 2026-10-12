@@ -5,7 +5,7 @@ import { alpha, colour, theme } from '../../theme/tokens';
 import { Label, Numeral } from '../primitives';
 import styles from './Hero.module.css';
 
-/* The 400 m track, for a casual walk: what a walk without a plan accumulates
+/* The 400 m track, for a casual run: what a run without a plan accumulates
    is laps.
 
    The canonical stadium — two 248px straights closed by r=158 semicircles,

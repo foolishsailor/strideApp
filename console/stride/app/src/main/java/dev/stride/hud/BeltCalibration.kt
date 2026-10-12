@@ -18,7 +18,7 @@ import org.json.JSONObject
  * **What a point is.** "To really get [kph], send [belt]." Points are taken
  * with a pod on the shoe: hold a pace, nudge what is sent until the pod agrees
  * with the screen, and save. Everything else on the console (the dial, plans,
- * the coach, FTMS) keeps working in true speed. Only the number written to the
+ * FTMS) keeps working in true speed. Only the number written to the
  * board is translated, in exactly one place.
  *
  * **Between and beyond the points.**

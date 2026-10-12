@@ -36,7 +36,7 @@ protocol (FitPro 1 or 2), model string, board software version.
 - [ ] Belt starts, changes speed, stops (belt empty)
 - [ ] Safety key seen
 - [ ] Powers on into STRIDE
-- [ ] Walked on it
+- [ ] Run on it
 
 ## Quirks
 

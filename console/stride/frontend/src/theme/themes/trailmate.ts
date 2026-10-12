@@ -39,14 +39,12 @@ export const trailmate: Theme = {
     fillCard: surface,
     fillQuiet: alpha(surface, 0.5),
     fillFloating: alpha(surface, 0.98),
-    fillFloatingDown: '#0C4448',
     pressed: alpha(c.accent, 0.24),
     pressedCard: alpha(c.accent, 0.2), // TINT.overlay
     selected: alpha(c.accent, 0.2), // TINT.fill — the tonal container
     active: alpha(c.good, 0.2),
     edge: alpha(c.ink, 0.2), // surfaces.hairline
     edgeQuiet: alpha(c.ink, 0.1),
-    edgeFloating: alpha(c.ink, 0.2),
     scrim: alpha(c.bg0, 0.97),
     pulse: alpha(c.accent, 0.5),
     glow: 'transparent',
@@ -54,7 +52,7 @@ export const trailmate: Theme = {
     backdropMid: alpha(surface, 0.3),
     shadowRaised: `0 8px 18px ${alpha(deep, 0.5)}`,
     shadowFloating: `0 16px 32px ${alpha(deep, 0.62)}, 0 4px 10px ${alpha(deep, 0.4)}`,
-    /* Over a film: a translucent black panel under the drawers, so the walk
+    /* Over a film: a translucent black panel under the drawers, so the run
        reads against any scene and the film still shows through. */
     fillOverApp: alpha('#000000', 0.55),
     /* Over a film every word is white: tone colours that read on the teal

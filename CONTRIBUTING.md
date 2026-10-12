@@ -14,7 +14,7 @@ is a page in [`treadmills/`](treadmills/README.md), copied from its template.
 
 Right now the known-good list is two machines: a NordicTrack C 1750 (Gen 6,
 FitPro) in daily use, and a NordicTrack X22i (Gen 7, FitPro 2), newer but
-walked on. That's the single biggest thing standing between this working
+run on. That's the single biggest thing standing between this working
 on my treadmill and working on yours. I'm not buying more treadmills to find
 out, so the list can only come from other people.
 
@@ -68,9 +68,8 @@ organised.
 | `console/stride/` | The Android app. Kotlin drives the machine, HTML draws the screen. |
 | `console/usbprobe/` | Read-only board identifier for Gen 6 (FitPro 1) and Gen 7 (FitPro 2) boards. Sends only identity and read requests, moves nothing. |
 | `protocol/` | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md) (Gen 6) and [FitPro 2](protocol/FITPRO2_PROTOCOL.md) (Gen 7), decoded. Start here for a different machine. |
-| `homeassistant/` | Optional coach, reminders and dashboard scripts. |
 | `tools/unchain.sh` | Disables the iFit packages in the order that matters. |
-| `tools/sim.py` | Drives a simulated treadmill in debug builds: speed, incline, the four guided walks, the safety key. See [TEST_HARNESS.md](docs/TEST_HARNESS.md). |
+| `tools/sim.py` | Drives a simulated treadmill in debug builds: speed, incline, the four guided runs, the safety key. See [TEST_HARNESS.md](docs/TEST_HARNESS.md). |
 
 ## If you touch anything that moves the belt
 
@@ -85,7 +84,7 @@ person standing on it.
   Kotlin, not in the interface. A layout can't outrun the machine, and it
   should stay that way.
 - **Say what you tested on.** "Built and installed, board idle, no errors" is
-  worth knowing. So is "I haven't walked on this".
+  worth knowing. So is "I haven't run on this".
 
 Read [SAFETY.md](SAFETY.md) before changing anything in that area.
 

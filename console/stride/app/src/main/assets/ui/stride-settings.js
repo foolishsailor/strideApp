@@ -13,7 +13,7 @@
 
    Everything is read from and written to the Kotlin bridge immediately — there
    is no Save button and nothing is held here. A console that loses a setting
-   because somebody walked away from a form is a console that lies about its own
+   because somebody stepped away from a form is a console that lies about its own
    configuration.
    =========================================================================== */
 (function (global) {
@@ -323,9 +323,8 @@
     return s;
   }
 
-  /* What a stored password looks like from here. The console does not send
-     the password itself — Settings.json() sends `mqtt_pass_set` instead — so
-     this is a statement that one exists, never the thing itself. */
+  /* What a stored password looks like from here, should a password field ever
+     need to say one exists without being handed the thing itself. */
   var SECRET_MASK = '••••••••';
 
   function field(key, value, short, type) {
@@ -338,8 +337,8 @@
     // noise here. The on-screen keyboard owns the value.
     f.setAttribute('readonly', 'readonly');
     // Saved when the keyboard closes, not per keystroke — a bridge call per
-    // character would write a broker host of "1", "19", "192"… and try to
-    // connect to each one.
+    // character would write a server address of "h", "ht", "htt"… and try
+    // each one.
     f.sxCommit = function () {
       var v = f.value.trim();
       // A password box that was left alone must not wipe the password. This
@@ -390,7 +389,7 @@
     'asdfghjkl'.split(''),
     'zxcvbnm'.split('')
   ];
-  /* Everything a broker host, a topic prefix or a password realistically needs,
+  /* Everything a server address, a name or a password realistically needs,
      and nothing else — a full symbol plane would be another shift layer to
      find. */
   var KB_SYMS = ['.', '-', '_', ':', '/', '@', '#', '!'];
@@ -498,21 +497,17 @@
   var ICONS = {
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
     devices: 'M7 7l10 10-5 5V2l5 5L7 17',
-    ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
-    coach: 'M4 5h16v11H9l-5 4V5z',
     screen: 'M3 4h18v12H3zM8 20h8M12 16v4',
     routes: 'M3 18l6-3 6 3 6-3V6l-6 3-6-3-6 3zM9 15V6M15 18V9',
     about: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01'
   };
 
   var SECTIONS = [
-    ['people', 'Who walks',      paneWho],
+    ['people', 'Who runs',      paneWho],
     ['devices', 'Devices',       paneDevices],
-    ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
-    ['coach',  'Coach',          paneCoach],
     ['screen', 'Display',        paneScreen],
     ['about',  'About',          paneAbout]
   ];
@@ -525,9 +520,9 @@
     return sc;
   }
 
-  // --- who walks ---
+  // --- who runs ---
   function paneWho(pane) {
-    var sc = head(pane, 'Who walks',
+    var sc = head(pane, 'Who runs',
       'Everyone who uses this treadmill. Each person keeps their own distance and ' +
       'history, and chooses whether any of it leaves the console.');
 
@@ -540,14 +535,8 @@
       list.innerHTML = '';
       var tst = tmStatus();
       (S.people || []).forEach(function (p) {
-        var c = el('button', 'sx-person' + (p.name === S.default_walker ? ' sx-on' : ''));
+        var c = el('button', 'sx-person' + (p.name === S.default_runner ? ' sx-on' : ''));
         var bits = [];
-        bits.push(p.coached ? 'Coaching' : 'No coaching');
-        // Being linked is a different fact from being published, and the one
-        // people actually ask about: is this the same person Home Assistant
-        // knows? Somebody with no link is not broken — they simply only exist
-        // here, and saying so is better than leaving it to be guessed.
-        bits.push(p.ha_person ? 'linked' : 'console only');
         var t = tmPerson(tst, p.id);
         if (t.linked) bits.push(t.reconnect ? 'TrailMate: reconnect' : 'TrailMate');
         c.innerHTML = '<div class="sx-av">' + p.name.charAt(0).toUpperCase() + '</div>' +
@@ -586,7 +575,7 @@
         if (!name) return;
         try { S = JSON.parse(bridge().addPerson(name)); } catch (e) {}
         detail.innerHTML = '';
-        drawPeople(); drawDefault(); drawHa();
+        drawPeople(); drawDefault();
       };
       input.setAttribute('readonly', 'readonly');
       input.sxCapitalise = true;
@@ -600,8 +589,8 @@
       wrap.appendChild(press(el('button', 'sx-pill sx-go', 'ADD'), commit));
 
       detail.appendChild(row('Their name',
-        'Everyone who walks gets their own totals. Coaching and recording are ' +
-        'set per person once they are here.', wrap));
+        'Everyone who runs gets their own totals. Recording is set per person ' +
+        'once they are here.', wrap));
 
       // Straight into the keyboard — the only reason to be on this screen is
       // to type a name.
@@ -613,35 +602,10 @@
     function editPerson(p) {
       detail.innerHTML = '';
       detail.appendChild(el('div', 'sx-gh', p.name));
-      detail.appendChild(row('Home Assistant',
-        p.ha_person
-          ? 'Linked, so walks recorded here line up with the person Home '
-            + 'Assistant already knows.'
-          : 'Not linked. This person exists only on the console — recording '
-            + 'them still works, it just creates a device with no matching '
-            + 'person in Home Assistant.',
-        el('div', 'sx-ro', p.ha_person
-          ? '<b>' + p.ha_person + '</b>' : 'console only')));
-      detail.appendChild(row('Coaching',
-        'Send this walk to Home Assistant to be turned into words. The prompt there ' +
-        'carries one person\'s weight and blood pressure, which is why this is per person.',
-        toggle(null, p.coached, function (on) {
-          try { S = JSON.parse(bridge().setPersonFlag(p.name, 'coached', on)); } catch (e) {}
-          p.coached = on; drawPeople();
-        })));
       detail.appendChild(row('Age',
-        'Only used for heart-rate zones. With it the coach can tell "taking it ' +
-        'easy" from "working hard"; without it, it can still tell "harder than ' +
-        'earlier in this walk" and says so. Leaving it unset costs the first of ' +
-        'those and nothing else — the estimate behind it is rough anyway, so ' +
-        'the coach talks in words rather than numbers either way.',
+        'Only used for heart-rate zones on the summary. Leaving it unset costs ' +
+        'nothing else, and the estimate behind it is rough anyway.',
         ageStepper(p)));
-      detail.appendChild(row('Record to Home Assistant',
-        'Their distance, time and calories, published under their own name.',
-        toggle(null, p.publish, function (on) {
-          try { S = JSON.parse(bridge().setPersonFlag(p.name, 'publish', on)); } catch (e) {}
-          p.publish = on; drawPeople();
-        })));
       // Redrawn from the tick while it is on screen: a link in progress
       // changes under it, from somebody's phone.
       if (has('trailmateStatus')) {
@@ -653,52 +617,25 @@
       detail.appendChild(row('Start as ' + p.name,
         'Assume this person when the belt starts without anyone tapping a name.',
         press(el('button', 'sx-pill', 'MAKE DEFAULT'), function () {
-          save('default_walker', p.name); drawPeople(); drawDefault();
+          save('default_runner', p.name); drawPeople(); drawDefault();
         })));
       detail.appendChild(row('Remove ' + p.name,
-        'Their recorded walks are not deleted.',
+        'Their recorded runs are not deleted.',
         press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           try { S = JSON.parse(bridge().removePerson(p.name)); } catch (e) {}
           tmShowing = null;
-          detail.innerHTML = ''; drawPeople(); drawDefault(); drawHa();
+          detail.innerHTML = ''; drawPeople(); drawDefault();
         })));
     }
 
     var detail = group('');
     sc.appendChild(detail);
 
-    /* Offered, never applied. A list arriving over MQTT is not permission to
-       create walkers on somebody's treadmill — the person standing in front of
-       it decides, one at a time. */
-    var fromHa = group('From Home Assistant');
-    var haBox = el('div', 'sx-people');
-    fromHa.appendChild(haBox);
-    sc.appendChild(fromHa);
-
-    function drawHa() {
-      var list = [];
-      try { list = JSON.parse(bridge().haPeople()); } catch (e) {}
-      haBox.innerHTML = '';
-      fromHa.style.display = list.length ? '' : 'none';
-      list.forEach(function (h) {
-        var c = el('button', 'sx-person');
-        c.innerHTML = '<div class="sx-av">' + h.first.charAt(0).toUpperCase() + '</div>' +
-                      '<div class="sx-pn">' + h.first + '</div>' +
-                      '<div class="sx-pd">' + h.name + '</div>';
-        press(c, function () {
-          try { S = JSON.parse(bridge().addHaPerson(h.entity_id, h.first)); } catch (e) {}
-          drawPeople(); drawDefault(); drawHa();
-        });
-        haBox.appendChild(c);
-      });
-    }
-
     var g2 = group('When nobody chooses');
     var defRow = el('div');
     g2.appendChild(defRow);
-    g2.appendChild(row('Guest walks',
-      'A one-off walk counted on the console but never recorded against a person. ' +
-      'Guests are never coached and never published.',
+    g2.appendChild(row('Guest runs',
+      'A one-off run counted on the console but never recorded against a person.',
       toggle('allow_guest', S.allow_guest !== false)));
     sc.appendChild(g2);
 
@@ -707,11 +644,11 @@
       var opts = [['', 'Ask every time']];
       (S.people || []).forEach(function (p) { opts.push([p.name, p.name]); });
       defRow.appendChild(row('Start as', 'Who the welcome screen assumes.',
-        segment('default_walker', opts, S.default_walker || '', function () { drawPeople(); })));
+        segment('default_runner', opts, S.default_runner || '', function () { drawPeople(); })));
     }
 
     /* ---- TrailMate, per person ------------------------------------------
-       Connecting is a code on this screen and a tap on the walker's phone:
+       Connecting is a code on this screen and a tap on the runner's phone:
        Kotlin asks TrailMate for a code and a QR, and polls until it is
        approved, denied or runs out. This only ever shows what trailmateStatus
        says — never a token, which this page is not given. */
@@ -724,7 +661,7 @@
 
     function when(iso) {
       var d = new Date(iso);
-      if (isNaN(d.getTime())) return 'a walk';
+      if (isNaN(d.getTime())) return 'a run';
       return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' +
         d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     }
@@ -819,13 +756,13 @@
         return;
       }
 
-      var waiting = me.queued ? ' ' + me.queued + (me.queued === 1 ? ' walk is' : ' walks are') +
+      var waiting = me.queued ? ' ' + me.queued + (me.queued === 1 ? ' run is' : ' runs are') +
         ' waiting to send.' : '';
       if (me.linked && me.reconnect) {
         tmBox.appendChild(row('TrailMate',
           '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span><br>' +
           'TrailMate stopped accepting this console\'s link — it was disconnected on the website, ' +
-          'or the account changed. Connect again and the walks waiting here will follow.' + waiting,
+          'or the account changed. Connect again and the runs waiting here will follow.' + waiting,
           pills([
             press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { call('trailmateConnect', p.id); }),
             press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })
@@ -834,17 +771,17 @@
         tmBox.appendChild(row('TrailMate',
           '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
           (me.account ? ' as ' + esc(me.account) : '') + '</span><br>' +
-          'Each walk goes to TrailMate when it ends, and on to Garmin Connect if that is ' +
+          'Each run goes to TrailMate when it ends, and on to Garmin Connect if that is ' +
           'connected there.' + waiting,
           press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })));
       } else {
         tmBox.appendChild(row('TrailMate',
-          'Send ' + esc(p.name) + '\'s walks to TrailMate, and from there to Garmin Connect. ' +
-          'Connecting shows a code to scan with a phone. Until then their walks stay on the console.',
+          'Send ' + esc(p.name) + '\'s runs to TrailMate, and from there to Garmin Connect. ' +
+          'Connecting shows a code to scan with a phone. Until then their runs stay on the console.',
           press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { call('trailmateConnect', p.id); })));
       }
 
-      // Walks TrailMate turned down. Parked so they do not hold up the ones
+      // Runs TrailMate turned down. Parked so they do not hold up the ones
       // behind them; shown so they are not silently lost.
       failed.forEach(function (f) {
         var r = el('div', 'sx-dev');
@@ -868,7 +805,7 @@
       queueRow = el('div');
       g3.appendChild(queueRow);
       g3.appendChild(row('TrailMate server',
-        'Where walks are sent. Leave it alone unless you are testing against a TrailMate of ' +
+        'Where runs are sent. Leave it alone unless you are testing against a TrailMate of ' +
         'your own; clearing it goes back to foolishrunner.com.',
         field('trailmate_url', S.trailmate_url)));
       sc.appendChild(g3);
@@ -902,7 +839,7 @@
             (t.account ? ' as ' + esc(t.account) : '') + '</span>';
           btn = press(el('button', 'sx-pill', 'MANAGE'), function () { editPerson(p); });
         } else {
-          said = 'Not connected — their walks stay on the console.';
+          said = 'Not connected — their runs stay on the console.';
           btn = press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { connectFor(p); });
         }
         tmPeopleBox.appendChild(row(esc(p.name), said, btn));
@@ -919,19 +856,18 @@
       if (!queueRow) return;
       var st = tmStatus() || {};
       var n = (st.queued || []).length;
-      var said = n ? n + (n === 1 ? ' walk' : ' walks') + ' waiting to send' : 'Nothing waiting to send';
+      var said = n ? n + (n === 1 ? ' run' : ' runs') + ' waiting to send' : 'Nothing waiting to send';
       var why = '';
       if (n && st.lastError) why = esc(st.lastError) + (st.retryIn ? ' · trying again in ' + mmss(st.retryIn) : '');
-      else if (n) why = 'Waiting for the walker to connect (or reconnect) TrailMate.';
+      else if (n) why = 'Waiting for the runner to connect (or reconnect) TrailMate.';
       queueRow.innerHTML = '';
-      queueRow.appendChild(row('Walks to send',
+      queueRow.appendChild(row('Runs to send',
         '<span class="sx-state"><i class="sx-dot ' + (n ? (st.lastError ? 'sx-bad' : 'sx-busy') : 'sx-ok') +
         '"></i>' + said + '</span>' + (why ? '<br>' + why : ''), el('div')));
     }
 
     drawPeople();
     drawDefault();
-    drawHa();
     drawQueue();
     drawTmPeople();
     pane.sxTick = function () { drawTm(); drawQueue(); drawTmPeople(); };
@@ -958,7 +894,7 @@
 
   function paneDevices(pane) {
     var sc = head(pane, 'Devices',
-      'Heart-rate straps, foot pods such as Stryd, and headphones for the coach. ' +
+      'Heart-rate straps, foot pods such as Stryd, and headphones. ' +
       'The console connects to each itself; nothing else needs to be paired.');
 
     var g1 = group('Your devices');
@@ -1065,54 +1001,6 @@
     pane.sxTick = drawPaired;   // live readings while this section is open
   }
 
-  // --- home assistant ---
-  function paneHa(pane) {
-    var sc = head(pane, 'Home Assistant',
-      'Optional. The treadmill runs perfectly well with none of this set — you lose ' +
-      'the history, the dashboards and the talking coach, and nothing else.');
-
-    var g = group('Connection');
-    g.appendChild(row('Publish to Home Assistant',
-      'Everything below is ignored while this is off.',
-      toggle('ha_enabled', !!S.ha_enabled)));
-    g.appendChild(row('MQTT broker', 'Host or IP of the broker, not of Home Assistant itself.',
-      field('mqtt_host', S.mqtt_host)));
-    g.appendChild(row('Port', '1883 plain, 8883 with TLS.',
-      field('mqtt_port', S.mqtt_port, true)));
-    g.appendChild(row('Username', '', field('mqtt_user', S.mqtt_user)));
-    g.appendChild(row('Password', '',
-      field('mqtt_pass', S.mqtt_pass_set ? SECRET_MASK : '', false, 'password')));
-    g.appendChild(row('Use TLS', 'Off is reasonable on a home network you control.',
-      toggle('mqtt_tls', !!S.mqtt_tls)));
-    g.appendChild(row('Topic prefix',
-      'Change only if stride/ already means something else on your broker.',
-      field('mqtt_prefix', S.mqtt_prefix)));
-
-    var stateEl = el('span', 'sx-state', '<i class="sx-dot"></i>Not tested');
-    var testWrap = el('div');
-    testWrap.style.cssText = 'display:flex;align-items:center';
-    stateEl.style.marginRight = '18px';
-    testWrap.appendChild(stateEl);
-    testWrap.appendChild(press(el('button', 'sx-pill', 'TEST'), function () {
-      stateEl.innerHTML = '<i class="sx-dot sx-busy"></i>Connecting…';
-      try { bridge().mqttTest(); } catch (e) {}
-      setTimeout(drawState, 2500);
-    }));
-    g.appendChild(row('Test the connection',
-      'Connects, publishes discovery, and reports back. Changes nothing else.', testWrap));
-    sc.appendChild(g);
-
-    function drawState() {
-      var st = {};
-      try { st = JSON.parse(bridge().mqttStatus()); } catch (e) {}
-      if (!st.enabled) stateEl.innerHTML = '<i class="sx-dot"></i>Not publishing';
-      else if (st.connected) stateEl.innerHTML = '<i class="sx-dot sx-ok"></i>Connected';
-      else stateEl.innerHTML = '<i class="sx-dot sx-bad"></i>Could not connect';
-    }
-    drawState();
-    pane.sxTick = drawState;
-  }
-
   // --- treadmill ---
   function paneDeck(pane) {
     var sc = head(pane, 'Treadmill',
@@ -1120,7 +1008,7 @@
       'are preferences within them, never overrides of them.');
 
     var g2 = group('Starting and stopping');
-    g2.appendChild(row('Warm-up', 'Skippable. Zero starts every walk at your chosen pace.',
+    g2.appendChild(row('Warm-up', 'Skippable. Zero starts every run at your chosen pace.',
       stepper('warmup_min', S.warmup_min || 0, 0, 10, 1, 'min')));
     g2.appendChild(row('Cool-down', '',
       stepper('cooldown_min', S.cooldown_min || 0, 0, 10, 1, 'min')));
@@ -1128,7 +1016,7 @@
       stepper('warmup_kph', S.warmup_kph || 2, 1, 6, 0.5, 'km/h', 1)));
     sc.appendChild(g2);
 
-    var g3 = group('Guided walks');
+    var g3 = group('Guided runs');
     g3.appendChild(row('Incline changes',
       'How fast the deck may move during a plan. Gentler is kinder underfoot, and no ' +
       'plan is ever allowed to move it all at once.',
@@ -1167,7 +1055,7 @@
   }
 
   /* The belt measured against a foot pod — see BeltCalibration.kt. The points
-     are taken on the walk screen; this lists them and lets them go. */
+     are taken on the run screen; this lists them and lets them go. */
   function beltCalibration() {
     var g = group('Belt speed calibration');
     var start = press(el('button', 'sx-pill sx-go', 'START'), function () {
@@ -1195,7 +1083,7 @@
           'Not calibrated. The belt runs at the speed the board believes.'));
         return;
       }
-      // Display → Units, the same setting the walk screen follows.
+      // Display → Units, the same setting the run screen follows.
       var miles = S.units === 'mi';
       var sp = function (kph) {
         return (miles ? kph / 1.609344 : kph).toFixed(2) + (miles ? ' mph' : ' km/h');
@@ -1224,38 +1112,11 @@
     return g;
   }
 
-  // --- coach ---
-  function paneCoach(pane) {
-    var sc = head(pane, 'Coach',
-      'Marks your kilometres and says something occasionally. It never touches the ' +
-      'belt — every pace change is yours.');
-
-    var g = group('');
-    g.appendChild(row('Coach', 'Off means a silent walk with no ribbon at all.',
-      toggle('coach_on', S.coach_on !== false)));
-    g.appendChild(row('How much it talks',
-      'Sparing marks kilometres and little else. Chatty adds pace and rhythm observations.',
-      segment('coach_talk', [['sparing', 'Sparing'], ['normal', 'Normal'], ['chatty', 'Chatty']],
-        S.coach_talk || 'normal')));
-    g.appendChild(row('Voice', 'Only affects wording, never what it is willing to say.',
-      segment('coach_voice', [
-        ['Supportive Friend', 'Supportive'], ['Drill Sergeant', 'Drill sergeant'],
-        ['Data Nerd', 'Data nerd'], ['Zen Master', 'Zen']
-      ], S.coach_voice || 'Supportive Friend')));
-    g.appendChild(row('Written by Home Assistant',
-      'Off keeps every line on the console — the built-in ones, which are shorter and never late.',
-      toggle('coach_remote', S.coach_remote !== false)));
-    g.appendChild(row('Announce milestones', 'First mark at 500 m, then every kilometre.',
-      toggle('coach_milestones', S.coach_milestones !== false)));
-    sc.appendChild(g);
-  }
-
-
   // --- display ---
   function paneScreen(pane) {
     var sc = head(pane, 'Display',
       'The console is a screen in a room, on all day. These are about living with it ' +
-      'rather than walking on it.');
+      'rather than running on it.');
 
     /* Units live here rather than under Treadmill, where they sat until
        somebody asked on Reddit for an MPH setting that had existed for
@@ -1264,14 +1125,13 @@
        this reaches the serial link. */
     var gu = group('Units');
     gu.appendChild(row('Distance and speed',
-      'Everything on every screen, and everything published. The board stays ' +
-      'metric underneath.',
+      'Everything on every screen. The board stays metric underneath.',
       segment('units', [['km', 'Kilometres'], ['mi', 'Miles']], S.units || 'km')));
     sc.appendChild(gu);
 
     var g = group('');
     g.appendChild(row('Sleep after',
-      'Standby: the screen goes dark until you touch it. Never mid-walk.',
+      'Standby: the screen goes dark until you touch it. Never mid-run.',
       stepper('sleep_min', S.sleep_min || 5, 1, 60, 1, 'min')));
     g.appendChild(row('Clock', '',
       segment('clock_24', [['true', '24 hour'], ['false', '12 hour']],
@@ -1280,21 +1140,21 @@
       'Dimmer is easier to live with in a dark room and reads fine at arm\'s length.',
       segment('brightness', [['dim', 'Dim'], ['normal', 'Normal'], ['bright', 'Bright']],
         S.brightness || 'normal')));
-    g.appendChild(row('Keep the screen on while walking',
-      'Off lets it sleep even mid-walk, which saves the panel on long sessions.',
+    g.appendChild(row('Keep the screen on while running',
+      'Off lets it sleep even mid-run, which saves the panel on long sessions.',
       toggle('keep_awake', S.keep_awake !== false)));
     sc.appendChild(g);
   }
 
   // --- about ---
-  /* Routes converted from real outdoor walks. Read-only here on purpose: they
-     are made on the phone, where the walk and its GPS track are, and a second
+  /* Routes converted from real outdoor runs. Read-only here on purpose: they
+     are made on the phone, where the run and its GPS track are, and a second
      place to edit a name is a second place for the two to disagree. What this
      screen is for is answering "did it arrive" without a laptop. */
   function paneRoutes(pane) {
     var sc = head(pane, 'My routes',
-      'Walks you have already done outdoors, converted into ground this ' +
-      'treadmill can walk. They arrive from the STRIDE Health app on your ' +
+      'Runs you have already done outdoors, converted into ground this ' +
+      'treadmill can run. They arrive from the STRIDE Health app on your ' +
       'phone and are kept on the console, so they work with the network down.');
 
     /* Live, because routes arrive while you are looking at this.
@@ -1328,8 +1188,8 @@
     if (!routes.length) {
       var g0 = group('');
       g0.appendChild(row('No routes yet',
-        'Open STRIDE Health on your phone, go to Workouts & Routes, convert an ' +
-        'outdoor walk and keep it. It arrives here on the next sync.',
+        'Routes are outdoor runs turned into ground this treadmill can run. They ' +
+        'will come from TrailMate.',
         el('div', 'sx-ro', '—')));
       sc.appendChild(g0);
       return;
@@ -1350,12 +1210,6 @@
     });
     sc.appendChild(g);
 
-    var g2 = group('Where they come from');
-    g2.appendChild(row('Home Assistant',
-      'Routes ride the same webhook as your health data and are cached here. ' +
-      'Delete or rename them on the phone; this console follows.',
-      el('div', 'sx-ro', S.ha_enabled ? 'connected' : 'not configured')));
-    sc.appendChild(g2);
   }
 
   /* The route's own profile as a small inline SVG — the ground it is, rather
@@ -1492,7 +1346,7 @@
     rebuild();
     shadowHost.style.display = 'block';
     // Only the visible section ticks — polling a bridge for a heart rate while
-    // looking at the broker settings is work nobody asked for.
+    // looking at the display settings is work nobody asked for.
     poll = setInterval(function () {
       var pane = root.querySelector('.sx-pane.sx-on');
       if (pane && pane.sxTick) pane.sxTick();

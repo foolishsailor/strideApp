@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canStop, coachHoldMs, DEFAULT_LIMITS, greeting, inclineStops, modeLabel, nearestStop, normaliseMode,
+  canStop, DEFAULT_LIMITS, greeting, inclineStops, modeLabel, nearestStop, normaliseMode,
   paceSecPerKm, parseLimits, pausedWhere, phasePreview, phaseProgress, primaryAction, primaryLabel, screenFor,
-  segmentSubtitle, speedStops, suggestion, paceSec, paceText, stepPace, beltOffset,
+  segmentSubtitle, speedStops, paceSec, paceText, stepPace, beltOffset,
 } from './session';
 
 describe('belt calibration', () => {
@@ -77,7 +77,7 @@ describe('the primary control', () => {
 });
 
 describe('copy', () => {
-  it('locates a paused guided walk by segment, a casual one by distance', () => {
+  it('locates a paused guided run by segment, a casual one by distance', () => {
     expect(pausedWhere({ elapsed: 75, segments: 9, segment: 2, segmentLabel: 'First rise' }))
       .toBe('1:15 in · First rise · 2 of 9 · the belt has stopped');
     expect(pausedWhere({ elapsed: 75, distance: 1234 })).toBe('1:15 in · 1,234 m · the belt has stopped');
@@ -103,13 +103,6 @@ describe('copy', () => {
 });
 
 describe('numbers', () => {
-  it('phrases the suggestion against the current target', () => {
-    expect(suggestion({ suggestPace: 5.6, targetSpeed: 5.0, inclineAuto: true })).toEqual({ verb: 'lift to', kph: 5.6, manualIncline: false });
-    expect(suggestion({ suggestPace: 5.0, targetSpeed: 5.6 })?.verb).toBe('ease to');
-    expect(suggestion({ suggestPace: 5.0, targetSpeed: 5.1 })?.verb).toBe('hold');
-    expect(suggestion({ suggestPace: 0 })).toBeNull();
-  });
-
   it('offers whole speeds the belt can do, and only grades the board reaches', () => {
     expect(speedStops(DEFAULT_LIMITS)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
     expect(speedStops({ ...DEFAULT_LIMITS, minKph: 1, maxKph: 4.5 })).toEqual([1, 2, 3, 4]);
@@ -130,11 +123,5 @@ describe('numbers', () => {
 
   it('clamps phase progress', () => {
     expect([phaseProgress(120), phaseProgress(60), phaseProgress(-5), phaseProgress(500)]).toEqual([0, 0.5, 1, 0]);
-  });
-
-  it('holds a coach line between nine and eighteen seconds', () => {
-    expect(coachHoldMs('Hi')).toBe(9000);
-    expect(coachHoldMs('x'.repeat(100))).toBe(14000);
-    expect(coachHoldMs('x'.repeat(1000))).toBe(18000);
   });
 });

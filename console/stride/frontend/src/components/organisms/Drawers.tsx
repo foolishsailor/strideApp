@@ -4,7 +4,7 @@ import { cx } from '../../lib/cx';
 import { useUi } from '../../store/ui';
 import styles from './Drawers.module.css';
 
-/* Over another app (APPS) the walk screen's edges become drawers: the numbers
+/* Over another app (APPS) the run screen's edges become drawers: the numbers
    slide up off the top, the rails off the sides and the dock off the bottom.
    Everything in a drawer sits on a translucent black panel, since the
    backdrop is a film.

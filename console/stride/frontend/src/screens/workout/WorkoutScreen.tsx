@@ -8,9 +8,9 @@ import {
   SpeedReading, toggleControls, toggleMetrics,
 } from '../../components/organisms';
 
-/** The screen the treadmill is actually walked on: warm-up, the walk, pause and
+/** The screen the treadmill is actually run on: warm-up, the run, pause and
  *  cool-down. A bar docked along the top — incline at its left end, speed at
- *  its right, the walk's numbers between — and from its bottom edge the
+ *  its right, the run's numbers between — and from its bottom edge the
  *  incline and speed rails down either side. The oval or path hero between
  *  them, and apps, start, fan and stop beneath it.
  *

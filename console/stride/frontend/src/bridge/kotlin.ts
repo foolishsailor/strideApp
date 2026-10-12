@@ -1,7 +1,6 @@
 import { useSession } from '../store/session';
 import { markActivity, useUi } from '../store/ui';
 import { useWelcome } from '../store/welcome';
-import { screenFor } from '../lib/session';
 import type { SessionMode } from './types';
 import { settings } from './stride';
 
@@ -10,10 +9,6 @@ import { settings } from './stride';
 export function installKotlinEntryPoints(): void {
   window.render = (s) => useSession.getState().render(s);
   window.plan = (p) => useSession.getState().setPlan(p);
-  /* Kotlin calls this when a line arrives from Home Assistant. The audio plays
-     on the Kotlin side: this WebView is a 2020 Chromium behind file://, and the
-     platform media stack is what can be relied on to make a sound. */
-  window.coach = (c) => useSession.getState().sayCoach(c);
   /* The treadmill's own STOP. Kotlin has already paused the belt; this asks
      the question the screen's STOP asks (ControlBar). */
   window.stopPressed = () => useUi.getState().setConfirmOpen(true);
@@ -22,8 +17,7 @@ export function installKotlinEntryPoints(): void {
   window.overApp = (on) => setOverApp(!!on);
 
   /* Calls that arrived before this module ran (see trailmate.html). Plan
-     first, so the first snapshot already has its ground. An early coach line
-     is dropped: it was said before there was a screen to say it on. */
+     first, so the first snapshot already has its ground. */
   const early = window.__early;
   delete window.__early;
   if (early?.plan) window.plan(early.plan);
@@ -49,9 +43,6 @@ export function onModeChange(mode: SessionMode): void {
     ui.setFanOpen(false);
     ui.setAppsOpen(false);
   }
-  /* The ribbon belongs to the walk. A line still up when the belt stopped used
-     to stay up over the summary's cards, where nothing had made room for it. */
-  if (screenFor(mode) !== 'workout') useSession.getState().hideCoach();
   if (mode !== 'paused') ui.setConfirmOpen(false);
   if (mode !== 'welcome') settings().close();
   if (mode === 'welcome') useWelcome.getState().goTo(1);

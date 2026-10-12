@@ -23,7 +23,7 @@ Each claim is marked one of:
 **Status, October 2026:** STRIDE drives FitPro 2 on one Gen 7 board. It was
 tested first **with the belt empty** (start, speed up and down, speed to zero
 and back, incline, pause, resume, STOP, end, the safety key, the app dying
-and the app stalling), and since then **walked on**. See
+and the app stalling), and since then **run on**. See
 [Seen on hardware](#seen-on-hardware) and [Driving it](#driving-it-what-the-board-actually-does).
 
 ---

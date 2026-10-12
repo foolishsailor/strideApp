@@ -4,19 +4,19 @@ Drive STRIDE's simulated treadmill from the PC. Debug builds only.
 
 With the simulator on, STRIDE talks to a board in software (SimBoard.kt) that
 behaves like the Gen 7 X22i, and never opens the real one, so nothing here can
-move a belt. Use it to watch metrics, hill drawings and guided walks without
+move a belt. Use it to watch metrics, hill drawings and guided runs without
 standing on anything.
 
     python tools/sim.py on                      # switch the simulator on (restarts STRIDE)
-    python tools/sim.py start                   # free walk, warm-up first
+    python tools/sim.py start                   # free run, warm-up first
     python tools/sim.py speed +0.5              # the on-screen speed buttons
     python tools/sim.py incline -1              # the on-screen incline buttons
     python tools/sim.py press incline_up        # the console's own buttons
     python tools/sim.py key out                 # pull the safety key (and `key in`)
-    python tools/sim.py guided pyramid 6        # a guided walk, 6 minutes
+    python tools/sim.py guided pyramid 6        # a guided run, 6 minutes
     python tools/sim.py scenario guided-all 4   # all four shapes, 4 minutes each
     python tools/sim.py watch                   # print the state every 2 s
-    python tools/sim.py walker Sam              # walk as Sam (added if missing), not a guest
+    python tools/sim.py runner Sam              # run as Sam (added if missing), not a guest
     python tools/sim.py workout                 # the last workout recorded for TrailMate, as JSON
     python tools/sim.py off                     # back to the real board (restarts STRIDE)
 
@@ -68,7 +68,7 @@ def signed(text):
 
 
 def wait(con, seconds, every=10):
-    """Sleep, printing the state now and then so a long walk is not silent."""
+    """Sleep, printing the state now and then so a long run is not silent."""
     end = time.time() + seconds
     while time.time() < end:
         time.sleep(min(every, max(0, end - time.time())))
@@ -83,7 +83,7 @@ def scenario_basic(con, _arg):
     con.ctl("incline", "--ef", "by", "3"); wait(con, 8, 4)
     con.ctl("press", "--es", "button", "speed_up")
     con.ctl("press", "--es", "button", "incline_up"); wait(con, 4, 2)
-    con.ctl("speed", "--ef", "by", "-10"); wait(con, 4, 2)       # to zero: the belt pauses, the walk goes on
+    con.ctl("speed", "--ef", "by", "-10"); wait(con, 4, 2)       # to zero: the belt pauses, the run goes on
     con.ctl("speed", "--ef", "by", "0.1"); wait(con, 4, 2)       # and back from the minimum
     con.ctl("pause"); wait(con, 4, 2)
     con.ctl("resume"); wait(con, 6, 3)
@@ -96,7 +96,7 @@ def scenario_basic(con, _arg):
 
 
 def scenario_guided_all(con, arg):
-    """The four guided shapes back to back, at a steady walking pace."""
+    """The four guided shapes back to back, at a steady running pace."""
     minutes = int(arg or 4)
     for shape in SHAPES:
         print(f"--- {shape}, {minutes} min ---")
@@ -126,7 +126,7 @@ def main():
     sub.add_parser("key").add_argument("state", choices=("out", "in"))
     sub.add_parser("pulse").add_argument("state", choices=("on", "off"))
     sub.add_parser("pod").add_argument("state", choices=("on", "off"))
-    sub.add_parser("walker").add_argument("name")
+    sub.add_parser("runner").add_argument("name")
     sub.add_parser("workout")
     g = sub.add_parser("guided"); g.add_argument("shape", choices=SHAPES); g.add_argument("minutes", type=int, nargs="?", default=10)
     s = sub.add_parser("scenario"); s.add_argument("name", choices=SCENARIOS); s.add_argument("arg", nargs="?")
@@ -169,14 +169,14 @@ def main():
         con.ctl("pod", "--ez", "on", "true" if a.state == "on" else "false")
     elif a.cmd == "pulse":
         con.ctl("pulse", "--ez", "on", "true" if a.state == "on" else "false")
-    elif a.cmd == "walker":
-        con.ctl("walker", "--es", "name", a.name)
+    elif a.cmd == "runner":
+        con.ctl("runner", "--es", "name", a.name)
     elif a.cmd == "workout":
         # Straight out of the app's private storage. run-as works on a debug
         # build only, which is the only kind that records with the simulator.
         out = con.shell("run-as", PKG, "cat", "files/trailmate/last.json")
         if not out.strip().startswith("{"):
-            sys.exit("no workout recorded yet (walk as a profile for a minute and 100 m, then end)")
+            sys.exit("no workout recorded yet (run as a profile for a minute and 100 m, then end)")
         print(out.strip())
     elif a.cmd == "guided":
         con.ctl("guided", "--es", "id", a.shape, "--ei", "min", str(a.minutes))

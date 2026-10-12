@@ -65,7 +65,7 @@ object FitPro2 {
 
     /**
      * The only features STRIDE may write. Speed, incline, and the workout state
-     * that starts, pauses and ends a walk — the same three things it drives on
+     * that starts, pauses and ends a run — the same three things it drives on
      * FitPro 1. Calibration, system mode, motor parameters and the rest are out
      * of reach by construction, not by care.
      *

@@ -26,7 +26,7 @@ export interface SessionState {
   power?: number;
   strideM?: number;
   podKph?: number;
-  /** Metres climbed this walk. */
+  /** Metres climbed this run. */
   climbM?: number;
   fan?: number;
   ramping?: string;
@@ -38,13 +38,11 @@ export interface SessionState {
   segmentLabel?: string;
   segmentLeft?: number;
   segmentLeftIsDistance?: boolean;
-  suggestPace?: number;
   inclineAuto?: boolean;
   avgSpeed?: number;
   maxSpeed?: number;
   avgIncline?: number;
-  summaryLine?: string;
-  /** The finished walk on its way to TrailMate: sending | sent | waiting |
+  /** The finished run on its way to TrailMate: sending | sent | waiting |
    *  failed | reconnect, or empty when it is not going (TrailMate.kt). */
   trailmate?: string;
   /** A belt calibration in progress, or null. */
@@ -79,7 +77,7 @@ export interface Calibration {
   note: string;
 }
 
-/** One stretch of a guided walk, resolved by Plan.kt. Times in seconds. */
+/** One stretch of a guided run, resolved by Plan.kt. Times in seconds. */
 export interface PlanStep {
   start: number;
   end: number;
@@ -90,11 +88,6 @@ export interface PlanStep {
 export interface Plan {
   name?: string;
   steps?: PlanStep[];
-}
-
-export interface CoachLine {
-  line?: string;
-  kind?: string;
 }
 
 /** A route cached on the console (Routes.kt). Segments are [startM, endM, incline]. */
@@ -122,9 +115,8 @@ export interface StrideBridge {
   setSpeed(kph: number): void;
   setIncline(pct: number): void;
   setFan(level: number): void;
-  setWalker(name: string): void;
+  setRunner(name: string): void;
   ackDmk(): void;
-  hushCoach(): void;
   dim(on: boolean): void;
   routes(): string;
   /** Belt calibration — see BeltCalibration.kt. The panel drives these. */
@@ -139,7 +131,7 @@ export interface StrideBridge {
   /** Apps the console can open, as JSON AppEntry[] (OverApp.kt). Optional:
    *  an older APK has none of these four. */
   apps?(): string;
-  /** Open an app, with the walk drawn over it. Kotlin answers with window.overApp. */
+  /** Open an app, with the run drawn over it. Kotlin answers with window.overApp. */
   openApp?(pkg: string): void;
   /** Over an app: the boxes that take touches, as JSON [[x, y, w, h], …] in
    *  screen pixels, or "all". Touches anywhere else go to the app underneath. */
@@ -191,7 +183,7 @@ export interface StrideCore {
   nf(n: number): string;
   profiles(): string[];
   people(): unknown[];
-  defaultWalker(): string;
+  defaultRunner(): string;
   routePoints(r: Route): number[];
   loopedClimb(r: Route): number;
   tappedLoop(e: Event): boolean;
@@ -211,11 +203,10 @@ declare global {
     STRIDE_SETTINGS: StrideSettings;
     render: (s: SessionState) => void;
     plan: (p: Plan) => void;
-    coach: (c: CoachLine) => void;
     /** Kotlin calls this when the treadmill's own STOP is pressed. */
     stopPressed: () => void;
     overApp: (on: boolean) => void;
     /** Calls Kotlin made before the app module ran; see trailmate.html. */
-    __early?: { render?: SessionState; plan?: Plan; coach?: CoachLine };
+    __early?: { render?: SessionState; plan?: Plan };
   }
 }

@@ -147,7 +147,7 @@ done
 # The app carries a boot receiver, so a power cycle brings STRIDE up on its own
 # wherever it is installed. Making it the *home* app as well is what covers the
 # other ways a console ends up staring at a launcher: the app being dismissed,
-# or killed, or crashing. On a machine you step onto and walk, "tap the STRIDE
+# or killed, or crashing. On a machine you step onto and run, "tap the STRIDE
 # icon first" is one instruction too many.
 #
 # Set STRIDE_KIOSK=0 to install the app and leave the home app alone.
@@ -160,7 +160,7 @@ if [ -f "$APK" ]; then
     #
     # Installing force-stops the app, and Android puts a force-stopped app into
     # the "stopped state", where it receives no broadcasts at all — including
-    # BOOT_COMPLETED. Install and walk away and the boot receiver never fires,
+    # BOOT_COMPLETED. Install and leave it and the boot receiver never fires,
     # for ever, and the console comes up to a launcher every time with no clue
     # why. Launching once clears the flag. Found on 2026-08-10 by installing a
     # build and not restarting it.

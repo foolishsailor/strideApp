@@ -8,7 +8,7 @@ import { WhoStep } from './WhoStep';
 import styles from './Welcome.module.css';
 
 /** who → how → which. Nothing reaches Kotlin, and the belt cannot move, until
- *  a walk is committed to: Casual on step 2, or BEGIN on step 3. */
+ *  a run is committed to: Casual on step 2, or BEGIN on step 3. */
 export function WelcomeScreen() {
   const { step, back, planMode, route, shape, minutes, loop } = useWelcome();
 
@@ -36,7 +36,7 @@ export function WelcomeScreen() {
               Clip the safety key on first — the belt eases up to 2 km/h as soon as you choose.
             </div>
             {/* Used about once a month, and the question here is who is
-                walking, not which interface — so it is deliberately quiet,
+                running, not which interface — so it is deliberately quiet,
                 and only on this step. */}
             <Button size="corner" className={styles.settings} onTap={() => settings().open()}>SETTINGS</Button>
           </>

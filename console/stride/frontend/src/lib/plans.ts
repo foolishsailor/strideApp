@@ -1,10 +1,10 @@
-/* The guided-walk choices offered on the welcome screen. */
+/* The guided-run choices offered on the welcome screen. */
 
 export interface Template {
   id: string;
   name: string;
   blurb: string;
-  /** Incline percentages across the walk, drawn on the card. Purely
+  /** Incline percentages across the run, drawn on the card. Purely
    *  illustrative — the real profile comes from Kotlin at start. */
   shape: number[];
 }

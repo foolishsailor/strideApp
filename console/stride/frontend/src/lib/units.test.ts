@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readSettings } from '../store/settings';
 import { DEFAULT_LIMITS, pausedWhere, segmentSubtitle, speedDelta, speedStops } from './session';
-import { climb, far, KM_PER_MI, paceSec, speedText, stride, walked } from './units';
+import { climb, far, KM_PER_MI, paceSec, speedText, stride, distanceRun } from './units';
 
 describe('units', () => {
   it('reads km or miles from Settings, km when it says nothing', () => {
@@ -13,8 +13,8 @@ describe('units', () => {
   it('shows speed, distance, climb, stride and pace in miles', () => {
     expect(speedText(8, 'mi')).toBe('5.0');
     expect(speedText(8, 'km')).toBe('8.0');
-    expect(walked(1609.344, 'mi')).toEqual({ value: '1.00', unit: 'mi' });
-    expect(walked(1234, 'km')).toEqual({ value: '1,234', unit: 'm' });
+    expect(distanceRun(1609.344, 'mi')).toEqual({ value: '1.00', unit: 'mi' });
+    expect(distanceRun(1234, 'km')).toEqual({ value: '1,234', unit: 'm' });
     expect(far(3218.688, 'mi')).toBe('2.00 mi');
     expect(far(100, 'mi')).toBe('328 ft');
     expect(climb(100, 'mi')).toEqual({ value: '328', unit: 'ft' });

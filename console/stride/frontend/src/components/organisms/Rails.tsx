@@ -12,8 +12,8 @@ import { RailReading, ValueRail } from '../molecules';
 const SPEED_STEP = { fine: 0.1, coarse: 0.5 };
 const INCLINE_STEP = { fine: 0.5, coarse: 0.5 };
 
-/* Read once per walk: the board has reported its range by the time anyone
-   is on the belt, and it doesn't change mid-walk. */
+/* Read once per run: the board has reported its range by the time anyone
+   is on the belt, and it doesn't change mid-run. */
 const useLimits = () => useMemo(() => parseLimits(bridge().boardLimits?.()), []);
 
 const exactly = (stops: number[], v: number) => stops.find((s) => Math.abs(s - v) < 0.05);

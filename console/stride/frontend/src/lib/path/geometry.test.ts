@@ -21,7 +21,7 @@ describe('elevation', () => {
 });
 
 describe('projection', () => {
-  it('puts the walker at the anchor, at full scale', () => {
+  it('puts the runner at the anchor, at full scale', () => {
     const p = project(0, viewFor(0, 0, 5, elevationFor([])));
     expect(p.x).toBeCloseTo(X0);
     expect(p.y).toBeCloseTo(Y0);

@@ -2,7 +2,7 @@
 
 STRIDE drives a Gen 7 as of October 2026, on one machine, the
 [NordicTrack X22i](nordictrack-x22i-gen7.md). It was tested with the belt empty
-first and has since been walked on. Treat it as new.
+first and has since been run on. Treat it as new.
 
 ## At a glance
 

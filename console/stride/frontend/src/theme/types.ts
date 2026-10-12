@@ -31,15 +31,13 @@ export interface Theme {
     fill: string; // a button at rest
     fillCard: string; // a card or tile at rest
     fillQuiet: string; // the deliberately quiet SETTINGS button
-    fillFloating: string; // the fan menu and the coach ribbon
-    fillFloatingDown: string; // the coach ribbon under a finger
+    fillFloating: string; // the fan menu
     pressed: string; // a button under a finger
     pressedCard: string; // a card under a finger
     selected: string; // the chosen one of a set
     active: string; // the thing happening now
     edge: string; // the line where a surface ends
     edgeQuiet: string;
-    edgeFloating: string; // the coach ribbon's edge
     scrim: string; // behind an overlay's question
     pulse: string; // the ring that acknowledges a press
     glow: string; // behind big numerals; transparent for none
@@ -49,7 +47,7 @@ export interface Theme {
     shadowFloating: string; // box-shadow for the fan menu
     fillOverApp: string; // the translucent panel under the drawers over another app
     inkOverApp: string; // every word over another app: one colour, white
-    shadowOverApp: string; // text-shadow that keeps the walk readable over another app
+    shadowOverApp: string; // text-shadow that keeps the run readable over another app
     sleepBg: string;
     sleepClock: string;
     sleepHint: string;
@@ -74,7 +72,7 @@ export interface Theme {
     chip: number; // duration chips, the status pill
     card: number; // tiles and plan cards
     choice: number; // the big welcome choices
-    floating: number; // the fan menu and coach ribbon
+    floating: number; // the fan menu
   };
 
   /** Border width of every edged surface, px. */

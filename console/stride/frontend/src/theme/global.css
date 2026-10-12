@@ -8,7 +8,7 @@
    load-bearing:
 
        62 – 466   hero        oval track, path ahead, or phase countdown
-      478 – 558   coach       docked ribbon; empty space when nothing is said
+      478 – 558   (spare)     held clear; the hero above may grow into it
       566 – 658   telemetry
       678 – 766   controls
 
@@ -61,7 +61,7 @@ body::before {
 }
 
 /* Over another app (OverApp.kt): no canvas and no lift, so the app shows
-   through everywhere the walk screen has nothing docked. The text carries a
+   through everywhere the run screen has nothing docked. The text carries a
    shadow of its own instead, for a bright scene behind it. */
 html.over-app,
 html.over-app body {

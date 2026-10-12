@@ -16,10 +16,9 @@ import android.util.Log
  * Bluetooth headphones, paired from the console's own Settings.
  *
  * The console runs as a kiosk, so Android's Bluetooth settings are out of
- * reach, and without this there is no way to hear the coach on headphones.
- * Once a pair are connected, nothing else here is needed: the coach's voice
- * plays on the media stream (see CoachVoice) and Android sends media to
- * connected headphones by itself.
+ * reach, and without this there is no way to hear the apps opened over a run
+ * (APPS) on headphones. Once a pair are connected, nothing else here is
+ * needed: Android sends media to connected headphones by itself.
  *
  * **Not BLE.** Headphones are classic Bluetooth, so this is nothing like
  * [BleSensor]: they are found by discovery rather than a scan, they have to

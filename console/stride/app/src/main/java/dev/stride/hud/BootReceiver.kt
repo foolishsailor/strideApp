@@ -11,7 +11,7 @@ import android.util.Log
  * A treadmill is switched off at the wall, not shut down, so "after a reboot"
  * is the normal way this console starts — and what it came back to was whatever
  * launcher happens to be installed, with STRIDE one tap away. One tap is one
- * too many on a machine whose whole point is that you step on and walk.
+ * too many on a machine whose whole point is that you step on and run.
  *
  * Two mechanisms, deliberately, because they fail in different directions:
  *
@@ -27,7 +27,7 @@ import android.util.Log
  * is API 28, one below the release that closed background activity starts. If
  * this app ever targets Android 10 or later, this receiver stops working and
  * the home alias becomes the only route — which is the note to read first when
- * a future console boots to a launcher instead of a walk.
+ * a future console boots to a launcher instead of a run.
  */
 class BootReceiver : BroadcastReceiver() {
 

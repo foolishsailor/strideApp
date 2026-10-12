@@ -14,7 +14,7 @@ function installedApps(): AppEntry[] {
 }
 
 /** APPS: the console's other apps, Netflix first. Choosing one opens it with
- *  the walk drawn over it (OverApp.kt). The belt carries on as it was. */
+ *  the run drawn over it (OverApp.kt). The belt carries on as it was. */
 export function AppsOverlay() {
   const open = useUi((s) => s.appsOpen);
   if (!open) return null;

@@ -2,11 +2,11 @@
 
 **Replace the iFit software on a NordicTrack treadmill. Keep the belt, lose the subscription.**
 
-**Please note**: This is a hobby project by one person and Claude Code, please don't get upset at that. Claude Code is enabling me to be able to do something I've dreamed of doing for a few years but didn't have the ability. Now I'm able to walk/run on my own physical hardware that I bought without it having someone else's subscription software on it. If you don't like that 90% of this was coded with AI tools like Claude Code - then this isn't the project for you. If you want to fork this, put your fingerprints all over it ... please do, I'd welcome that!
+**Please note**: This is a hobby project by one person and Claude Code, please don't get upset at that. Claude Code is enabling me to be able to do something I've dreamed of doing for a few years but didn't have the ability. Now I'm able to run/run on my own physical hardware that I bought without it having someone else's subscription software on it. If you don't like that 90% of this was coded with AI tools like Claude Code - then this isn't the project for you. If you want to fork this, put your fingerprints all over it ... please do, I'd welcome that!
 
 > ### 🚧 Early days and factory reset has saved me more than once
 >
-> It works, and I walk on it most days, but it works on *my* machine. Nobody
+> It works, and I run on it most days, but it works on *my* machine. Nobody
 > else has installed it yet and I've no idea how it behaves on other hardware.
 >
 > Nothing here is supported, so use it at your own risk. If it goes wrong a
@@ -24,7 +24,7 @@
 > **Gen 7.** The jailbreak works, and STRIDE drives the Gen 7's motor board,
 > which speaks a different protocol, [FitPro 2](protocol/FITPRO2_PROTOCOL.md).
 > It runs on a Gen 7 NordicTrack X22i with iFit builds from August 2026. It was
-> tested with the belt empty first, and has since been walked on. The steps are
+> tested with the belt empty first, and has since been run on. The steps are
 > in [INSTALL.md](docs/INSTALL.md), marked Gen 7. One machine so far.
 
 
@@ -34,8 +34,7 @@ Android tablet talking to a separate motor board, so I replaced what runs on
 the tablet and left the motor board alone.
 
 The belt and the deck now work with no login, no subscription and no internet.
-If you want it, everything the machine knows turns up in Home Assistant as
-ordinary entities. I built it with Claude Code alongside me, and there's a
+Runs go to TrailMate if you connect it. I built it with Claude Code alongside me, and there's a
 [full write-up of how the jailbreak works](https://theidea.works/blog/jailbreak-nordictrack-treadmill/)
 if you'd rather read the story than the steps.
 
@@ -52,35 +51,11 @@ and it now pairs with Zwift over Bluetooth FTMS.
 
 | | |
 |---|---|
-| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided walks, and draws them in the TrailMate app's design. |
-| **`homeassistant/`** | Optional scripts for the coach, the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
+| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided runs, and draws them in the TrailMate app's design. |
 | **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
-There used to be an `ios/` folder. That's now its own thing,
-**[AH for HA](https://github.com/keranm/ah-for-ha)**, which pushes Apple Health
-into Home Assistant and has no treadmill in it at all. It grew to 39 metrics,
-rings, sleep stages and workouts, and most people who want that will never own
-a treadmill.
-
-STRIDE kept the half it cares about. An outdoor walk can still become a
-gradient profile the deck replays, because that arrives over MQTT and the
-console has never cared who published it.
-
----
-
-## Home Assistant needs nothing installed
-
-Put your broker details into Settings → Home Assistant on the treadmill and a
-**Treadmill** device shows up, with speed, incline, distance, elapsed, pulse,
-calories, mode and workout, plus a device per person as they walk. The console
-publishes its own MQTT discovery, so there's no integration, no YAML and no
-custom component.
-
-Build whatever dashboard you like from it. There's no STRIDE dashboard you have
-to accept.
-
-The `homeassistant/` scripts are for the extras: the coach, the reminders, and
-an opinionated health dashboard if you want a starting point.
+Routes, outdoor runs turned into a gradient profile the deck replays, are
+cached on the console and will come from TrailMate.
 
 ---
 
@@ -100,7 +75,7 @@ fine, because the protocol looks like a family rather than a single model, but
 nobody has tried.
 
 A second machine, a **Gen 7** NordicTrack X22i incline trainer (Android 13,
-FitPro 2 board, incline −6 to +40 %, speed 1.5 to 20 km/h), is walked on with
+FitPro 2 board, incline −6 to +40 %, speed 1.5 to 20 km/h), is run on with
 STRIDE driving its belt and deck.
 
 **[treadmills/](treadmills/README.md)** has a page per generation and per
@@ -142,11 +117,8 @@ In outline:
    and `adb install -r` it, or build your own with `console/stride/run.sh`.
    Pick one and stay on it — they're signed with different keys, so swapping
    later means uninstalling and losing your settings.
-8. **Optional:** enter broker details on the console to get the treadmill into
-   Home Assistant, then add the coach.
 
-Stop after step 7 and you've got a treadmill with no subscription. Steps 1 to 7
-need nothing installed on the Home Assistant side.
+That's a treadmill with no subscription.
 
 If you'd rather not drive it by hand, point Claude Code at this repo, give
 it the treadmill's IP address, and ask it to follow the install guide over ADB.
@@ -156,28 +128,9 @@ That's how most of my own installs have gone.
 
 ## Configuration
 
-**The console configures itself.** Broker details, who walks, units, warm-up,
-coach, heart rate, display: all of it lives in Settings on the treadmill's own
+**The console configures itself.** Who runs, units, warm-up, TrailMate,
+heart rate, display: all of it lives in Settings on the treadmill's own
 screen. No config files, no rebuild.
-
-**The Home Assistant side reads one file:**
-
-```sh
-cp homeassistant/stride.conf.example homeassistant/stride.conf
-```
-
-Every key is documented in the example. Leave anything blank and that subject
-is simply absent, so no scale, no blood-pressure cuff, no phone. The coach says
-nothing about what it wasn't given rather than guessing at it.
-
-`coach_ai_task` has no default, because which AI entity you have depends on
-which integration you set up.
-
-**For weekly and monthly totals**, copy
-[`homeassistant/packages/stride.yaml`](homeassistant/packages/stride.yaml) into
-your Home Assistant config. The console's distance counter resets every walk,
-so the accumulating has to happen in HA. That file also creates the helpers the
-coach and reminders need.
 
 ---
 
@@ -189,17 +142,13 @@ A few decisions that will save you reading the code to find them.
   HTML in a WebView, so you can design it in a browser. Tap SPEED+ and the
   belt speeds up, but the request goes through Kotlin first, which clamps it to
   whatever the board says it can do. A bad layout can't outrun the machine.
-- **The coach decides when to speak, Home Assistant decides what it says.**
-  With HA unreachable it still marks your kilometres, using a set of lines
-  built into the console.
 - **Never hand over a number without its age.** Health metrics that reset at
   midnight are withheld entirely if they haven't changed since midnight, rather
   than being passed on as today's. This one came from a real incident: the
   sensors hold yesterday's closing total and look exactly like today's running
-  total, so the coach quoted yesterday's numbers back at me as though they were
-  fresh.
-- **Coaching and recording are per person, not per console.** Guests get
-  neither. They're summarised at the end of a walk and then forgotten.
+  total, so yesterday's numbers were shown as though they were fresh.
+- **Recording is per person, not per console.** Guests are never
+  recorded. They're summarised at the end of a run and then forgotten.
 
 ---
 
@@ -211,13 +160,13 @@ You don't need a treadmill to work on STRIDE:
    in a browser. It runs on fake data.
 2. **The whole app:** run it in an Android emulator against a **simulated
    treadmill** that behaves like a Gen 7 board. `tools/sim.py` drives it:
-   speed, incline, the safety key, and the four guided walks.
+   speed, incline, the safety key, and the four guided runs.
 3. **The real thing:** a console over `adb`, belt empty first.
 
 ```sh
 cd console/stride && ./run.sh      # build, install, launch (JDK 17 + Android SDK)
 py tools/sim.py on                 # debug builds: switch to the simulated treadmill
-py tools/sim.py guided pyramid 4   # and walk a pyramid on it
+py tools/sim.py guided pyramid 4   # and run a pyramid on it
 ```
 
 **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** covers setup on Windows, macOS
@@ -266,7 +215,7 @@ Gen 6 modding guide that steps 1.1 to 1.4 follow.
 
 STRIDE is an independent project, built for compatibility with hardware its
 authors own. Not affiliated with or endorsed by iFIT, ICON Health & Fitness,
-NordicTrack, ProForm, Apple or Home Assistant. Trademarks belong to their
+NordicTrack, ProForm or Apple. Trademarks belong to their
 owners and are used here only to say what this works with.
 
 This repository contains no code from any of those companies.

@@ -256,7 +256,7 @@ class FitPro2Board(
      * iFit never writes less, and the board refuses it as out of range. The
      * stop travels in the mode, which the poll loop always sends alongside —
      * WORKOUT_STATE PAUSED. That this actually stops the belt must be proved on
-     * the hardware, belt empty, before anybody walks on it.
+     * the hardware, belt empty, before anybody runs on it.
      */
     private fun translateWrite(field: FitPro.Field, value: Double, minKph: Double): Pair<Int, Float>? =
         when (field) {
@@ -409,7 +409,7 @@ class FitPro2Board(
         put(FitPro.Field.CALORIES, FitPro2.Id.CURRENT_CALORIES)
         // FitPro 1 counts distance in metres. FitPro 2's unit is not yet
         // established, so this goes through unscaled and is checked against a
-        // known walk before anything is built on it.
+        // known run before anything is built on it.
         put(FitPro.Field.DISTANCE, FitPro2.Id.DISTANCE)
         mode?.let { out[FitPro.Field.WORKOUT_MODE] = it.toDouble() }
         return out

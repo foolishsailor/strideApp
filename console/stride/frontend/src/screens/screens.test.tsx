@@ -14,7 +14,7 @@ const ROUTES = JSON.stringify([
 
 beforeEach(() => {
   installKotlinEntryPoints();
-  useWelcome.setState({ step: 1, walker: '', planMode: 'shapes', minutes: 30, shape: 'rolling', route: null, loop: false });
+  useWelcome.setState({ step: 1, runner: '', planMode: 'shapes', minutes: 30, shape: 'rolling', route: null, loop: false });
   useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false, appsOpen: false });
   act(() => window.overApp(false));
   act(() => window.render({ mode: 'welcome' }));
@@ -23,11 +23,11 @@ beforeEach(() => {
 const press = (text: string | RegExp) => fireEvent.click(screen.getByText(text));
 
 describe('welcome', () => {
-  it('walks who → how → which and begins the chosen guided walk', () => {
+  it('runs who → how → which and begins the chosen guided run', () => {
     const b = mockBridge();
     render(<App />);
     press('Sam');
-    expect(b.setWalker).toHaveBeenCalledWith('Sam');
+    expect(b.setRunner).toHaveBeenCalledWith('Sam');
     press('Guided');
     press('45 min');
     press('Pyramid');
@@ -69,7 +69,7 @@ describe('workout', () => {
     expect(b.end).toHaveBeenCalled();
   });
 
-  it('shows the lap track on a casual walk and the path on a guided one', () => {
+  it('shows the lap track on a casual run and the path on a guided one', () => {
     render(<App />);
     act(() => window.render({ mode: 'running', distance: 900 }));
     // The lap count, not the 2 km/h stop in the speed rail.
@@ -144,12 +144,12 @@ describe('workout', () => {
 });
 
 describe('summary', () => {
-  it('congratulates the walker by name', () => {
-    useWelcome.setState({ walker: 'Sam' });
+  it('congratulates the runner by name', () => {
+    useWelcome.setState({ runner: 'Sam' });
     render(<App />);
-    act(() => window.render({ mode: 'summary', workout: 'walk', avgSpeed: 5.24 }));
+    act(() => window.render({ mode: 'summary', workout: 'run', avgSpeed: 5.24 }));
     expect(screen.getByText('Nice work, Sam')).toBeTruthy();
-    expect(screen.getByText('walk complete')).toBeTruthy();
+    expect(screen.getByText('run complete')).toBeTruthy();
     expect(screen.getByText('5.2')).toBeTruthy();
   });
 });
@@ -160,7 +160,7 @@ describe('belt calibration', () => {
     pod: true, miles: true, points: [{ kph: 6, belt: 6.3 }], note: '',
   };
 
-  /* Miles, from Settings → Display, the way the walk screen gets it. */
+  /* Miles, from Settings → Display, the way the run screen gets it. */
   beforeEach(() => useSettings.setState({ units: 'mi' }));
 
   it('shows the set pace beside the Stryd, and what the belt is sent', () => {
@@ -201,11 +201,11 @@ describe('belt calibration', () => {
     expect(b.setSpeed.mock.calls[1]![0]).toBeCloseTo((3600 * 1.609344) / 530, 3);
   });
 
-  it('stops like the walk screen does', () => {
+  it('stops like the run screen does', () => {
     const b = mockBridge();
     render(<App />);
     act(() => window.render({ mode: 'running', calib: CAL }));
-    // The panel's own, over the walk screen's.
+    // The panel's own, over the run screen's.
     const stops = screen.getAllByText('STOP');
     fireEvent.click(stops[stops.length - 1]!);
     expect(b.pause).toHaveBeenCalled();
@@ -228,7 +228,7 @@ describe('belt calibration', () => {
 });
 
 describe('units', () => {
-  it('shows the walk in miles when Settings says so, and still sends km/h', () => {
+  it('shows the run in miles when Settings says so, and still sends km/h', () => {
     const b = mockBridge({ settingsJson: () => JSON.stringify({ units: 'mi' }) });
     loadSettings();
     render(<App />);

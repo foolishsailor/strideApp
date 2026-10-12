@@ -30,7 +30,7 @@ function ShapePicker() {
   );
 }
 
-/** Looped, a card describes the walk it will actually be: twice the ground,
+/** Looped, a card describes the run it will actually be: twice the ground,
  *  and the climb recomputed the way Route.outAndBack does it — an
  *  out-and-back's ascent is the outbound climb *plus* the outbound descent. */
 function routeBlurb(r: Route, looped: boolean) {
@@ -44,7 +44,7 @@ function routeBlurb(r: Route, looped: boolean) {
   );
 }
 
-/** Step 3, routes — a walk already done. A route carries its own length, so
+/** Step 3, routes — a run already done. A route carries its own length, so
  *  there is no duration to choose. */
 function RoutePicker() {
   const { route, loop, pickRoute, toggleLoop } = useWelcome();

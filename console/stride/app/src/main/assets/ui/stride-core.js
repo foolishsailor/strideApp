@@ -38,7 +38,7 @@
    rail — worst at the ends, where the squash bites hardest. So the ordering is
    fixed and not negotiable:
 
-       1. walk the arc-length in TRUE track space, where the maths is clean;
+       1. run the arc-length in TRUE track space, where the maths is clean;
        2. THEN apply the squash to the resulting point.
 
    The dot then stays welded to the rail, and its screen speed varies round the
@@ -196,7 +196,7 @@ function track(opts) {
    1b. THE ELEVATION PROFILE
    ---------------------------------------------------------------------------
    The guided hero in three of the four directions is the same idea: the whole
-   walk drawn end to end as ground, with the part already covered picked out
+   run drawn end to end as ground, with the part already covered picked out
    bright and a marker showing where you are on it.
 
    THE LINE IS THE DECK. Not an impression of it — the actual thing the motor
@@ -206,7 +206,7 @@ function track(opts) {
    a vertex at the *middle* of each segment and joined those up, which makes a
    handsome rolling landscape and is a lie: it slopes continuously while the
    deck is holding dead flat, and it agrees with the machine at exactly two
-   instants per segment. Walking on it, the line rises under your marker while
+   instants per segment. Running on it, the line rises under your marker while
    the deck does nothing, then flattens out just as the deck starts to climb.
    Reported from the belt within minutes, and quite right.
 
@@ -219,7 +219,7 @@ function track(opts) {
 
    The same arc-length trap as the track applies, for the same reason: progress
    along the *time* axis is not progress along the drawn line, because a ramp
-   covers more path per second than a flat. So `dashAt` walks the real polyline
+   covers more path per second than a flat. So `dashAt` runs the real polyline
    rather than assuming the two are proportional, and the bright line ends
    underneath the marker instead of somewhere near it. The staircase makes this
    matter more, not less — the risers are nearly vertical and eat drawn length
@@ -264,15 +264,15 @@ function profile(steps, opts) {
      towards the new grade at DECK_SEC_PER_PCT per percent, and then it sits.
 
      Crucially it does not always get there. A segment can end before the deck
-     has finished travelling — on a five-minute walk the segments are fifteen
+     has finished travelling — on a five-minute run the segments are fifteen
      to thirty-five seconds and a jump to nine and a half percent needs nearly
-     thirty, so the deck spends the whole walk chasing targets it never
+     thirty, so the deck spends the whole run chasing targets it never
      reaches. Drawing the plan's intent there would be drawing a hill nobody
      climbs. Each segment therefore starts from wherever the deck genuinely got
      to in the last one, and the line shows the shortfall.
 
      A short plan consequently looks much flatter than its template. That is
-     not the drawing being timid; it is what a five-minute rolling-hills walk
+     not the drawing being timid; it is what a five-minute rolling-hills run
      is. */
   var reach = [];
   var here = opts.startIncline == null ? 0 : opts.startIncline;
@@ -295,12 +295,11 @@ function profile(steps, opts) {
 
      A route is different. Its steps are metres of real ground, so the honest
      drawing is the ground — cumulative elevation — and plotting grade there
-     misleads. Reported from a walk on 2026-08-07: a steady -3% drew as a flat
+     misleads. Reported from a run on 2026-08-07: a steady -3% drew as a flat
      line, because an unchanging gradient *is* flat on a gradient axis, and it
      read as level ground. Worse, a decline easing -3 → -2 → -1 drew as a
-     rising line and looked like a climb, while the walker was still going down
-     and the coach was correctly saying the decline was ending. Two readings of
-     one picture, and the picture was the one that was wrong.
+     rising line and looked like a climb, while the runner was still going down.
+     Two readings of one picture, and the picture was the one that was wrong.
 
      Integrating settles the jaggedness too: a 1% rung is a visible step on a
      gradient axis, but on an elevation axis it is a change of slope — which is
@@ -450,7 +449,7 @@ function profile(steps, opts) {
 var climbM = 0;
 var lastDistance = 0;
 
-/** New walk, or the odometer went backwards: start the climb count again. */
+/** New run, or the odometer went backwards: start the climb count again. */
 function resetDerived() { climbM = 0; lastDistance = 0; }
 
 function adapt(raw) {
@@ -462,7 +461,7 @@ function adapt(raw) {
   if (distance < lastDistance - 1 || mode === 'welcome') {
     resetDerived();
   } else if (distance > lastDistance) {
-    /* Grade is a percentage, so rise = run × grade/100. At walking speeds the
+    /* Grade is a percentage, so rise = run × grade/100. At running speeds the
        difference between that and the true sine is under half a percent, well
        inside the noise on a whole-metre odometer. */
     climbM += (distance - lastDistance) * incline / 100;
@@ -503,7 +502,7 @@ function adapt(raw) {
     /* `elapsed` here is *plan* time — wrapped into the current lap when the
        route is a circuit, so a hero drawing one lap of ground can use it
        directly and never has to know about looping. `session.elapsed` is still
-       the whole walk. */
+       the whole run. */
     plan:     { name: raw.plan || '', steps: planSteps,
                 loops: !!raw.planLoops,
                 lap: raw.planLap || 1,
@@ -516,7 +515,7 @@ function adapt(raw) {
                 /* Preformatted, because a route measures the stretch you are on
                    in metres and a template measures it in seconds, and five UIs
                    each writing that conditional is five places to get it wrong.
-                   The first route walked rendered a 275 m opening stretch as
+                   The first route run rendered a 275 m opening stretch as
                    "4:35 left" — the number was the distance, read as a clock. */
                 leftLabel: raw.segmentLeftIsDistance
                   ? (raw.segmentLeft >= 1000
@@ -525,10 +524,6 @@ function adapt(raw) {
                   : mmss(raw.segmentLeft || 0),
                 nextName: raw.nextLabel || '',
                 nextIncline: raw.nextIncline || 0 },
-
-    /* The coach's closing line, asked for before the walk ends so it is here
-       when the summary appears rather than arriving after it. */
-    summaryLine: raw.summaryLine || '',
 
     session:  { elapsed: raw.elapsed || 0,
                 distance: distance,
@@ -541,7 +536,7 @@ function adapt(raw) {
                 avgIncline: raw.avgIncline || 0, maxIncline: raw.maxIncline || 0,
                 avgPulse: raw.avgPulse || 0, maxPulse: raw.maxPulse || 0,
 
-                /* The walker's own maximum, 0 when they have not given an age.
+                /* The runner's own maximum, 0 when they have not given an age.
                    Zero is the ordinary case and the whole UI has to cope with
                    it: no age means no zones, and a console that drew five bars
                    off 220-minus-a-guess would be inventing physiology. */
@@ -608,7 +603,7 @@ var ZONES = [
  * empty bar is a row that says nothing.
  *
  * `share` is against the *drawn* total rather than the session, so the bars
- * fill the width they are given and a walk that was half warm-up does not
+ * fill the width they are given and a run that was half warm-up does not
  * render four stubs.
  *
  * Returns [] when there is nothing to show, which is the signal to fall back to
@@ -658,8 +653,7 @@ function beatStyle(bpm) {
  *
  * A hill is a *run* of climbing — the transitions from not-going-up to
  * going-up. The 0.5% floor keeps the profile's own rounding between two grid
- * steps from registering as terrain, which is the same reasoning the coach uses
- * before it will speak about a gradient change.
+ * steps from registering as terrain.
  */
 function hillCount(steps) {
   var hills = 0, climbing = false;
@@ -672,7 +666,7 @@ function hillCount(steps) {
   return hills;
 }
 
-/* The path ahead, sent once per walk by window.plan(), not per frame. */
+/* The path ahead, sent once per run by window.plan(), not per frame. */
 var planSteps = [];
 /* Whether those steps are metres of ground or seconds of plan. Remembered
    here rather than passed by each UI, so all five get an elevation profile for
@@ -689,7 +683,7 @@ function setPlan(p) {
  * Which of the eleven screens the live side is showing.
  *
  * Only the live screens — 01-04 are the setup flow, which the page owns before
- * Kotlin knows a walk exists, and 07/10 are overlays rather than screens.
+ * Kotlin knows a run exists, and 07/10 are overlays rather than screens.
  * Returns 'welcome' when the setup flow should be driving.
  */
 function screenFor(state) {
@@ -720,17 +714,17 @@ function screenFor(state) {
  * interfaces share, so fixing `original.html` alone fixed one screen out of
  * five and left Ember, Cluster, Daylight and Pacer still offering strangers.
  *
- * It matters more than it looks now that coaching and recording are per person:
- * a name offered here that Settings does not have is a walker who silently gets
- * neither. The picker and the store have to be one list.
+ * It matters more than it looks now that recording is per person: a name
+ * offered here that Settings does not have is a runner who silently gets no
+ * history. The picker and the store have to be one list.
  */
 function profiles() {
   var names = people().map(function (p) { return p.name; });
 
   /* Guest sits alongside the household rather than instead of it: somebody
      else's turn on the belt is common, and it should not mean picking a name
-     that is not yours. It is never coached and never published, because a
-     guest has not agreed to anything — Settings.coachedFor / publishFor return
+     that is not yours. It is never published, because a guest has not agreed
+     to anything — Settings.publishFor returns
      false for any name that is not in the people list, so "Guest" needs no
      special case in Kotlin.
 
@@ -742,17 +736,17 @@ function profiles() {
 }
 
 /**
- * Walk lengths. 5 is a bench test — every segment in about thirty seconds.
+ * Run lengths. 5 is a bench test — every segment in about thirty seconds.
  *
  * **0 means open**: no end, and the route becomes a circuit that comes round
  * again rather than running out. Kotlin resolves it at OPEN_LOOP_MIN and
- * reports which lap you are on; nothing but STOP finishes the walk.
+ * reports which lap you are on; nothing but STOP finishes the run.
  */
 var DURATIONS = [5, 15, 20, 30, 45, 0];
 function durationLabel(m) { return m > 0 ? String(m) : 'OPEN'; }
 
 /* The four templates, mirroring Plan.kt. `points` are the real segment
-   inclines from that file, so a sparkline on the picker is the walk you are
+   inclines from that file, so a sparkline on the picker is the run you are
    about to get rather than a decorative squiggle. */
 var SHAPES = [
   { id: 'steady',  name: 'Steady',        blurb: 'One long hill, honestly earned',
@@ -769,26 +763,26 @@ var SHAPES = [
  * @param onStep  called with (stepId, flow) whenever the step changes, so the
  *                UI can show the right card. Steps: profile | control | plan.
  *
- * There is no walk-or-run step, and deliberately no walk-or-run *anything*.
+ * There is no run-or-run step, and deliberately no run-or-run *anything*.
  * It cost a tap on every session to set a noun, and it sold itself on a speed
  * ceiling — "up to 6.5 km/h" against "6.5 and up" — that nothing enforced:
  * speed has always clamped to the board's own MIN_KPH/MAX_KPH whichever card
  * was tapped. Deriving the noun from pace instead was considered and dropped,
- * because 7-8 km/h is honestly ambiguous — the same person walks and jogs at
+ * because 7-8 km/h is honestly ambiguous — the same person runs and jogs at
  * that speed — and a console that guessed would be captioning a number it
  * cannot know. It is a workout. See Snapshot.workout in Session.kt.
  */
 function flow(onStep) {
   var f = {
     step: 'profile',
-    profile: defaultWalker() || profiles()[0],
+    profile: defaultRunner() || profiles()[0],
     control: 'guided',   // the accented, recommended card on screen 03
     minutes: 30,
     shape: 'rolling',
     /** A recorded route's id, or null for one of the four templates. */
     route: null,
-    /** Walk the chosen route out and then home again — see loopMark(). Belongs
-     *  to this walk, not to the route, so it is never stored anywhere. */
+    /** Run the chosen route out and then home again — see loopMark(). Belongs
+     *  to this run, not to the route, so it is never stored anywhere. */
     loop: false,
 
     go: function (step) {
@@ -801,12 +795,12 @@ function flow(onStep) {
 
     setProfile: function (name) {
       f.profile = name;
-      global.Stride.setWalker(name);
+      global.Stride.setRunner(name);
       return f.go('control');
     },
 
     /* Three choices, not two: casual, one of the four shapes, or a route you
-       have walked. Routes are a peer of "free" and "shaped", not a variant of
+       have run. Routes are a peer of "free" and "shaped", not a variant of
        one — and putting them on the screen before keeps the plan step to four
        entries, which is all it has room for above the BACK button. */
     setControl: function (c) {
@@ -823,9 +817,9 @@ function flow(onStep) {
     pickingRoute: function () { return f.control === 'routes'; },
 
     /* Moving to a different route drops the loop rather than carrying it over.
-       Looping is a decision about a particular walk — "this one is only half an
+       Looping is a decision about a particular run — "this one is only half an
        hour one way" — and inheriting it silently is how somebody sets off on
-       twice the walk they chose. */
+       twice the run they chose. */
     setRoute: function (id) {
       if (id !== f.route) f.loop = false;
       f.route = id;
@@ -881,9 +875,9 @@ function flow(onStep) {
  * Everyone set up on this console, newest state every call.
  *
  * The welcome screen used to hold this as a literal — four names of one
- * household, in a file that ships to anybody. Worse than untidy: the coach is
- * now gated per person, so a name that exists on the picker but not in Settings
- * is a walker who silently gets no coaching and no history. The picker and the
+ * household, in a file that ships to anybody. Worse than untidy: a name that
+ * exists on the picker but not in Settings is a runner who silently gets no
+ * history. The picker and the
  * store have to be the same list, and this is the only copy of it.
  *
  * Empty is a real answer, not a failure — a console nobody has set up yet.
@@ -896,9 +890,9 @@ function people() {
   }
 }
 
-function defaultWalker() {
+function defaultRunner() {
   try {
-    return JSON.parse(global.Stride.settingsJson()).default_walker || '';
+    return JSON.parse(global.Stride.settingsJson()).default_runner || '';
   } catch (e) {
     return '';
   }
@@ -1033,7 +1027,7 @@ function nf(n) {
   return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** Metres to km. Two decimals by default: at walking pace one decimal sits
+/** Metres to km. Two decimals by default: at running pace one decimal sits
  *  still for two minutes at a time, which reads as a frozen display. */
 function km(m, dp) { return ((m || 0) / 1000).toFixed(dp == null ? 2 : dp); }
 
@@ -1053,7 +1047,7 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setIncline',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
-              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'wakeBoard',
+              'setRunner', 'ackDmk', 'dim', 'wakeBoard',
               'calibrate', 'calNudge', 'calUseStryd', 'calSave', 'calDone'];
 
 /** @return true if this page is running without the console behind it. */
@@ -1145,7 +1139,7 @@ function stub() {
    iFit's own console had the step this restores. A tap woke the display, and
    then it asked, separately, whether to wake the machine as well. Keeping the
    two apart is right and not merely nostalgic: waking the board spins a motor
-   controller up in a dark room, and somebody walking past to read the clock
+   controller up in a dark room, and somebody running past to read the clock
    has not asked for that.
 
    So the tap always wakes the panel. If the board is already up — the ordinary
@@ -1269,7 +1263,6 @@ function wakeStep(overlay, done) {
 
        ?screen=live-guided   open straight onto one screen
        ?dmk=1                safety key out
-       ?coach=1              a coach line on arrival
 
    Number keys 1-9 and 0 jump between screens while it runs.
    =========================================================================== */
@@ -1304,7 +1297,7 @@ function demo(opts) {
     at = end;
   }
 
-  var t = opts.elapsed == null ? 512 : opts.elapsed;   // mid-walk, mid-hill
+  var t = opts.elapsed == null ? 512 : opts.elapsed;   // mid-run, mid-hill
   var dist = 720, cals = 78;
 
   function frame() {
@@ -1345,12 +1338,6 @@ function demo(opts) {
   }
 
   if (guided && global.plan) global.plan({ name: 'Rolling hills', steps: steps });
-  if (q.coach === '1' && global.coach) {
-    setTimeout(function () {
-      global.coach({ line: 'Nine and a half percent for the next forty seconds. ' +
-                           'Shorten your stride and stay tall.', kind: 'local' });
-    }, 400);
-  }
 
   frame();
   setInterval(frame, 200);
@@ -1381,7 +1368,7 @@ function demo(opts) {
  * A route's own gradient profile, sampled evenly for a card sparkline.
  *
  * Strictly better than a generic shape icon: it is the ground you are about to
- * walk. Segments arrive as `[startM, endM, incline]` triples — see
+ * run. Segments arrive as `[startM, endM, incline]` triples — see
  * RouteStore.swift for why they are bare arrays.
  */
 function routePoints(r) {
@@ -1401,8 +1388,8 @@ function routePoints(r) {
 /* ---------------------------------------------------------------------------
    THE LOOP MARK
    ---------------------------------------------------------------------------
-   A recorded route is usually one way, and one way is not always a walk: the
-   half hour from the hospital to the front door is a fine walk and half a
+   A recorded route is usually one way, and one way is not always a run: the
+   half hour from the hospital to the front door is a fine run and half a
    workout. The mark turns that route into an out-and-back for *this* session —
    Kotlin reverses the ground and inverts the gradients, so the hill you climbed
    on the way out is the one you come down on the way home. See
@@ -1420,10 +1407,10 @@ function routePoints(r) {
 var LOOP_PATH = 'M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z';
 
 /**
- * Total ascent in metres of walking this route out and back.
+ * Total ascent in metres of running this route out and back.
  *
  * Mirrors `Route.outAndBack` in Routes.kt, and has to: a card that says "68 m
- * of climb" beside a looped route is describing a walk nobody is going to take.
+ * of climb" beside a looped route is describing a run nobody is going to take.
  * Reversing the ground turns every descent into a climb, so the answer is the
  * sum of the *absolute* rise of every segment — which for a route that does not
  * end where it started is not twice its one-way figure.
@@ -1445,7 +1432,7 @@ function loopMark(on) {
 /**
  * Did this tap land on the loop mark rather than on the card around it?
  *
- * Walks up from the target rather than using `closest`, which on this WebView
+ * Runs up from the target rather than using `closest`, which on this WebView
  * is not reliable from an SVG child, and the thing under a finger here is
  * usually the `<path>`.
  */
@@ -1487,7 +1474,7 @@ global.STRIDE = {
   SHAPES: SHAPES,
 
   people: people,
-  defaultWalker: defaultWalker,
+  defaultRunner: defaultRunner,
 
   tap: tap,
   stepper: stepper,

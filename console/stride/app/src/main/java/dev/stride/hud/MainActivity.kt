@@ -24,7 +24,7 @@ import kotlin.concurrent.thread
 /**
  * STRIDE HUD.
  *
- * Kotlin owns the treadmill (USB + FitPro + MQTT) and the workout session; the
+ * Kotlin owns the treadmill (USB + FitPro) and the workout session; the
  * UI is an HTML page in a WebView so it can be designed and iterated in a
  * browser. State is pushed to JS at poll rate; button presses come back over
  * the `Stride` bridge.
@@ -76,13 +76,13 @@ class MainActivity : Activity() {
         /**
          * What a session is called, now that there is only one kind.
          *
-         * Was "walk" or "run", chosen on a screen of its own. The distinction
+         * Was "run" or "run", chosen on a screen of its own. The distinction
          * bought a word and cost a tap, and the ceiling it advertised — 6.5 km/h
          * against 19 — was never enforced anywhere: both clamp to the board's
          * own MIN_KPH/MAX_KPH. Deriving it from pace instead would be a guess,
-         * because 7-8 km/h is a walk for some people and a jog for the same
+         * because 7-8 km/h is a run for some people and a jog for the same
          * person on a different day. The console does not know, so it does not
-         * say. Sessions recorded before 2026-09-07 still read "walk"; nothing
+         * say. Sessions recorded before 2026-09-07 still read "run"; nothing
          * rewrites them.
          */
         const val WORKOUT = "workout"
@@ -94,14 +94,14 @@ class MainActivity : Activity() {
          * NTP moves this board by *sixteen years*, so anything in the region of
          * a minute separates the two cases with room to spare. Small enough to
          * catch an ordinary time-zone correction too; large enough that normal
-         * clock skew over a 40-minute walk never trips it.
+         * clock skew over a 40-minute run never trips it.
          */
         const val CLOCK_JUMP_MS = 60_000L
 
         /**
          * Before this, a date is the board's boot clock rather than a date.
          *
-         * 2024-01-01. The console cannot have recorded a walk before it was
+         * 2024-01-01. The console cannot have recorded a run before it was
          * built, so anything earlier is the 2010 epoch this board comes up on —
          * whatever year it happens to claim.
          */
@@ -112,7 +112,7 @@ class MainActivity : Activity() {
          * between are credited to no zone.
          *
          * The strap reports about once a second; four seconds is a dropout, and
-         * on 17 August 2026 one lasted from the end of the walk until the strap
+         * on 17 August 2026 one lasted from the end of the run until the strap
          * was taken off entirely. Time nobody was measured is not time in a zone.
          */
         const val ZONE_MAX_GAP_MS = 4_000L
@@ -138,7 +138,6 @@ class MainActivity : Activity() {
          *  must not spend a command" rule needs, and short enough that a
          *  refusal surfaces while the person is still looking at the button. */
         const val WRITE_TRIES = 15
-        const val MQTT_EVERY_MS = 1000L
 
         /**
          * How long the board may say nothing before it counts as not answering.
@@ -168,32 +167,13 @@ class MainActivity : Activity() {
         const val WAKE_WAIT_MS = 8_000L
 
         /**
-         * How long to wait before trying the *first* MQTT connection again,
-         * and the ceiling the wait backs off to.
-         *
-         * Paho reconnects by itself, but only once it has connected once: a
-         * first attempt that throws is final, and nothing after it ever tries
-         * again. On a console that starts itself at boot that is the common
-         * case, not the rare one — this machine autostarts 0.3 s after the
-         * boot broadcast and its Wi-Fi associates about ten seconds later, so
-         * the one attempt reliably lands in the window where there is no
-         * network to connect over. It came back up, ran a whole walk with the
-         * coach mute, and logged "mqtt down, event not sent" thirty times.
-         *
-         * Backing off to a minute rather than hammering: nothing here is
-         * urgent, and a broker that is down is usually down for a while.
-         */
-        const val MQTT_RETRY_MS = 5_000L
-        const val MQTT_RETRY_MAX_MS = 60_000L
-
-        /**
          * The interface: one document, built from console/stride/frontend in
          * the TrailMate theme. It implements the page's entry points —
-         * `window.render(state)`, `window.plan(p)`, `window.coach(c)` — and
+         * `window.render(state)`, `window.plan(p)`, `window.stopPressed()` — and
          * Kotlin never needs to know more about it than this address.
          *
          * There used to be a choice of interfaces, saved under the "ui" pref
-         * and switchable from Settings or over MQTT. It went on 12 October 2026;
+         * and switchable from Settings. It went on 12 October 2026;
          * a stale "ui" pref on an upgraded console is simply never read.
          */
         const val UI_URL = "file:///android_asset/ui/trailmate.html"
@@ -211,11 +191,11 @@ class MainActivity : Activity() {
         /**
          * How briskly the belt is allowed to wind *down* to a standstill.
          *
-         * The first full guided walk ended by cutting the belt from 4.2 km/h to
+         * The first full guided run ended by cutting the belt from 4.2 km/h to
          * zero the instant the plan expired, which was enough to catch someone
          * off guard — at a run it would have been enough to put them on the
          * floor. Every automatic finish now decelerates instead. Quick, but not
-         * sudden: 2 km/h per second brings a brisk walk to a stop in about two
+         * sudden: 2 km/h per second brings a brisk run to a stop in about two
          * seconds and a hard run in five.
          *
          * The STOP button has its own, brisker one — see [STOP_DECEL_KPH_PER_SEC].
@@ -223,10 +203,10 @@ class MainActivity : Activity() {
         const val DECEL_KPH_PER_SEC = 2.0
 
         /**
-         * The STOP button, above a walking pace.
+         * The STOP button, above a running pace.
          *
          * STOP used to hand the board a bare {KPH 0, PAUSE}, which is the
-         * machine's own rapid stop. At a walk that is exactly right: somebody
+         * machine's own rapid stop. At a run that is exactly right: somebody
          * reaching for STOP wants the belt to stop, now. Above about 6 km/h it
          * is enough to pitch you forward — reported on 2026-08-10 after a
          * stumble.
@@ -276,7 +256,7 @@ class MainActivity : Activity() {
          * Metres the odometer must advance before an idle belt counts as moving.
          *
          * Distance is whole metres, so one of them can appear at the boundary of
-         * a walk that has just ended. Two cannot arrive on a belt that is
+         * a run that has just ended. Two cannot arrive on a belt that is
          * standing still — nothing fabricates metres.
          */
         const val IDLE_ODO_METRES = 2.0
@@ -383,7 +363,7 @@ class MainActivity : Activity() {
         const val MAX_STEP_MS = 2000L
 
         /**
-         * How fast a guided walk is allowed to move the deck.
+         * How fast a guided run is allowed to move the deck.
          *
          * One percent at a time, no more often than every three seconds, so the
          * biggest jump in any template — flat to nine percent — takes about half
@@ -395,10 +375,10 @@ class MainActivity : Activity() {
         /**
          * How long one lap of an open-ended route is.
          *
-         * "Open" means walk until you have had enough, and the ground repeats
+         * "Open" means run until you have had enough, and the ground repeats
          * rather than being invented — so a template becomes a circuit and you
          * go round it. Twenty minutes is long enough to have a shape and short
-         * enough that you actually come round again; at thirty most walks would
+         * enough that you actually come round again; at thirty most runs would
          * never see the same hill twice, which is the same as not looping.
          */
         const val OPEN_LOOP_MIN = 20
@@ -415,7 +395,7 @@ class MainActivity : Activity() {
             // Snapshot.rpm. It has only ever been asked for by probeSpeed(),
             // which runs once per app start and had already rolled out of the
             // buffer every time anyone went looking. Reading it every poll is
-            // how we find out what it does over a whole walk.
+            // how we find out what it does over a whole run.
             FitPro.Field.RPM,
         )
         val LIMITS = listOf(
@@ -444,7 +424,6 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
 
     private val conn by lazy { FitProConnection(this) }
-    private val mqtt = MqttPublisher()
     private val cfg by lazy { Settings(this) }
     /* The strap hunt is held off while an FTMS client is subscribed: this
        console's radio cannot scan as a central and hold a peripheral link at
@@ -452,15 +431,13 @@ class MainActivity : Activity() {
     private val strap by lazy { HeartRate(this) { ftms.listeners > 0 } }
     /** A Stryd or other foot pod: cadence, power, stride. Held off the same way. */
     private val pod by lazy { Footpod(this) { ftms.listeners > 0 } }
-    /** Bluetooth headphones, for hearing the coach. Classic Bluetooth, not BLE. */
+    /** Bluetooth headphones, for the apps played over a run. Classic Bluetooth, not BLE. */
     private val phones by lazy { Headphones(this) }
     /** The scan the location-permission dialog interrupted. */
     @Volatile private var scanAfterPermission: (() -> Unit)? = null
     /** The treadmill as a standard Bluetooth fitness machine, for Zwift and
      *  friends. Telemetry only, and silent on a radio that cannot advertise. */
     private val ftms by lazy { Ftms(this) }
-    private val voice by lazy { CoachVoice(this) }
-    private val coach = Coach()
 
     @Volatile private var running = false
     @Volatile private var deviceId: Byte = FitPro.Dev.TREADMILL
@@ -553,11 +530,6 @@ class MainActivity : Activity() {
      * The usual five-zone split on percentage of maximum. Zone 0 is everything
      * below 50%, which is standing about rather than a training zone, and is
      * counted separately so it cannot inflate zone 1.
-     *
-     * Kept here rather than shared with Coach.zoneOf deliberately: that one
-     * answers "what should the coach call this effort right now" and returns
-     * 1-5 with no floor, because a coach saying "barely ticking over" about a
-     * 45% share is right. This one is dividing up a walk and needs the floor.
      */
     private fun zoneIndex(share: Double): Int = when {
         share < 0.50 -> 0
@@ -584,29 +556,29 @@ class MainActivity : Activity() {
     @Volatile private var dmk = false
 
     /**
-     * Whose walk this is. Set from the welcome screen, defaulting to whoever
+     * Whose run this is. Set from the welcome screen, defaulting to whoever
      * Settings names — which is nobody on a fresh install, so the screen asks.
      */
-    @Volatile private var walker = ""
+    @Volatile private var runner = ""
 
     /**
-     * The current walker's maximum heart rate, or 0 if they have not given an
+     * The current runner's maximum heart rate, or 0 if they have not given an
      * age. Cached rather than looked up per frame: reading it means parsing the
      * whole person list out of JSON in SharedPreferences, and the poll loop
-     * builds a Snapshot five times a second. Refreshed wherever [walker] is
-     * set, which is the only thing that can change the answer mid-walk.
+     * builds a Snapshot five times a second. Refreshed wherever [runner] is
+     * set, which is the only thing that can change the answer mid-run.
      */
-    @Volatile private var walkerHrMax = 0
+    @Volatile private var runnerHrMax = 0
 
-    private fun refreshWalkerHrMax() {
-        walkerHrMax = cfg.person(walker)?.maxPulse ?: 0
+    private fun refreshRunnerHrMax() {
+        runnerHrMax = cfg.person(runner)?.maxPulse ?: 0
     }
 
-    // --- guided walk ---------------------------------------------------------
-    /** Empty on a casual walk. Set once at START and never rewritten mid-walk. */
+    // --- guided run ---------------------------------------------------------
+    /** Empty on a casual run. Set once at START and never rewritten mid-run. */
     @Volatile private var planName = ""
     /**
-     * The route being walked, if this is a route rather than a template.
+     * The route being run, if this is a route rather than a template.
      *
      * Held alongside `planSteps` rather than replacing it: the HUD's sparkline
      * and segment counter read the steps, so a route fills both — the steps for
@@ -619,9 +591,9 @@ class MainActivity : Activity() {
     @Volatile private var stepIndex = -1
 
     /**
-     * An open-ended route: walk until you decide to stop, and the ground goes
+     * An open-ended route: run until you decide to stop, and the ground goes
      * round again rather than being invented. The template becomes a circuit
-     * one [OPEN_LOOP_MIN] lap long, and nothing ever ends the walk except the
+     * one [OPEN_LOOP_MIN] lap long, and nothing ever ends the run except the
      * person on it.
      */
     @Volatile private var planLoops = false
@@ -630,26 +602,12 @@ class MainActivity : Activity() {
     @Volatile private var planElapsed = 0.0
 
     /**
-     * The pace Sam settled at during the opening segment. Every suggestion is
-     * relative to this, so a plan adapts to the day instead of assuming a number
-     * that was true whenever the template was written.
-     */
-    @Volatile private var baselineKph = 0.0
-
-    /**
      * Cleared the moment he touches INCLINE, and only restored at the next
      * segment. A plan that argues with the person on the treadmill about the
      * hill they are standing on is a plan that feels possessed.
      */
     @Volatile private var inclineAuto = false
     private var lastInclineMoveAt = 0L
-
-    /** The coach's closing line, asked for near the end and shown on the summary. */
-    @Volatile private var summaryLine = ""
-
-    /** Its audio, held back until the summary is actually on screen. */
-    @Volatile private var summaryUrl = ""
-    @Volatile private var summarySpoken = false
 
     /** Last speed the *board* reported, as opposed to what we asked for. */
     @Volatile private var lastActualKph = 0.0
@@ -669,8 +627,7 @@ class MainActivity : Activity() {
     /** How many times we have had to re-command a stop. Reset when it takes. */
     @Volatile private var stopNags = 0
 
-    /** Wall clock and uptime at which the current runaway was first seen. */
-    private var runawayAtWall = 0L
+    /** Uptime at which the current runaway was first seen. */
     private var runawayAtUptime = 0L
     private var runawayPeakKph = 0.0
 
@@ -719,7 +676,7 @@ class MainActivity : Activity() {
      * point and an end, and five polls a second of "still short" is not a
      * record, it is a flood. Nothing here stops or corrects anything — a belt
      * that cannot reach its pace is a maintenance question, not a safety one,
-     * and the walker can already feel it. This exists so that the next time it
+     * and the runner can already feel it. This exists so that the next time it
      * happens there is something to read afterwards, which on 8 September 2026
      * there was not.
      *
@@ -759,7 +716,7 @@ class MainActivity : Activity() {
                 "${"%.1f".format(slipWorst)} km/h under ${"%.1f".format(slipTarget)}")
     }
 
-    /** True while the deck is being walked back to level after a workout. */
+    /** True while the deck is being brought back to level after a workout. */
     @Volatile private var levelling = false
     @Volatile private var levelNags = 0
 
@@ -798,7 +755,7 @@ class MainActivity : Activity() {
     @Volatile private var samples = 0
 
     /** Pulse keeps its own count: it is the one number that can be absent for
-     *  part of a walk, and averaging zeros from before the strap connected
+     *  part of a run, and averaging zeros from before the strap connected
      *  would report a heart rate nobody had. */
     @Volatile private var maxPulse = 0
     @Volatile private var pulseSum = 0L
@@ -815,7 +772,7 @@ class MainActivity : Activity() {
     @Volatile private var lastZoneAt = 0L
 
     /**
-     * Metres climbed, integrated as the walk goes.
+     * Metres climbed, integrated as the run goes.
      *
      * The HUD has always computed this in the page (see profile() in
      * stride-core.js) and thrown it away at the end. History needs it after the
@@ -832,7 +789,7 @@ class MainActivity : Activity() {
      * The same instant as [sessionStartedAt], on the clock that cannot be moved.
      *
      * [SystemClock.elapsedRealtime] counts since boot and is unaffected by NTP,
-     * which is the whole point: it is the only witness to how long ago the walk
+     * which is the whole point: it is the only witness to how long ago the run
      * began that survives the wall clock being corrected underneath it. See
      * [sessionStartWall].
      */
@@ -890,7 +847,7 @@ class MainActivity : Activity() {
          * The belt moves as a direct result of this tap, so the welcome screen
          * says so.
          *
-         * Took a `type` of "walk" or "run" until 2026-09-07. Nothing downstream
+         * Took a `type` of "run" or "run" until 2026-09-07. Nothing downstream
          * did anything with it but change a word, and the screen that asked for
          * it sold the choice on a speed ceiling no code enforced — see flow()
          * in stride-core.js. It is a workout.
@@ -912,17 +869,17 @@ class MainActivity : Activity() {
         }
 
         /**
-         * Start a guided walk.
+         * Start a guided run.
          *
          * Goes straight to ACTIVE rather than through the two-minute WARMUP
          * phase: every template opens with its own flat settle segment, and
          * having both would mean warming up twice. The plan's stated duration is
-         * therefore the whole walk, closing segment included, which is what a
+         * therefore the whole run, closing segment included, which is what a
          * duration selector implies.
          */
         /**
-         * @param minutes  the walk's length, or **0 for an open-ended route** —
-         *                 a [OPEN_LOOP_MIN] circuit walked until STOP, with the
+         * @param minutes  the run's length, or **0 for an open-ended route** —
+         *                 a [OPEN_LOOP_MIN] circuit run until STOP, with the
          *                 hills coming round again rather than running out.
          */
         @JavascriptInterface fun chooseGuided(templateId: String, minutes: Int) {
@@ -940,7 +897,6 @@ class MainActivity : Activity() {
                 if (planLoops) cfg.openLapMin() else minutes, minGrade, maxGrade)
             planName = template.name
             stepIndex = -1
-            baselineKph = 0.0
             inclineAuto = true
             lastInclineMoveAt = 0L
 
@@ -957,10 +913,10 @@ class MainActivity : Activity() {
                 FitPro.Field.GRADE to 0.0,
                 FitPro.Field.WORKOUT_MODE to FitPro.Mode.RUNNING.toDouble(),
             )
-            Log.i(TAG, "guided walk: ${template.name}, " +
+            Log.i(TAG, "guided run: ${template.name}, " +
                     (if (planLoops) "open (${cfg.openLapMin()} min circuit)" else "$minutes min") +
                     ", ${planSteps.size} segments, grade clamped to $minGrade..$maxGrade")
-            // The ground is fixed for the whole walk — one lap of it, if this is
+            // The ground is fixed for the whole run — one lap of it, if this is
             // a circuit — so it goes over once rather than riding along with
             // every frame.
             pushPlan()
@@ -976,17 +932,17 @@ class MainActivity : Activity() {
         @JavascriptInterface fun routes(): String = routes.json()
 
         /**
-         * Start a walk on a recorded route.
+         * Start a run on a recorded route.
          *
          * No `minutes`, unlike [chooseGuided], and that is deliberate rather
          * than an omission: a route has its own length. Cutting it to fit a
          * time slot means never reaching the summit, which is the reason for
-         * walking it again.
+         * running it again.
          *
-         * @param loop walk it out and then walk it home — see [Route.outAndBack].
-         *             A property of *this* walk, chosen on the picker, not of
-         *             the route: the same 30-minute one-way walk is the right
-         *             length some mornings and half a walk on others.
+         * @param loop run it out and then run it home — see [Route.outAndBack].
+         *             A property of *this* run, chosen on the picker, not of
+         *             the route: the same 30-minute one-way run is the right
+         *             length some mornings and half a run on others.
          */
         @JavascriptInterface fun chooseRoute(id: String, loop: Boolean) {
             if (dmk) return
@@ -1007,11 +963,10 @@ class MainActivity : Activity() {
             planSteps = r.segments.map {
                 Plan.Step(startSec = it.startM, endSec = it.endM,
                           incline = it.incline.coerceIn(minGrade, maxGrade),
-                          paceDelta = 0.0, label = r.name, note = "")
+                          label = r.name)
             }
             planName = r.name
             stepIndex = -1
-            baselineKph = 0.0
             inclineAuto = true
             lastInclineMoveAt = 0L
 
@@ -1078,7 +1033,7 @@ class MainActivity : Activity() {
             if (targetKph > 0.0) pausedKph = targetKph
             rampTo = 0.0
             rampReason = ""
-            // Above a walk the speed is shed first — see STOP_EASE_ABOVE_KPH.
+            // Above a run the speed is shed first — see STOP_EASE_ABOVE_KPH.
             // The screen still answers the press immediately: the clock stops
             // here and the overlay goes up while the belt is still moving,
             // which is the right way round. A STOP that took two seconds to
@@ -1125,20 +1080,20 @@ class MainActivity : Activity() {
 
         /**
          * "End workout" doesn't stop dead — it eases down. The belt ramps back
-         * to walking pace, the deck flattens, and the clock keeps running for
+         * to running pace, the deck flattens, and the clock keeps running for
          * [COOLDOWN_MS]. SKIP goes straight to the summary.
          */
         @JavascriptInterface fun end() {
             if (session == Session.SUMMARY) return
             // Ending from a pause means the belt is already stopped. Running a
-            // cool-down from there spins it back up to 2 km/h only to walk it
+            // cool-down from there spins it back up to 2 km/h only to run it
             // down again, which is disconcerting and faintly alarming — the
             // workout was over the moment STOP was pressed.
             if (session == Session.PAUSED) {
                 Log.i(TAG, "ended from a pause — no cool-down, belt already stopping")
                 // The plan is deliberately left standing: the summary is a
                 // summary *of* it, and clearing it here is what used to put
-                // "manual walk" at the top of a guided walk's recap. It goes on
+                // "manual run" at the top of a guided run's recap. It goes on
                 // the way out of the summary — see home().
                 finishWorkout()
                 repaint()
@@ -1154,7 +1109,7 @@ class MainActivity : Activity() {
             rampTo = cfg.warmupKph()
             rampReason = "cooldown"
             // Put the machine back how you'd want to find it. Incline is the one
-            // setting that persists otherwise, and starting the next walk on
+            // setting that persists otherwise, and starting the next run on
             // yesterday's hill is a nasty surprise.
             targetGrade = 0.0
             pendingWrite = mapOf(
@@ -1176,18 +1131,15 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface fun home() {
             // Taken before anything is reset: is there a belt that may still be
-            // turning? Mid-walk, in the cool-down, or still winding down.
+            // turning? Mid-run, in the cool-down, or still winding down.
             val wasMoving = Session.isMoving(session) || stopping || beltStillKph() >= STOPPED_KPH
             session = Session.WELCOME
             workout = "none"
             // Normally a no-op: the summary has already closed the recording.
-            // From anywhere else, a walk going home without a summary is still
-            // a walk, and it is kept rather than thrown away.
+            // From anywhere else, a run going home without a summary is still
+            // a run, and it is kept rather than thrown away.
             recorder.finish()
             trailmate.clearSummary()
-            summaryLine = ""
-            summaryUrl = ""
-            summarySpoken = false
             clearPlan()
             resetSession()
             // Leaving the summary ends any easing still in flight. The console
@@ -1208,7 +1160,7 @@ class MainActivity : Activity() {
              * is the legal exit — see pause(). HOME pressed during a cool-down
              * used to send IDLE, leave the belt turning behind the welcome
              * screen, and let enforceStopped catch it as a runaway: stopped,
-             * but logged as an incident with an MQTT alert every time. Found
+             * but logged as an incident every time. Found
              * with the simulated treadmill, 12/10/2026.
              *
              * So a belt that may be moving gets PAUSE, and IDLE follows once
@@ -1219,7 +1171,7 @@ class MainActivity : Activity() {
                     (if (wasMoving) FitPro.Mode.PAUSE else FitPro.Mode.IDLE).toDouble())
                 // Only when we are the ones levelling the deck. An incline set
                 // by hand on the summary screen is a choice about the next
-                // walk, and DONE is not the moment to throw it away.
+                // run, and DONE is not the moment to throw it away.
                 if (parked) put(FitPro.Field.GRADE, 0.0)
             }
             idleWhenStopped = wasMoving
@@ -1241,15 +1193,9 @@ class MainActivity : Activity() {
         }
 
         /**
-         * Take the coach's suggested pace, by tapping it.
-         *
-         * The suggestion was previously read-only — "try 6.8 km/h" and then you
-         * held the + button until you got there. Accepting an offer should be
-         * one tap.
-         *
-         * Still a suggestion: this only runs because somebody touched it. The
-         * plan never sets the belt speed on its own, which is the rule the
-         * whole guided walk is built on.
+         * Go straight to a speed: a stop picked from the speed rail, or a pace
+         * set on the calibration panel. Only ever because somebody touched it —
+         * a plan never sets the belt speed on its own.
          */
         @JavascriptInterface fun setSpeed(kph: Double) {
             if (!Session.isMoving(session) || dmk) return
@@ -1261,11 +1207,11 @@ class MainActivity : Activity() {
 
         /* ---- belt calibration --------------------------------------------
          *
-         * Started from Settings → Treadmill. It is an ordinary walk with the
+         * Started from Settings → Treadmill. It is an ordinary run with the
          * calibration panel over it: the safety key, STOP and pause all work as
          * they always do. See calTick for what is measured while it runs. */
 
-        /** Start calibrating: a walk if none is running, then the panel. */
+        /** Start calibrating: a run if none is running, then the panel. */
         @JavascriptInterface fun calibrate() {
             if (dmk) return
             if (!Session.isMoving(session) && session != Session.PAUSED) choose()
@@ -1317,7 +1263,7 @@ class MainActivity : Activity() {
             repaint()
         }
 
-        /** Leave the panel. The walk carries on, on the saved table. */
+        /** Leave the panel. The run carries on, on the saved table. */
         @JavascriptInterface fun calDone() {
             if (!calOn) return
             calOn = false
@@ -1389,10 +1335,10 @@ class MainActivity : Activity() {
             pendingWrite = mapOf(FitPro.Field.FAN_STATE to fanState.toDouble())
         }
 
-        @JavascriptInterface fun setWalker(name: String) {
-            walker = name
-            refreshWalkerHrMax()
-            Log.i(TAG, "walker: $name")
+        @JavascriptInterface fun setRunner(name: String) {
+            runner = name
+            refreshRunnerHrMax()
+            Log.i(TAG, "runner: $name")
         }
 
         /** "I've put the key back." If it is still out, the next poll re-raises. */
@@ -1400,16 +1346,6 @@ class MainActivity : Activity() {
             dmkLatched = false
             dmk = false
             repaint()
-        }
-
-        /**
-         * Dismiss the coach: shut it up mid-sentence and drop anything still in
-         * flight. Silencing the speaker is the point of the tap — clearing the
-         * words while the audio played on would be the worst of both.
-         */
-        @JavascriptInterface fun hushCoach() {
-            voice.stop()
-            coach.hush()
         }
 
         // --- settings -------------------------------------------------------
@@ -1420,35 +1356,10 @@ class MainActivity : Activity() {
 
         @JavascriptInterface fun settingsJson(): String = cfg.json().toString()
 
-        /**
-         * Who Home Assistant knows about, minus anyone already added here.
-         *
-         * Filtered on the console rather than in the settings screen so the
-         * "already added" test uses the same `haPerson` link the rest of the
-         * app does, instead of matching names in JavaScript.
-         */
-        @JavascriptInterface fun haPeople(): String {
-            val linked = cfg.people().map { it.haPerson }.filter { it.isNotEmpty() }.toSet()
-            val taken = cfg.people().map { it.name.lowercase() }.toSet()
-            val out = JSONArray()
-            try {
-                val arr = JSONArray(haPersons)
-                for (i in 0 until arr.length()) {
-                    val o = arr.getJSONObject(i)
-                    if (o.optString("entity_id") in linked) continue
-                    if (o.optString("first").lowercase() in taken) continue
-                    out.put(o)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "persons: cannot parse (${e.message})")
-            }
-            return out.toString()
-        }
-
         /** Everything arrives as a string; [Settings.set] types it by key. */
         @JavascriptInterface fun saveSetting(key: String, value: String) {
             cfg.set(key, value)
-            Log.i(TAG, "settings: $key = ${if (key == Settings.MQTT_PASS) "***" else value}")
+            Log.i(TAG, "settings: $key = $value")
             applySetting(key)
         }
 
@@ -1457,29 +1368,13 @@ class MainActivity : Activity() {
             return cfg.json().toString()
         }
 
-        /** Add somebody from Home Assistant, linked rather than merely named. */
-        @JavascriptInterface fun addHaPerson(entityId: String, first: String): String {
-            cfg.addPerson(first, entityId)?.let {
-                Log.i(TAG, "settings: added ${it.name} linked to $entityId")
-            }
-            return cfg.json().toString()
-        }
-
         @JavascriptInterface fun removePerson(name: String): String {
             // Their TrailMate link goes with them. Left behind, it would be a
             // working token belonging to nobody on this console.
             cfg.person(name)?.let { trailmate.disconnect(it.id) }
             cfg.savePeople(cfg.people().filterNot { it.name == name })
-            // Whoever is mid-walk keeps walking; only the list changed.
+            // Whoever is mid-run keeps running; only the list changed.
             Log.i(TAG, "settings: removed $name")
-            return cfg.json().toString()
-        }
-
-        @JavascriptInterface fun setPersonFlag(name: String, flag: String, on: Boolean): String {
-            cfg.savePeople(cfg.people().map {
-                if (it.name != name) it
-                else if (flag == "coached") it.copy(coached = on) else it.copy(publish = on)
-            })
             return cfg.json().toString()
         }
 
@@ -1493,9 +1388,9 @@ class MainActivity : Activity() {
             cfg.savePeople(cfg.people().map {
                 if (it.name == name) it.copy(age = clean) else it
             })
-            // The walker may be the person just edited, and the zones the coach
-            // uses come off a cached copy.
-            refreshWalkerHrMax()
+            // The runner may be the person just edited, and the heart-rate
+            // zones come off a cached copy.
+            refreshRunnerHrMax()
             Log.i(TAG, "settings: age for $name -> ${if (clean > 0) "$clean" else "not given"}")
             return cfg.json().toString()
         }
@@ -1563,7 +1458,7 @@ class MainActivity : Activity() {
 
         // --- trailmate ---
         /*
-         * Connecting a walker to TrailMate, per person, from Who walks. The
+         * Connecting a runner to TrailMate, per person, from Who runs. The
          * page starts a link and then polls trailmateStatus for the code, the
          * QR and how it is going; see TrailMate for the flow. Nothing here
          * hands the page a token — status says "linked", not with what.
@@ -1581,28 +1476,8 @@ class MainActivity : Activity() {
         @JavascriptInterface fun trailmateDisconnect(personId: String) =
             trailmate.disconnect(personId)
 
-        /** A walk TrailMate refused, back in the queue to try again. */
+        /** A run TrailMate refused, back in the queue to try again. */
         @JavascriptInterface fun trailmateRetry(workoutId: String) = trailmate.retry(workoutId)
-
-        /**
-         * Connect with whatever is currently saved and say what happened.
-         *
-         * Runs off the UI thread — Paho's connect blocks for up to the
-         * connection timeout, and five seconds of frozen console is not a
-         * diagnostic. The screen polls [mqttStatus] for the answer.
-         */
-        @JavascriptInterface fun mqttTest() {
-            Thread {
-                applyMqttSettings()
-                Log.i(TAG, "settings: mqtt test — ${if (mqtt.connected) "connected" else "failed"}")
-            }.start()
-        }
-
-        @JavascriptInterface fun mqttStatus(): String = JSONObject()
-            .put("enabled", cfg.haEnabled())
-            .put("connected", mqtt.connected)
-            .put("broker", cfg.mqttHost())
-            .toString()
 
         /** What the board says it can do. Reported, never set — see Settings. */
         @JavascriptInterface fun boardLimits(): String = JSONObject()
@@ -1653,7 +1528,7 @@ class MainActivity : Activity() {
         /** Apps the console can open: [{pkg, name, icon}]. See [OverApp]. */
         @JavascriptInterface fun apps(): String = overApp.list()
 
-        /** Open one, with the walk over it. */
+        /** Open one, with the run over it. */
         @JavascriptInterface fun openApp(pkg: String) = runOnUiThread { overApp.open(pkg) }
 
         /** Over an app: the parts of the page that take touches, as JSON
@@ -1671,7 +1546,7 @@ class MainActivity : Activity() {
      * The board's number comes from contact grips on machines that have them,
      * and is only there while both hands are on the bar — so it drops out on
      * exactly the hills where it is worth having. On a machine with no grips,
-     * which is most of them now, it is zero for the whole walk. A strap does
+     * which is most of them now, it is zero for the whole run. A strap does
      * not care what your arms are doing, and is the source that always works.
      *
      * Automatic prefers the strap and falls back, and the fallback is on the
@@ -1693,7 +1568,7 @@ class MainActivity : Activity() {
      * Under the simulator with `tools/sim.py pod on`, a stand-in worked out
      * from the belt instead, so the screen can be built and checked on the
      * emulator, which has no Bluetooth: cadence rising with pace, and power
-     * from a 75 kg walker at about 1.04 W/kg per m/s plus the lift against
+     * from a 75 kg runner at about 1.04 W/kg per m/s plus the lift against
      * gravity on the incline. Plausible, not physiology.
      */
     private fun podNow(kph: Double, grade: Double): PodReading {
@@ -1717,7 +1592,7 @@ class MainActivity : Activity() {
      * As low as the console goes while a touch can still wake it.
      *
      * Entered from the page after Settings → Display → Sleep after, between
-     * walks only. Android's own sleep is off the table: it takes the touch
+     * runs only. Android's own sleep is off the table: it takes the touch
      * layer with it, and then only the power button wakes the panel. So:
      *  - the backlight off, the panel's biggest draw (the touch layer stays on);
      *  - Bluetooth let go: strap, pod and headphones disconnected, the treadmill
@@ -1901,7 +1776,7 @@ class MainActivity : Activity() {
         if (!calOn) return null
         if (session == Session.WELCOME || session == Session.SUMMARY) {
             calOn = false
-            Log.i(TAG, "calibration: ended with the walk")
+            Log.i(TAG, "calibration: ended with the run")
             return null
         }
         val now = SystemClock.elapsedRealtime()
@@ -1916,7 +1791,7 @@ class MainActivity : Activity() {
         val steady = Session.isMoving(session) && calKph > 0.0 && rampTo <= 0.0 &&
                 now - since >= CAL_SETTLE_MS
         if (!steady) {
-            // Not walking at a steady speed: what was gathered no longer
+            // Not running at a steady speed: what was gathered no longer
             // describes one thing.
             calPod.clear(); calPodKph = 0.0; calPodSecs = 0.0
         } else {
@@ -1943,87 +1818,12 @@ class MainActivity : Activity() {
     // --- applying settings ----------------------------------------------------
 
     /**
-     * Bumped on every apply, so a retry still sleeping against the old broker
-     * settings knows it has been superseded and stops.
-     */
-    private val mqttGen = java.util.concurrent.atomic.AtomicInteger(0)
-
-    /**
-     * Connect, reconnect or stay down, according to what is configured.
-     *
-     * Called at start-up and whenever a broker setting changes. **A console
-     * with no broker set is a working treadmill, not a broken one** — it does
-     * not retry, does not warn, and does not log an error every poll. A
-     * console with a broker set that could not be reached is a different
-     * thing, and does keep trying: see [retryMqtt].
-     */
-    private fun applyMqttSettings() {
-        val gen = mqttGen.incrementAndGet()
-        if (!cfg.haEnabled()) {
-            mqtt.close()
-            Log.i(TAG, "mqtt: not configured, running standalone")
-            return
-        }
-        mqtt.reconfigure(cfg.brokerUri(), cfg.mqttUser(), cfg.mqttPass(), cfg.mqttPrefix())
-        // Re-registered because reconfigure() dropped the client, and a clean
-        // session forgets subscriptions with it.
-        mqtt.onMessage(mqtt.coachTopic, ::onCoachLine)
-        mqtt.onMessage(mqtt.personsTopic, ::onPersons)
-        mqtt.onMessage(mqtt.routesTopic, routes::accept)
-        val err = mqtt.connect()
-        if (err == null) return
-        Log.w(TAG, "mqtt: $err")
-        retryMqtt(gen)
-    }
-
-    /**
-     * Keep trying until the broker answers, then hand over to Paho.
-     *
-     * **On its own thread, deliberately.** The start-up call to
-     * [applyMqttSettings] is made from [pollLoop], and sleeping there would
-     * stall telemetry, the coach and every board write behind a broker that
-     * has nothing to do with any of them. A treadmill whose belt stops
-     * responding because Home Assistant is down is a far worse machine than
-     * one that walks fine without a coach.
-     *
-     * Stops at the first success rather than staying resident: from there
-     * Paho's own `automaticReconnect` owns the connection, and it is better at
-     * it than this is. The gap being filled is only the one Paho does not
-     * cover — the first connection, which it never retries.
-     */
-    private fun retryMqtt(gen: Int) {
-        Thread {
-            var wait = MQTT_RETRY_MS
-            while (gen == mqttGen.get() && running) {
-                try {
-                    Thread.sleep(wait)
-                } catch (e: InterruptedException) {
-                    return@Thread
-                }
-                // Settings changed, or HA was switched off, while we slept.
-                if (gen != mqttGen.get()) return@Thread
-                val err = mqtt.connect()
-                if (err == null) {
-                    Log.i(TAG, "mqtt: connected on retry")
-                    return@Thread
-                }
-                wait = (wait * 2).coerceAtMost(MQTT_RETRY_MAX_MS)
-                Log.w(TAG, "mqtt: $err — trying again in ${wait / 1000}s")
-            }
-        }.start()
-    }
-
-    /**
      * React to one setting having changed, where it needs more than being
      * stored. Anything read at the point of use — warm-up length, incline rate,
      * units — needs nothing here and is deliberately absent.
      */
     private fun applySetting(key: String) {
         when (key) {
-            Settings.HA_ENABLED, Settings.MQTT_HOST, Settings.MQTT_PORT,
-            Settings.MQTT_USER, Settings.MQTT_PASS, Settings.MQTT_TLS,
-            Settings.MQTT_PREFIX -> Thread { applyMqttSettings() }.start()
-
             Settings.BRIGHTNESS -> applyBrightness()
 
             Settings.HR_SOURCE, Settings.HR_ADDR -> applyStrap()
@@ -2036,7 +1836,6 @@ class MainActivity : Activity() {
 
             // A reset changes everything at once.
             "" -> {
-                Thread { applyMqttSettings() }.start()
                 applyBrightness()
                 applyStrap()
                 applyPod()
@@ -2103,49 +1902,41 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Home Assistant's people, retained on the broker by ha/stride_persons.py.
-     *
-     * Held rather than acted on. The console offers them under "Add from Home
-     * Assistant" and somebody standing in front of it decides — a list arriving
-     * over MQTT is not permission to create walkers.
-     */
-    /**
-     * Routes from real walks. Unlike [haPersons] this is not a volatile field
-     * holding whatever last arrived — it is cached to disk, because the console
-     * can boot with no network and a route that is not already here cannot be
-     * fetched at the moment somebody is standing on the belt choosing it.
+     * Routes from real runs, cached to disk so the console can boot with no
+     * network and still offer them. They will arrive from TrailMate; until
+     * then the cache holds whatever was already here. See Routes.accept.
      */
     private val routes by lazy { Routes(this) }
 
-    /** Every walk this console has recorded — see History. */
+    /** Every run this console has recorded — see History. */
     private val history by lazy { History(this) }
 
-    /** Who is connected to TrailMate, and the walks on their way there. */
+    /** Who is connected to TrailMate, and the runs on their way there. */
     private val trailmate by lazy { TrailMate(this, cfg) }
 
     /**
-     * The second-by-second trace of the walk under way, for TrailMate — see
-     * WalkRecorder. Finished walks go straight to the queue, which decides
-     * whether the walker is connected and so whether it leaves the console.
+     * The second-by-second trace of the run under way, for TrailMate — see
+     * RunRecorder. Finished runs go straight to the queue, which decides
+     * whether the runner is connected and so whether it leaves the console.
      */
-    private val recorder by lazy { WalkRecorder(this) { id, w -> trailmate.enqueue(id, w) } }
+    private val recorder by lazy { RunRecorder(this) { id, w -> trailmate.enqueue(id, w) } }
 
     /**
      * Start or feed the recording, from the poll loop.
      *
-     * A recording begins on the first frame of a walk with a profile behind
+     * A recording begins on the first frame of a run with a profile behind
      * it, never for a guest — the same line History draws. The plan goes in
      * at the start, because it is fixed at START and the recording has to be
-     * able to describe the walk on its own after a crash.
+     * able to describe the run on its own after a crash.
      */
     private fun record(snap: Snapshot) {
         // The live session as well as the frame's: END lands on a WebView
         // thread, and a frame built a moment before it would otherwise open a
-        // fresh recording for a walk that has just been closed.
+        // fresh recording for a run that has just been closed.
         if (Session.isMoving(snap.session) && Session.isMoving(session) &&
             !recorder.recording && snap.whoId.isNotEmpty()) {
             val plan = if (planName.isNotEmpty() && planSteps.isNotEmpty())
-                WalkRecorder.PlanInfo(planName, planSteps, route != null, planLoops) else null
+                RunRecorder.PlanInfo(planName, planSteps, route != null, planLoops) else null
             recorder.begin(snap.whoId, plan, boardName())
         }
         recorder.tick(snap, strap.bpm() > 0)
@@ -2161,13 +1952,6 @@ class MainActivity : Activity() {
     /** The session's average pulse so far, or 0 if nothing ever read. */
     private fun avgPulseNow(): Int =
         if (pulseSamples > 0) (pulseSum / pulseSamples).toInt() else 0
-
-    @Volatile private var haPersons: String = "[]"
-
-    private fun onPersons(payload: String) {
-        haPersons = payload.trim().ifBlank { "[]" }
-        Log.i(TAG, "persons: received ${haPersons.length} bytes from HA")
-    }
 
 
     /**
@@ -2211,8 +1995,8 @@ class MainActivity : Activity() {
      *
      * The summary goes up at the moment of ending rather than when the belt
      * arrives at zero. Waiting meant the live screen stayed up through the
-     * wind-down, and on a guided walk or a route that had just run out that
-     * screen was the casual lap counter — a walk ending on the one display that
+     * wind-down, and on a guided run or a route that had just run out that
+     * screen was the casual lap counter — a run ending on the one display that
      * had nothing to do with it. Ending is a decision; the screen answers it
      * immediately and the belt eases down underneath.
      */
@@ -2257,7 +2041,7 @@ class MainActivity : Activity() {
     /**
      * The belt must not be moving unless a workout is.
      *
-     * This exists because it was not true. On 31 July a guided walk finished,
+     * This exists because it was not true. On 31 July a guided run finished,
      * the console logged "belt stopped", showed the summary, and went back to
      * the welcome screen — while the belt kept running. It ran for another
      * thirty-five seconds until somebody hit the physical stop button.
@@ -2318,14 +2102,10 @@ class MainActivity : Activity() {
         stopNags++
         runawayPeakKph = maxOf(runawayPeakKph, actualKph)
         if (stopNags == 1) {
-            runawayAtWall = System.currentTimeMillis()
             runawayAtUptime = SystemClock.elapsedRealtime()
-            val stamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                .format(java.util.Date(runawayAtWall))
             recordIncident("BELT RUNNING UNATTENDED at ${"%.1f".format(actualKph)} km/h " +
                     "(session=${Session.name(session)}, boardMode=$lastBoardMode) " +
                     "— commanding stop")
-            mqtt.publishRunaway(true, actualKph, stamp, 0L)
         }
         if (stopNags == 1 || stopNags % 25 == 0) {
             Log.w(TAG, "belt still moving at ${"%.1f".format(actualKph)} km/h " +
@@ -2338,12 +2118,12 @@ class MainActivity : Activity() {
     }
 
     /**
-     * The deck must not be left tilted when the walk is over.
+     * The deck must not be left tilted when the run is over.
      *
      * `enforceStopped` exists because one dropped frame left the belt running.
      * This is the same failure for the other axis, and it went unnoticed
      * longer: every hand-authored template ends flat, so nothing was ever left
-     * standing on a slope. A route can end anywhere — and a walk stopped early
+     * standing on a slope. A route can end anywhere — and a run stopped early
      * ends wherever the ground happened to be, which on the first one tried was
      * a −3% descent.
      *
@@ -2358,19 +2138,19 @@ class MainActivity : Activity() {
         if (Math.abs(actualGrade) < LEVEL_GRADE) { levelling = false; return null }
         levelNags++
         if (levelNags == 1 || levelNags % 25 == 0) {
-            Log.w(TAG, "deck still at ${"%.1f".format(actualGrade)}% after the walk " +
+            Log.w(TAG, "deck still at ${"%.1f".format(actualGrade)}% after the run " +
                     "— commanding level again (attempt $levelNags)")
         }
         return mapOf(FitPro.Field.GRADE to 0.0)
     }
 
     /**
-     * Turn the fan off after the walk, and keep asking until it is.
+     * Turn the fan off after the run, and keep asking until it is.
      *
      * The belt stops and the deck levels, both of them enforced rather than
-     * asked once — and the fan was left out of that. It ran on after a walk
+     * asked once — and the fan was left out of that. It ran on after a run
      * ended on 2026-08-07. It is not a safety interlock like the belt, but it
-     * is the same promise: what the walk turned on, the end of the walk turns
+     * is the same promise: what the run turned on, the end of the run turns
      * off, and it is *seen* to turn off.
      *
      * Gives up after [FAN_OFF_NAGS] rather than nagging for ever, because on a
@@ -2424,9 +2204,9 @@ class MainActivity : Activity() {
                 "${accumulatedMs / 1000} s, ${"%.0f".format(sessionCalories)} kcal" +
                 if (pulseSamples > 0) ", hr ${avgPulseNow()}/${maxPulse}" else "")
         // Recorded before the screen draws, so the summary can show what this
-        // walk beat. Guests are summarised and forgotten — see History.record.
-        earned = history.record(History.Walk(
-            who = walker,
+        // run beat. Guests are summarised and forgotten — see History.record.
+        earned = history.record(History.Run(
+            who = runner,
             startedAt = sessionStartWall(),
             elapsed = accumulatedMs / 1000.0,
             distance = sessionDistance,
@@ -2474,7 +2254,7 @@ class MainActivity : Activity() {
         levelling = true
         levelNags = 0
         // The fan goes off with everything else. It was running on after the
-        // walk ended because nothing here ever told it to stop.
+        // run ended because nothing here ever told it to stop.
         fanStopping = true
         fanOffNags = 0
     }
@@ -2492,25 +2272,24 @@ class MainActivity : Activity() {
         planName = ""
         planSteps = emptyList()
         stepIndex = -1
-        baselineKph = 0.0
         inclineAuto = false
         planLoops = false
         planLap = 1
         planElapsed = 0.0
     }
 
-    /** The segment the walk is currently in, or null on a casual walk. */
+    /** The segment the run is currently in, or null on a casual run. */
     private fun currentStep(): Plan.Step? {
         if (planSteps.isEmpty()) return null
         return planSteps.getOrNull(stepIndex.coerceAtLeast(0))
     }
 
     /**
-     * Run the guided walk: advance the segment, then nudge the deck towards
+     * Run the guided run: advance the segment, then nudge the deck towards
      * whatever that segment asks for.
      *
      * Plan time is *session* time, which already excludes anything spent
-     * paused — a walk interrupted for two minutes should still be the walk that
+     * paused — a run interrupted for two minutes should still be the run that
      * was chosen, not two minutes shorter.
      */
     /**
@@ -2520,7 +2299,7 @@ class MainActivity : Activity() {
      * This is the one substantive difference between a route and a template,
      * and it is not a detail. A route was recorded outdoors, where the hill
      * arrived at a certain point on the ground. Replay it on a timer while
-     * walking slower indoors than out and the hill arrives late, the walk ends
+     * running slower indoors than out and the hill arrives late, the run ends
      * before the route does, and the summit — the reason for choosing it — is
      * never reached. Driven by distance, the ground arrives where it did
      * outdoors however fast it is taken.
@@ -2530,7 +2309,7 @@ class MainActivity : Activity() {
 
         // The HUD's position marker reads planElapsed against the plan steps,
         // and a route's steps are in metres — so this is metres too. Without
-        // it the walker sat at the start line for the whole walk while the
+        // it the runner sat at the start line for the whole run while the
         // ground moved under them, which is what the first route showed.
         planElapsed = metres
 
@@ -2549,10 +2328,6 @@ class MainActivity : Activity() {
 
         val idx = r.segments.indexOfFirst { metres < it.endM }.coerceAtLeast(0)
         if (idx != stepIndex) {
-            if (stepIndex == 0 && baselineKph <= 0.0) {
-                baselineKph = if (targetKph > 0.0) targetKph else cfg.warmupKph()
-                Log.i(TAG, "route: baseline pace ${"%.1f".format(baselineKph)} km/h")
-            }
             stepIndex = idx
             inclineAuto = true
             Log.i(TAG, "route: segment ${idx + 1}/${r.segments.size} at " +
@@ -2568,7 +2343,7 @@ class MainActivity : Activity() {
 
         if (planLoops) {
             // Round again. The hills are the same hills — that is the point of
-            // a circuit — so nothing is regenerated and nothing ends the walk
+            // a circuit — so nothing is regenerated and nothing ends the run
             // but STOP.
             if (lap > 0) {
                 val was = planLap
@@ -2585,7 +2360,7 @@ class MainActivity : Activity() {
                     // The plan is deliberately *not* cleared here. Clearing it
                     // drops the guided view and the console falls back to the
                     // casual oval; it is also what the summary reads its name
-                    // off, so a guided walk would be recapped as a manual one.
+                    // off, so a guided run would be recapped as a manual one.
                     // It is cleared on the way out of the summary instead.
                     requestFinish()
                 }
@@ -2596,12 +2371,6 @@ class MainActivity : Activity() {
         val idx = steps.indexOfFirst { planElapsed < it.endSec }.coerceAtLeast(0)
         if (idx != stepIndex) {
             val step = steps[idx]
-            // The opening segment is where he chooses a pace; everything after
-            // is suggested relative to it.
-            if (stepIndex == 0 && baselineKph <= 0.0) {
-                baselineKph = if (targetKph > 0.0) targetKph else cfg.warmupKph()
-                Log.i(TAG, "guided: baseline pace ${"%.1f".format(baselineKph)} km/h")
-            }
             stepIndex = idx
             // A new segment hands the deck back, whatever happened in the last one.
             inclineAuto = true
@@ -2617,7 +2386,7 @@ class MainActivity : Activity() {
      * Move the deck towards the segment's target, slowly.
      *
      * Only ever while the belt is genuinely moving and under the plan's control:
-     * a paused walk, a pulled safety key or a manual override all stop the hill
+     * a paused run, a pulled safety key or a manual override all stop the hill
      * dead where it is.
      */
     private fun driveIncline(target: Double) {
@@ -2686,21 +2455,21 @@ class MainActivity : Activity() {
      * When this session actually began, in wall-clock time — or 0 if unknowable.
      *
      * This board boots at 2010-01-01 and only jumps to the real time once the
-     * network is up, which takes five to ten minutes. Start a walk inside that
+     * network is up, which takes five to ten minutes. Start a run inside that
      * window and it is stamped 2010, which is what happened to three of the
-     * first five walks this console ever recorded: two of them are dated
+     * first five runs this console ever recorded: two of them are dated
      * 2010-01-01 10:30 and 10:31, minutes apart, on days that were weeks apart.
      *
      * The correction is arithmetic rather than a guess. Two clocks started
      * together at [resetSession]: the wall clock, which NTP can yank, and
      * [SystemClock.elapsedRealtime], which it cannot. If the wall clock has
      * advanced by more than the monotonic clock says has actually passed, it
-     * was corrected mid-walk — and *now* is trustworthy, so the true start is
-     * simply now minus however long the walk has really been running. A walk
+     * was corrected mid-run — and *now* is trustworthy, so the true start is
+     * simply now minus however long the run has really been running. A run
      * that began before NTP and ended after it dates itself exactly. Since
-     * walks run 25-40 minutes and NTP lands in 5-10, that is the usual case.
+     * runs run 25-40 minutes and NTP lands in 5-10, that is the usual case.
      *
-     * The remaining case is a walk that both starts and ends before the network
+     * The remaining case is a run that both starts and ends before the network
      * arrives. Nothing can date that one, so it returns 0 — "no date" — rather
      * than 2010. History treats 0 as undateable and leaves it out of streaks
      * and weekly counts instead of quietly filing it under a day in 2010 and
@@ -2735,17 +2504,16 @@ class MainActivity : Activity() {
         // trade on a bench and no trade at all on a treadmill in a hallway.
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
-        cfg.seedFromBuildConfig()
         calib = cfg.beltCalibration()
         if (!calib.isEmpty) Log.i(TAG, "belt calibration: ${calib.points.size} point(s)")
-        walker = cfg.defaultWalker()
-        refreshWalkerHrMax()
+        runner = cfg.defaultRunner()
+        refreshRunnerHrMax()
         applyBrightness()
         applyStrap()
         applyPod()
         applyPhones()
         // Anything queued last time goes as soon as there is a network, and a
-        // walk the console did not live to finish is turned into a workout.
+        // run the console did not live to finish is turned into a workout.
         trailmate.start()
         recorder.recover()
 
@@ -2760,7 +2528,7 @@ class MainActivity : Activity() {
             /* A reload (the WebView recovering, or DevTools) starts the page
                from nothing, and the plan is the one thing sent once rather than
                at poll rate — so it has to go over again or the page draws a
-               guided walk with no ground ahead of it. */
+               guided run with no ground ahead of it. */
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     if (planSteps.isNotEmpty()) pushPlan()
@@ -2791,7 +2559,7 @@ class MainActivity : Activity() {
     /** The page's bridge; the test harness drives the same one. */
     private val bridge by lazy { Bridge() }
 
-    /** Netflix and the rest, with the walk drawn over them. See [OverApp]. */
+    /** Netflix and the rest, with the run drawn over them. See [OverApp]. */
     private val overApp by lazy { OverApp(this, { web }, ::pushOverApp) }
 
     private fun pushOverApp(on: Boolean) {
@@ -2958,20 +2726,20 @@ class MainActivity : Activity() {
             "key" -> board.key(out = i.getBooleanExtra("out", true))
             "pulse" -> board.pulseOn = i.getBooleanExtra("on", true)
             "pod" -> board.podOn = i.getBooleanExtra("on", true)
-            // Walk as somebody, adding them if they are not here yet. A guest
-            // walk is never recorded for TrailMate, so testing the recording
+            // Run as somebody, adding them if they are not here yet. A guest
+            // run is never recorded for TrailMate, so testing the recording
             // needs a profile, and typing one in on the emulator every time
             // is no way to test anything.
-            "walker" -> {
+            "runner" -> {
                 val name = i.getStringExtra("name") ?: "Tester"
                 if (cfg.person(name) == null) cfg.addPerson(name)
-                bridge.setWalker(name)
+                bridge.setRunner(name)
             }
             "status" -> {}
             else -> return "unknown command '$cmd'"
         }
         return "${Session.name(session)} target=${"%.1f".format(targetKph)} km/h " +
-            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} who=${walker.ifEmpty { "guest" }} | ${board.status()}"
+            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} who=${runner.ifEmpty { "guest" }} | ${board.status()}"
     }
     @Volatile private var watchdogTripped = false
     /** Setup and reacquire legitimately take seconds; the watchdog stands down. */
@@ -3017,132 +2785,6 @@ class MainActivity : Activity() {
         repaint(boardOk = false)
     }
 
-    /**
-     * A coach line has come back from Home Assistant: show it, speak it.
-     *
-     * Re-serialised through JSONObject rather than injected raw — a malformed
-     * payload should produce nothing, not a syntax error that takes the whole
-     * page's script down with it.
-     */
-    private fun onCoachLine(payload: String) {
-        val obj = org.json.JSONObject(payload)
-        val line = obj.optString("line").trim()
-        if (line.isEmpty()) return
-        val safe = org.json.JSONObject()
-            .put("line", line)
-            .put("kind", obj.optString("kind"))
-            .toString()
-        // The round trip, every time. The fallback firing is the only symptom
-        // slow coaching has, and it looks identical whether Home Assistant took
-        // nine seconds or never answered at all. `grep "round trip"` over a
-        // walk's logcat says which, and how close to the wire the good ones are.
-        val took = coach.heard(line)
-        if (took >= 0) Log.i(TAG, "coach: round trip ${took} ms — \"$line\"")
-        else Log.i(TAG, "coach: \"$line\" (nothing was waiting on it)")
-        if (obj.optString("kind") == "summary") {
-            // Held, both the words and the audio. This was asked for at 98% of
-            // the plan, so it arrives while there is still walking to do —
-            // showing or speaking it then would be the opposite of the point.
-            // `speakSummary` releases it once the summary is actually up.
-            summaryLine = line
-            summaryUrl = obj.optString("url")
-            Log.i(TAG, "coach: closing line ready" +
-                    if (summaryUrl.isEmpty()) " (no audio)" else "")
-            return
-        }
-        showCoach(safe)
-        obj.optString("url").takeIf { it.isNotEmpty() }?.let { voice.play(it) }
-    }
-
-    /**
-     * Say the closing line, once, and only while the summary is on screen.
-     *
-     * Waiting for the screen rather than firing on arrival: the line is asked
-     * for at 98% of the plan and can come back with a minute of walking still
-     * to go. Reading somebody their summary while they are still on the belt
-     * would be worse than silence.
-     *
-     * Polled rather than triggered from `finishWorkout`, because the answer may
-     * not have arrived yet when the belt stops — this catches it whichever way
-     * round they happen.
-     *
-     * Latched on the *result*, not the attempt. `play` drops a line when
-     * something else is still speaking, so latching on the call would silently
-     * lose the closing line whenever the last segment's coaching ran long.
-     */
-    private fun speakSummary() {
-        if (session != Session.SUMMARY || summarySpoken) return
-        if (summaryUrl.isEmpty()) return
-        if (voice.play(summaryUrl)) {
-            summarySpoken = true
-            Log.i(TAG, "coach: speaking the closing line")
-        }
-    }
-
-    private fun showCoach(json: String) {
-        runOnUiThread { web.evaluateJavascript("window.coach($json)", null) }
-    }
-
-    /**
-     * One frame through the coach: emit a moment if there is one, and fall back
-     * to the canned line if Home Assistant does not answer in time.
-     *
-     * The workout never waits on any of this — a moment that cannot be sent is
-     * simply lost, which is the correct outcome for a thing that was only ever
-     * going to be a sentence.
-     */
-    private fun coachTick(snap: Snapshot) {
-        coach.observe(snap)?.let { moment ->
-            Log.i(TAG, "coach moment: ${moment.kind} — ${moment.detail}")
-            // The live-coach prompt in Home Assistant carries one person's
-            // weight, blood pressure and target. Sending somebody else's walk
-            // to it would put those numbers in front of whoever is on the belt,
-            // so this has always been gated — but it was gated on the walker
-            // being *named Sam*, which meant a second person in the same
-            // house silently got a different product and no way to change it.
-            //
-            // It is now a property of the person, set in Settings, and an
-            // unknown walker gets nothing rather than falling through to "not
-            // Sam". Everyone else still gets the local canned lines, which
-            // are generic and name nobody.
-            //
-            // Whether the question actually left the building decides how long
-            // it is worth waiting for an answer. If it did not — no broker, or
-            // a walker with no coaching set up — there is nothing in flight and
-            // the eight-second wait is eight seconds of silence for nothing.
-            // Take the local line now.
-            val asked = if (cfg.coachedFor(walker)) {
-                mqtt.publishEvent(coach.payload(moment, snap))
-                mqtt.connected
-            } else {
-                Log.i(TAG, "coach: $walker is not set up for coaching, keeping it local")
-                false
-            }
-            if (!asked) coach.giveUp()?.let { showLocalCoach(it, "nobody to ask") }
-        }
-        coach.timedOut()?.let {
-            showLocalCoach(it, "no answer from HA in ${Coach.FALLBACK_MS / 1000}s")
-        }
-    }
-
-    /**
-     * A line the console wrote itself.
-     *
-     * The closing line is held rather than shown, exactly as it is when Home
-     * Assistant answers — it is asked for at 98% of the plan, so a walk with no
-     * coaching used to put "That is another one done" over the belt with a
-     * minute still to walk, and then show a blank summary.
-     */
-    private fun showLocalCoach(local: Coach.Local, why: String) {
-        Log.i(TAG, "coach: $why, using \"${local.text}\"")
-        if (local.kind == "summary") {
-            summaryLine = local.text
-            return
-        }
-        showCoach(org.json.JSONObject()
-            .put("line", local.text).put("kind", "local").toString())
-    }
-
     private fun pollLoop() {
         if (conn.isFitPro2) {
             // Gen 7. Its own start-up, and nothing below that speaks FitPro 1
@@ -3157,12 +2799,7 @@ class MainActivity : Activity() {
             readLimits()
             readSleepConfig()
         }
-        mqtt.onMessage(mqtt.coachTopic, ::onCoachLine)
-        mqtt.onMessage(mqtt.personsTopic, ::onPersons)
-        mqtt.onMessage(mqtt.routesTopic, routes::accept)
-        applyMqttSettings()
 
-        var sinceMqtt = 0L
         var rejects = 0
         while (running) {
             pollBeat = SystemClock.elapsedRealtime()
@@ -3398,23 +3035,10 @@ class MainActivity : Activity() {
             // then put the screen the person just left back for a fifth of a
             // second. One path, one answer to "which screen is this".
             repaint()
-            coachTick(snap)
-            speakSummary()
 
             sinceFan += POLL_MS
             if (sinceFan >= FAN_EVERY_MS) { sinceFan = 0; readFan() }
 
-            sinceMqtt += POLL_MS
-            if (sinceMqtt >= MQTT_EVERY_MS) {
-                sinceMqtt = 0
-                mqtt.publishState(snap)
-                // Only while there is a workout to attribute. Publishing on the
-                // welcome screen would zero whoever walked last.
-                if (Session.isMoving(session) || session == Session.SUMMARY) {
-                    cfg.person(walker)?.takeIf { it.publish }
-                        ?.let { mqtt.publishPerson(it, snap) }
-                }
-            }
             Thread.sleep(POLL_MS)
         }
     }
@@ -3426,8 +3050,8 @@ class MainActivity : Activity() {
      * The second half of HOME on a moving belt: IDLE, once the belt is still.
      *
      * Queued rather than returned, so that a refusal is retried and given up on
-     * by the same rules as any other write. A walk started in the meantime
-     * cancels it — that walk is in charge of the board now.
+     * by the same rules as any other write. A run started in the meantime
+     * cancels it — that run is in charge of the board now.
      */
     private fun idleStep(): Map<FitPro.Field, Double>? {
         if (!idleWhenStopped) return null
@@ -3444,7 +3068,7 @@ class MainActivity : Activity() {
      *
      * The first step goes straight to the machine's minimum — below 1.6 km/h
      * this treadmill has no "slow", only stopped — and from there it climbs at
-     * a walking-pace-per-second until it reaches where you left off.
+     * a running-pace-per-second until it reaches where you left off.
      */
     private fun rampStep(): Map<FitPro.Field, Double>? {
         val goal = rampTo
@@ -3508,7 +3132,7 @@ class MainActivity : Activity() {
         }
 
         val rawDistance = v[FitPro.Field.DISTANCE] ?: 0.0
-        // The walk is measured in true metres; the idle-belt safety net below
+        // The run is measured in true metres; the idle-belt safety net below
         // stays on the raw counter, which only has to say whether it moved.
         val distance = trueOdometer(rawDistance)
         val rawCalories = v[FitPro.Field.CALORIES] ?: 0.0
@@ -3532,11 +3156,8 @@ class MainActivity : Activity() {
         if (beltStillKph() < STOPPED_KPH && stopNags > 0) {
             Log.i(TAG, "belt confirmed stopped after $stopNags nag(s)")
             val ran = (SystemClock.elapsedRealtime() - runawayAtUptime) / 1000
-            val stamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                .format(java.util.Date(runawayAtWall))
             recordIncident("belt stopped after ${ran}s unattended, " +
                     "peak ${"%.1f".format(runawayPeakKph)} km/h, $stopNags nag(s)")
-            mqtt.publishRunaway(false, runawayPeakKph, stamp, ran)
             runawayPeakKph = 0.0
             stopNags = 0
         }
@@ -3606,13 +3227,13 @@ class MainActivity : Activity() {
                 if (pulse > maxPulse) maxPulse = pulse
                 pulseSum += pulse
                 pulseSamples++
-                if (walkerHrMax > 0) {
+                if (runnerHrMax > 0) {
                     val nowMs = SystemClock.elapsedRealtime()
                     // Only credit time we were actually reading through. A gap
                     // longer than a couple of polls is a strap dropout, and the
                     // seconds inside it belong to no zone.
                     if (lastZoneAt > 0L && nowMs - lastZoneAt < ZONE_MAX_GAP_MS) {
-                        val z = zoneIndex(pulse.toDouble() / walkerHrMax)
+                        val z = zoneIndex(pulse.toDouble() / runnerHrMax)
                         zoneSecs[z] += (nowMs - lastZoneAt) / 1000.0
                     }
                     lastZoneAt = nowMs
@@ -3664,12 +3285,12 @@ class MainActivity : Activity() {
             maxIncline = maxIncline,
             avgPulse = if (pulseSamples > 0) (pulseSum / pulseSamples).toInt() else 0,
             maxPulse = maxPulse,
-            hrMax = walkerHrMax,
-            zoneSecs = if (walkerHrMax > 0) zoneSecs.map { Math.round(it).toInt() }
+            hrMax = runnerHrMax,
+            zoneSecs = if (runnerHrMax > 0) zoneSecs.map { Math.round(it).toInt() }
                        else emptyList(),
             achievements = earned,
-            who = walker,
-            whoId = cfg.person(walker)?.id ?: "",
+            who = runner,
+            whoId = cfg.person(runner)?.id ?: "",
             plan = planName,
             segment = if (step != null) stepIndex + 1 else 0,
             segments = planSteps.size,
@@ -3693,18 +3314,13 @@ class MainActivity : Activity() {
             planTotalSec = planSteps.lastOrNull()?.endSec ?: 0.0,
             // A route's steps are in metres, so its ascent is real and
             // measurable. A template's are in seconds and its climb depends on
-            // how fast it is walked, so it does not claim one.
+            // how fast it is run, so it does not claim one.
             planClimbM = route?.climbM ?: 0.0,
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
-            summaryLine = summaryLine,
             trailmate = if (session == Session.SUMMARY) trailmate.summaryState() else "",
             planElapsed = planElapsed,
             planLap = planLap,
             planLoops = planLoops,
-            // No opinion until he has settled on a pace to be relative to.
-            suggestPace = if (step != null && baselineKph > 0.0) {
-                (baselineKph + step.paceDelta).coerceIn(minKph, maxKph)
-            } else 0.0,
             inclineAuto = inclineAuto,
             boardLocked = boardLocked,
             calib = calLive,
@@ -3751,7 +3367,7 @@ class MainActivity : Activity() {
      * two polls, so it used to be differentiated across a four-second window.
      * That window is the bug. It reports the average of the last four seconds,
      * so the instant the pace changes the number is describing the pace you
-     * *were* walking, and the whole-metre quantisation puts about ±0.5 km/h of
+     * *were* running, and the whole-metre quantisation puts about ±0.5 km/h of
      * hash on top of it. A settle band hid all of that at a steady pace by
      * switching the readout over to the commanded speed — which meant the
      * moment you pressed a button the readout dropped out of the band, stopped
@@ -3773,7 +3389,7 @@ class MainActivity : Activity() {
      * treadmill unplugged from its motor reads zero however hard the console
      * asks for 7. Neither half alone is honest; the readout is the sum.
      *
-     * Returns null when there is no walk in progress.
+     * Returns null when there is no run in progress.
      */
     private fun beltSpeed(rawDistance: Double): Double? {
         val now = SystemClock.elapsedRealtime()
@@ -3782,11 +3398,11 @@ class MainActivity : Activity() {
             return null
         }
 
-        // First frame of a walk, a poll gap long enough that integrating across
+        // First frame of a run, a poll gap long enough that integrating across
         // it would be invention, or a board that has reset its odometer: seed
         // and say nothing new. `+ 0.5` throughout because Distance is whole
         // metres rounded down, and a half-metre bias would read as a permanent
-        // 0.2 km/h of shortfall at walking pace.
+        // 0.2 km/h of shortfall at running pace.
         val gap = now - lastEstimateAt
         if (lastEstimateAt == 0L || gap > MAX_STEP_MS || rawDistance + 0.5 < modelMetres - 5.0) {
             modelMetres = rawDistance + 0.5
@@ -3820,7 +3436,7 @@ class MainActivity : Activity() {
         // has not caught up yet. Integrating that is integrating a known lag,
         // and it winds up: pressing + from 3 to 8 km/h on 2026-08-10 put five
         // km/h of climb into the correction, and the readout reached 8, kept
-        // going to 9, and then walked back down as the trim unwound. Exactly
+        // going to 9, and then crept back down as the trim unwound. Exactly
         // the wobble the estimator's own notes set out to avoid, arriving by
         // the one route they did not consider.
         //
@@ -3866,7 +3482,7 @@ class MainActivity : Activity() {
      * so it says nothing about how fast, but it is decisive about *whether*,
      * which is the entire question the net asks.
      *
-     * [beltSpeed] cannot serve here: it returns null unless a walk is in
+     * [beltSpeed] cannot serve here: it returns null unless a run is in
      * progress, which is precisely when this is not needed.
      */
     private fun idleBeltSpeed(rawDistance: Double) {
@@ -3938,7 +3554,7 @@ class MainActivity : Activity() {
         val json = s.toJson()
         runOnUiThread {
             web.evaluateJavascript("window.render($json)", null)
-            // The walk is over. A summary is not for reading in a strip over a
+            // The run is over. A summary is not for reading in a strip over a
             // film, so STRIDE comes back to the front for it.
             if (overApp.showing && (session == Session.SUMMARY || session == Session.WELCOME)) overApp.close()
         }
@@ -3981,9 +3597,8 @@ class MainActivity : Activity() {
             plan = planName,
             segments = steps.size,
             // Same rule accumulate() uses, so a repaint between two polls
-            // cannot show a segment number from the walk before this one.
+            // cannot show a segment number from the run before this one.
             segment = if (steps.isEmpty() || stepIndex < 0) 0 else stepIndex + 1,
-            summaryLine = summaryLine,
             targetSpeed = targetKph,
             targetIncline = targetGrade,
             elapsed = elapsedSec(),
@@ -4077,7 +3692,7 @@ class MainActivity : Activity() {
      * Unlock, retrying a few times before giving up on this attempt.
      *
      * The board can answer a command with nothing at all while it is settling
-     * after a power cycle, and one silent frame should not cost a walk.
+     * after a power cycle, and one silent frame should not cost a run.
      */
     private fun unlockWithRetries(attempts: Int = 3): Boolean {
         for (i in 1..attempts) {
@@ -4153,7 +3768,7 @@ class MainActivity : Activity() {
      * and then it asked, separately and deliberately, whether to wake the
      * machine as well. That separation is the right one and not just history:
      * waking the board spins a motor controller up in a dark room, and
-     * somebody walking past to read the clock has not asked for that.
+     * somebody running past to read the clock has not asked for that.
      */
 
     /**
@@ -4329,8 +3944,6 @@ class MainActivity : Activity() {
         overApp.reclaim()
         running = false
         ftms.stop()
-        voice.close()
-        mqtt.close()
         conn.close()
         try { unregisterReceiver(permissionReceiver) } catch (_: IllegalArgumentException) {}
         super.onDestroy()
