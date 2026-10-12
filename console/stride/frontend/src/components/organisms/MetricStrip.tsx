@@ -4,7 +4,7 @@ import { Row } from '../primitives';
 import { Metric } from '../molecules';
 import styles from './MetricStrip.module.css';
 
-/** The telemetry band, 566 – 658: the secondary numbers of a walk. */
+/** The metrics docked along the top: the secondary numbers of a walk. */
 export function MetricStrip() {
   const elapsed = useField('elapsed') ?? 0;
   const distance = useField('distance') ?? 0;

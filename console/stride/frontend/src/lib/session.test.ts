@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  canStop, coachHoldMs, greeting, inclineTicks, modeLabel, normaliseMode, pausedWhere, phasePreview,
-  phaseProgress, primaryAction, primaryLabel, screenFor, segmentSubtitle, speedTicks, suggestion,
+  canStop, coachHoldMs, DEFAULT_LIMITS, greeting, inclineStops, modeLabel, nearestStop, normaliseMode,
+  parseLimits, pausedWhere, phasePreview, phaseProgress, primaryAction, primaryLabel, screenFor,
+  segmentSubtitle, speedStops, suggestion,
 } from './session';
 
 describe('mode', () => {
@@ -74,9 +75,14 @@ describe('numbers', () => {
     expect(suggestion({ suggestPace: 0 })).toBeNull();
   });
 
-  it('maps speed and incline onto ten ticks', () => {
-    expect([speedTicks(0), speedTicks(19), speedTicks(9.5)]).toEqual([0, 10, 5]);
-    expect([inclineTicks(-3), inclineTicks(12), inclineTicks(4.5)]).toEqual([0, 10, 5]);
+  it('offers whole speeds the belt can do, and only grades the board reaches', () => {
+    expect(speedStops(DEFAULT_LIMITS)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(speedStops({ ...DEFAULT_LIMITS, minKph: 1, maxKph: 4.5 })).toEqual([1, 2, 3, 4]);
+    expect(inclineStops(DEFAULT_LIMITS)).toEqual([0, 3, 5, 8, 10]);
+    expect(inclineStops({ ...DEFAULT_LIMITS, maxGrade: 40 })).toEqual([0, 3, 5, 8, 10, 15, 18, 20]);
+    expect(parseLimits('{"maxGrade":20}').maxGrade).toBe(20);
+    expect(parseLimits('nonsense')).toEqual(DEFAULT_LIMITS);
+    expect(nearestStop([0, 3, 5, 8], 6.9)).toBe(8);
   });
 
   it('clamps phase progress', () => {

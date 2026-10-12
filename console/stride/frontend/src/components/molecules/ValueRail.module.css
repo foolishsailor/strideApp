@@ -1,0 +1,95 @@
+/* The side docks, 140 – 800, under the metric band. Edge to edge with the
+   panel; everything pressable is held 16px in, because touches within ~15px
+   of the bezel register unreliably on this digitiser. */
+.rail {
+  position: absolute;
+  top: 140px;
+  bottom: 0;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 18px;
+  background: var(--role-fill-card);
+}
+.left {
+  left: 0;
+  border-right: var(--edge-width) solid var(--role-edge);
+}
+.right {
+  right: 0;
+  border-left: var(--edge-width) solid var(--role-edge);
+}
+
+.reading {
+  flex: none;
+  height: 124px;
+  text-align: center;
+}
+/* The display size would not fit 188px; this still reads from the belt. */
+.value {
+  margin-top: 6px;
+  font-size: 68px;
+}
+.target {
+  margin-top: 8px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.target b {
+  color: var(--colour-accent);
+  font-weight: 600;
+}
+
+/* Between the fixed + and −, the stops. About five and a half show, so it
+   is plain there is more to scroll. */
+.list {
+  position: relative; /* the stops measure their offsetTop from here */
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Let the list scroll vertically; nothing else. */
+  touch-action: pan-y;
+}
+.list::-webkit-scrollbar {
+  display: none;
+}
+
+.stop {
+  display: block;
+  width: 100%;
+  height: 56px;
+  margin-bottom: 6px;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  background: var(--role-fill);
+  border: var(--edge-width) solid var(--role-edge);
+  border-radius: var(--radius-chip);
+  color: var(--colour-ink);
+  font-family: inherit;
+  font-size: 26px;
+  font-weight: var(--weight-numeral);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--motion-quick), border-color var(--motion-quick), transform 0.06s;
+}
+.stop:last-child {
+  margin-bottom: 0;
+}
+.stop:global(.down) {
+  transform: scale(0.96);
+  background: var(--role-pressed);
+}
+.selected {
+  border-color: var(--colour-accent);
+  color: var(--colour-accent);
+  background: var(--role-selected);
+}
+
+/* Speed while the belt is stopped: shown, but not the thing to reach for. */
+
+.muted :global(button) {
+  opacity: 0.4;
+}

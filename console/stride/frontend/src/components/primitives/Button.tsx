@@ -5,7 +5,7 @@ import styles from './Button.module.css';
 
 export type ButtonTone = 'default' | 'primary' | 'stop';
 /** Size is the button's role on the panel, each sized for a finger mid-stride. */
-export type ButtonSize = 'control' | 'overlay' | 'wide' | 'chip' | 'menu' | 'corner';
+export type ButtonSize = 'control' | 'overlay' | 'wide' | 'chip' | 'menu' | 'corner' | 'rail';
 
 interface Common {
   tone?: ButtonTone;

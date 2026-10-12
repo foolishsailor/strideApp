@@ -86,6 +86,8 @@ export interface StrideBridge {
   hushCoach(): void;
   dim(on: boolean): void;
   routes(): string;
+  /** {minGrade, maxGrade, minKph, maxKph} as JSON. Not stubbed in a browser. */
+  boardLimits?(): string;
 }
 
 export interface TrackPoint {
@@ -117,6 +119,8 @@ export interface StrideCore {
   tap(el: Element, fn: (e: Event) => void): Element;
   stepper(el: Element, fn: (delta: number) => void, fine: number, coarse: number): Element;
   suppress(ms: number): void;
+  /** True in the moment after the screen woke, when no tap should count. */
+  justWoke(): boolean;
   wakeStep(overlay: Element, done: () => void): void;
   mmss(seconds: number): string;
   nf(n: number): string;

@@ -1,12 +1,17 @@
+/* The top dock, 0 – 140: the clock row (TopBar, drawn over it) and under it
+   the secondary numbers of a walk. Edge to edge, like the side rails. */
 .strip {
   position: absolute;
   left: 0;
   right: 0;
-  top: 566px;
-  height: 92px;
+  top: 0;
+  height: 140px;
+  padding-top: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--role-fill-card);
+  border-bottom: var(--edge-width) solid var(--role-edge);
 }
 .row > * {
   min-width: 150px;

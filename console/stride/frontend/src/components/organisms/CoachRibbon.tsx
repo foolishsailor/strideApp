@@ -6,8 +6,8 @@ import { coachHoldMs } from '../../lib/session';
 import { useSession } from '../../store/session';
 import styles from './CoachRibbon.module.css';
 
-/** The coach, docked in its own band (478 – 558) between the hero and the
- *  telemetry.
+/** The coach, docked in its own band (566 – 646) between the hero and the
+ *  controls, inside the rails.
  *
  *  It used to float over the top of the hero, where it covered the segment
  *  header and the warm-up countdown — the two things most worth reading at the
@@ -15,7 +15,7 @@ import styles from './CoachRibbon.module.css';
  *
  *  Always mounted, so it can fade in and out, and the band is simply empty
  *  when the coach is silent: a ribbon that pushed the layout around would move
- *  the telemetry under someone's eye mid-stride. */
+ *  the controls under someone's eye mid-stride. */
 export function CoachRibbon() {
   const { line, seq, shown } = useSession((s) => s.coach);
   const hide = useSession((s) => s.hideCoach);

@@ -69,11 +69,33 @@ describe('workout', () => {
   it('shows the lap track on a casual walk and the path on a guided one', () => {
     render(<App />);
     act(() => window.render({ mode: 'running', distance: 900 }));
-    expect(screen.getByText('laps · 400 m')).toBeTruthy();
-    expect(screen.getByText('2')).toBeTruthy();
+    // The lap count, not the 2 km/h stop in the speed rail.
+    expect(screen.getByText('laps · 400 m').previousElementSibling?.textContent).toBe('2');
     act(() => window.render({ mode: 'running', segments: 4, segment: 1, segmentLabel: 'Settle in', plan: 'Steady' }));
     expect(screen.getByText('Settle in')).toBeTruthy();
     expect(screen.queryByText('laps · 400 m')).toBeNull();
+  });
+
+  it('goes straight to a stop picked from a rail, and steps from + and −', () => {
+    const b = mockBridge({ boardLimits: () => JSON.stringify({ minKph: 1.6, maxKph: 16, minGrade: -3, maxGrade: 15 }) });
+    render(<App />);
+    act(() => window.render({ mode: 'running', speed: 5, targetSpeed: 5, incline: 2, targetIncline: 2 }));
+    const stop = (v: number) => document.querySelector(`[data-stop="${v}"]`)!;
+    fireEvent.click(stop(12));
+    expect(b.setSpeed).toHaveBeenCalledWith(12);
+    // Incline only takes a step: 8 % from a target of 2 % is six up.
+    fireEvent.click(stop(8));
+    expect(b.incline).toHaveBeenCalledWith(6);
+    // Only what this board reaches: up to 15 %, up to 16 km/h.
+    expect(stop(15)).toBeTruthy();
+    expect(document.querySelector('[data-stop="18"]')).toBeNull();
+    expect(document.querySelectorAll('[data-stop="16"]')).toHaveLength(1);
+    fireEvent.mouseDown(screen.getAllByText('+')[1]!);
+    fireEvent.mouseUp(screen.getAllByText('+')[1]!);
+    expect(b.speed).toHaveBeenCalledWith(0.1);
+    fireEvent.mouseDown(screen.getAllByText('−')[0]!);
+    fireEvent.mouseUp(screen.getAllByText('−')[0]!);
+    expect(b.incline).toHaveBeenCalledWith(-0.5);
   });
 
   it('gives warm-up the centre panel and SKIP', () => {

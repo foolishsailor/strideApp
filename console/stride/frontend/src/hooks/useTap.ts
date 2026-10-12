@@ -33,3 +33,40 @@ export function useStepper<E extends HTMLElement>(onStep: (delta: number) => voi
     if (el) core().stepper(el, (d) => latest.current(d), fine, coarse);
   }, [latest, fine, coarse]);
 }
+
+/** Distance a finger may travel and still count as a tap rather than a scroll. */
+const SLOP_PX = 10;
+
+/** A tap that lets the page scroll. `useTap` fires on touchstart and swallows
+ *  the gesture, which is right for a fixed button and wrong for a row in a
+ *  list you drag: here the press only counts on touchend, and only if the
+ *  finger stayed put. Still ignores the tap that woke the screen. */
+export function useScrollTap<E extends HTMLElement>(onTap: ((e: Event) => void) | undefined) {
+  const latest = useLatest(onTap);
+  return useCallback((el: E | null) => {
+    if (!el) return;
+    let x = 0, y = 0, moved = false, handled = false;
+    el.addEventListener('touchstart', (e) => {
+      handled = true;
+      moved = false;
+      x = e.touches[0]!.clientX;
+      y = e.touches[0]!.clientY;
+      el.classList.add('down');
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      const t = e.touches[0]!;
+      if (Math.abs(t.clientX - x) > SLOP_PX || Math.abs(t.clientY - y) > SLOP_PX) {
+        moved = true;
+        el.classList.remove('down');
+      }
+    }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      el.classList.remove('down');
+      if (moved || core().justWoke()) return;
+      e.preventDefault(); // no synthetic click after
+      latest.current?.(e);
+    });
+    el.addEventListener('touchcancel', () => el.classList.remove('down'));
+    el.addEventListener('click', (e) => { if (!handled && !core().justWoke()) latest.current?.(e); });
+  }, [latest]);
+}
