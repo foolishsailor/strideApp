@@ -15,7 +15,12 @@ import android.util.Log
  * The board pushes values once subscribed, so this keeps the latest of each and
  * every [cycle] reports the whole picture, the way a FitPro 1 reply would.
  */
-class FitPro2Board(private val conn: FitProConnection) {
+class FitPro2Board(
+    private val conn: FitProConnection,
+    /** A treadmill button pressed: KEY_COOKED's code, once per press. Poll
+     *  thread. The board acts on none of them itself; see MainActivity.physicalKey. */
+    private val onKey: (Int) -> Unit = {},
+) {
 
     companion object {
         const val TAG = "Stride"
@@ -347,9 +352,15 @@ class FitPro2Board(private val conn: FitProConnection) {
                 lastCurrentKph = v
                 Log.i(TAG, "fp2: CURRENT_KPH ${"%.2f".format(v)}")
             }
+            // A press is its code and a release is 0, so a change to a code is
+            // one press — and the board's repeat of its last frame, every
+            // ~1.5 s, is not a second one.
             if (id == FitPro2.Id.KEY_COOKED && v.toInt() != lastKey) {
                 lastKey = v.toInt()
-                if (lastKey != 0) Log.i(TAG, "fp2: key $lastKey")
+                if (lastKey != 0) {
+                    Log.i(TAG, "fp2: key $lastKey")
+                    try { onKey(lastKey) } catch (e: Exception) { Log.w(TAG, "fp2: key $lastKey failed: ${e.message}") }
+                }
             }
         } else if (f.type == FitPro2.Resp.ERROR) {
             // Once per distinct error: the board repeats it every ~1.5 s.

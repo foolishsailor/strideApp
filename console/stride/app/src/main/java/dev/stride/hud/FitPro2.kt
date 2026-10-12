@@ -75,6 +75,19 @@ object FitPro2 {
      */
     val WRITABLE = setOf(Id.TARGET_KPH, Id.TARGET_GRADE, Id.WORKOUT_STATE, Id.IDLE_SYSTEM_MODE_LOCK)
 
+    /** KEY_COOKED codes. 1–6 from iFit's code; the volume pair seen on
+     *  hardware 12/10/2026 (ETNT39225-INT). */
+    object Key {
+        const val STOP = 1
+        const val START = 2
+        const val SPEED_UP = 3
+        const val SPEED_DOWN = 4
+        const val INCLINE_UP = 5
+        const val INCLINE_DOWN = 6
+        const val VOLUME_UP = 200
+        const val VOLUME_DOWN = 201
+    }
+
     /** SYSTEM_MODE values. 2 is the safety key out ("DMK"), seen on hardware. */
     object SystemMode {
         const val BOOT_UP = 0

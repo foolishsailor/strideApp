@@ -361,6 +361,10 @@ class MainActivity : Activity() {
         /** The echo of what we sent, within the board's rounding. */
         const val ECHO_KPH = 0.03
 
+        /** The treadmill's incline keys, a step the same as the rail's. */
+        const val INCLINE_KEY_STEP = 0.5
+        const val KM_PER_MILE = 1.609344
+
         /**
          * Fallbacks only. The live values are in [Settings] — warm-up length,
          * cool-down length and warm-up speed are all set on the console now,
@@ -1226,9 +1230,9 @@ class MainActivity : Activity() {
             // so stepping down out of the bottom of the range means stop, and
             // stepping up out of zero jumps straight to the minimum.
             next = if (next < minKph) { if (delta > 0) minKph else 0.0 } else next
-            // On the grid, which the board's echo used to do for us. It is
-            // only adopted now when it is not ours — see the follow block.
-            targetKph = quantise(next, KPH_STEP).coerceIn(0.0, topKph())
+            // Not quantised to km/h: in miles the rail sends the km/h step
+            // that lands on the next 0.1 mph, which a km/h grid would undo.
+            targetKph = next.coerceIn(0.0, topKph())
             pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
         }
 
@@ -1699,6 +1703,62 @@ class MainActivity : Activity() {
         // board was sent: a belt 2% slow, which is something to calibrate.
         val belt = if (sentBeltKph > 0.0) sentBeltKph else kph
         return PodReading(cadence, watts, ms * 60 / cadence, belt * 0.98)
+    }
+
+    // --- the treadmill's own buttons ------------------------------------------
+
+    /**
+     * A button on the treadmill, as a Gen 7 board reports it.
+     *
+     * The board acts on none of its own keys: it tells the console, and iFit's
+     * app used to decide. With iFit gone they did nothing at all — volume,
+     * speed, incline, and STOP. Each now does what the same control on screen
+     * does, through the same bridge call, so it obeys the same rules (the
+     * safety key, the minimum speed, the calibration). Poll thread.
+     */
+    private fun physicalKey(code: Int) {
+        when (code) {
+            FitPro2.Key.VOLUME_UP -> volume(+1)
+            FitPro2.Key.VOLUME_DOWN -> volume(-1)
+            // Halt first, ask second, as the STOP on screen does.
+            FitPro2.Key.STOP -> if (Session.isMoving(session)) {
+                bridge.pause()
+                runOnUiThread { web.evaluateJavascript("window.stopPressed && window.stopPressed()", null) }
+            }
+            FitPro2.Key.START -> when (session) {
+                Session.PAUSED -> bridge.resume()
+                Session.WELCOME, Session.SUMMARY -> bridge.choose()
+                else -> {}
+            }
+            FitPro2.Key.SPEED_UP -> bridge.speed(speedStep(+1))
+            FitPro2.Key.SPEED_DOWN -> bridge.speed(speedStep(-1))
+            FitPro2.Key.INCLINE_UP -> bridge.incline(INCLINE_KEY_STEP)
+            FitPro2.Key.INCLINE_DOWN -> bridge.incline(-INCLINE_KEY_STEP)
+        }
+    }
+
+    /** The km/h change that lands on the next 0.1 of the unit on screen, the
+     *  way the speed rail steps (speedDelta in the page). */
+    private fun speedStep(dir: Int): Double {
+        val per = if (cfg.metric()) 1.0 else KM_PER_MILE
+        val shown = targetKph / per
+        val next = if (dir > 0) Math.floor(shown * 10 + 1e-6) / 10 + 0.1
+                   else Math.ceil(shown * 10 - 1e-6) / 10 - 0.1
+        return next * per - targetKph
+    }
+
+    /** The console's media volume, which is the headphones while they are
+     *  connected, with Android's own volume bar so the change can be seen. */
+    private fun volume(dir: Int) {
+        val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager ?: return
+        runOnUiThread {
+            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                if (dir > 0) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER,
+                android.media.AudioManager.FLAG_SHOW_UI)
+            Log.i(TAG, "volume ${if (dir > 0) "up" else "down"}: " +
+                    "${am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)}/" +
+                    "${am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)}")
+        }
     }
 
     // --- belt calibration -----------------------------------------------------
@@ -4098,7 +4158,7 @@ class MainActivity : Activity() {
         lastReacquireMs = SystemClock.elapsedRealtime()
         sim?.let { s ->
             conn.openSim(s)
-            val board = FitPro2Board(conn)
+            val board = FitPro2Board(conn, ::physicalKey)
             if (!board.setup()) return false
             fp2 = board
             Log.i(TAG, "simulated board is answering again")
@@ -4119,7 +4179,7 @@ class MainActivity : Activity() {
         if (err != null) { Log.w(TAG, "board silent — reopen failed: $err"); return false }
         if (conn.isFitPro2) {
             // A fresh subscription; there is no lock to undo on FitPro 2.
-            val board = FitPro2Board(conn)
+            val board = FitPro2Board(conn, ::physicalKey)
             if (!board.setup()) { Log.w(TAG, "board silent — reopened, but FitPro 2 setup failed"); return false }
             fp2 = board
             Log.i(TAG, "FitPro 2 board is answering again")
@@ -4170,7 +4230,7 @@ class MainActivity : Activity() {
      * is a FitPro 1 field set. The limits arrive with the subscription.
      */
     private fun startFitPro2(): Boolean {
-        val board = FitPro2Board(conn)
+        val board = FitPro2Board(conn, ::physicalKey)
         if (!board.setup()) return false
         fp2 = board
         when (val r = board.cycle(null, minKph)) {

@@ -14,6 +14,9 @@ export function installKotlinEntryPoints(): void {
      on the Kotlin side: this WebView is a 2020 Chromium behind file://, and the
      platform media stack is what can be relied on to make a sound. */
   window.coach = (c) => useSession.getState().sayCoach(c);
+  /* The treadmill's own STOP. Kotlin has already paused the belt; this asks
+     the question the screen's STOP asks (ControlBar). */
+  window.stopPressed = () => useUi.getState().setConfirmOpen(true);
   /* Kotlin calls this when the page moves over another app and when it
      comes home (OverApp.kt). */
   window.overApp = (on) => setOverApp(!!on);

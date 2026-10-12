@@ -212,6 +212,8 @@ declare global {
     render: (s: SessionState) => void;
     plan: (p: Plan) => void;
     coach: (c: CoachLine) => void;
+    /** Kotlin calls this when the treadmill's own STOP is pressed. */
+    stopPressed: () => void;
     overApp: (on: boolean) => void;
     /** Calls Kotlin made before the app module ran; see trailmate.html. */
     __early?: { render?: SessionState; plan?: Plan; coach?: CoachLine };
