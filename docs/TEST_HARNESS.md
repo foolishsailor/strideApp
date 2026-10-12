@@ -70,10 +70,13 @@ The poll loop's stall hook is here too, for the watchdog:
 
 ## What it has found
 
-- **HOME during a cool-down leaves the belt to the runaway check.** The welcome
-  screen comes up while the board is still RUNNING. `enforceStopped` stops it
-  within a poll, but records a "belt running unattended" incident and an MQTT
-  runaway alert each time. Found on the emulator, 12/10/2026. Not yet changed.
+- **HOME during a cool-down left the belt to the runaway check.** HOME sent
+  IDLE, which is not a way out of running, so the belt turned on behind the
+  welcome screen until `enforceStopped` caught it. That stopped it, but logged
+  a "belt running unattended" incident and an MQTT alert every time. Found on
+  the emulator, 12/10/2026. **Fixed:** HOME now sends PAUSE to a moving belt
+  and IDLE once it has stopped. Re-run on the emulator: belt paused at once,
+  idle 4 s later, no runaway logged.
 
 ## Safety
 
