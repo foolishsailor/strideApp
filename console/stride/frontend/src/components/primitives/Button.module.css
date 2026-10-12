@@ -102,3 +102,48 @@
   height: 60px;
   font-size: var(--font-small);
 }
+/* ---- bare: the walk screen's controls ------------------------------------ */
+/* The house style for the controls on the active treadmill screen: the text
+   alone, on the backdrop, large. No fill, edge or shadow; the whole box is
+   still the touch target. Tone and state show in the text's colour only.
+   `rail` and `dock` are always bare. */
+.bare {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  font-weight: var(--weight-numeral);
+}
+.bare.active,
+.bare.selected {
+  background: transparent;
+}
+.bare:active,
+.bare:global(.down) {
+  background: transparent;
+  transform: scale(0.9);
+  color: var(--colour-ink);
+}
+
+/* The fixed + and − at either end of a side rail's list. */
+.rail {
+  flex: none;
+  display: block;
+  width: 100%;
+  height: 100px;
+  color: var(--colour-accent);
+  font-size: 84px;
+  line-height: 100px;
+  overflow: hidden;
+  letter-spacing: 0;
+}
+/* The bottom dock: start / skip, fan and stop. Shares the row equally. */
+.dock {
+  flex: 1;
+  max-width: 340px;
+  height: 88px;
+  margin: 0 12px;
+  font-size: 56px;
+  line-height: 88px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

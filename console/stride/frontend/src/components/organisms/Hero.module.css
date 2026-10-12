@@ -1,9 +1,10 @@
-/* The hero band, 62 – 466. Track, path and phase panel all occupy exactly
-   this box; only one is ever mounted. */
+/* The hero band, 150 – 554, between the rails. Track, path and phase panel
+   all occupy exactly this box; only one is ever mounted. */
 .hero {
   position: absolute;
-  left: 274px;
-  top: 62px;
+  left: 50%;
+  margin-left: -366px; /* centred between the rails at any width */
+  top: 150px;
   width: 732px;
   height: 404px;
 }

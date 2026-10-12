@@ -1,13 +1,25 @@
+/* The top bar, 0 – 128, edge to edge: incline reading, the metrics with the
+   status under them, speed reading. The rails start where it ends. No panel
+   of its own. */
 .strip {
   position: absolute;
   left: 0;
   right: 0;
-  top: 566px;
-  height: 92px;
+  top: 0;
+  height: 128px;
+  padding-top: 8px;
   display: flex;
+  align-items: flex-start;
+}
+.middle {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
 }
 .row > * {
-  min-width: 150px;
+  min-width: 180px;
+}
+.status {
+  margin-top: 6px;
 }

@@ -1,11 +1,14 @@
+/* Docked to the bottom edge, between the two rails, at any screen height.
+   The bottom padding holds the buttons clear of the bezel: touches within
+   ~15px of it register unreliably on this digitiser. */
 .controls {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 678px;
-  height: 88px;
+  left: 150px;
+  right: 150px;
+  bottom: 0;
+  height: 104px;
+  padding-bottom: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 34px;
 }

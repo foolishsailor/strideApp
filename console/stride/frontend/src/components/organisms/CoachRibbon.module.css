@@ -1,8 +1,8 @@
 .coach {
   position: absolute;
-  left: 34px;
-  right: 34px;
-  top: 478px;
+  left: 256px;
+  right: 256px;
+  bottom: 116px; /* just above the docked controls */
   height: 80px;
   background: var(--role-fill-floating);
   border: var(--edge-width) solid var(--role-edge-floating);

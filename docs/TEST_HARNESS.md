@@ -50,8 +50,8 @@ attached.
 | `status` / `watch` | The session and the board, once / every 2 s |
 | `start` | A free walk, warm-up first (as the welcome button does) |
 | `guided <steady\|rolling\|pyramid\|climb> [minutes]` | One of the four guided shapes, default 10 min |
-| `speed ±n` / `setspeed n` | The on-screen speed buttons / take a pace |
-| `incline ±n` | The on-screen incline buttons |
+| `speed ±n` / `setspeed n` | The on-screen speed buttons / take a pace or pick a speed stop |
+| `incline ±n` / `setincline n` | The on-screen incline buttons / a stop picked from the incline rail |
 | `press <speed_up\|speed_down\|incline_up\|incline_down\|start\|stop>` | The console's own buttons: the board changes, the HUD follows |
 | `key out` / `key in`, `ackkey` | Pull or replace the safety key; acknowledge the banner |
 | `pause` / `resume` / `end` / `home` | As on screen |

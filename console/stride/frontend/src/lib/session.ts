@@ -118,10 +118,46 @@ export function phasePreview(mode: SessionMode, steps: readonly PlanStep[]): str
   return first ? `${steps.length} stretches ahead · first up: ${first.label}` : 'then the pace is yours';
 }
 
-/** 0..19 km/h and −3..+12 % mapped onto a column of ticks. */
-export const TICKS = 10;
-export const speedTicks = (kph: number): number => Math.round((kph / 19) * TICKS);
-export const inclineTicks = (pct: number): number => Math.round(((pct + 3) / 15) * TICKS);
+/** What the board says it can do. Kotlin's defaults until it says otherwise. */
+export interface Limits { minKph: number; maxKph: number; minGrade: number; maxGrade: number }
+export const DEFAULT_LIMITS: Limits = { minKph: 1.6, maxKph: 19, minGrade: -3, maxGrade: 12 };
+
+export function parseLimits(json: string | undefined): Limits {
+  try {
+    return { ...DEFAULT_LIMITS, ...(JSON.parse(json || '{}') as Partial<Limits>) };
+  } catch {
+    return DEFAULT_LIMITS;
+  }
+}
+
+/** The speeds offered in a side rail: every whole km/h the belt can do.
+ *  Below the board's minimum there is no slow, only stopped, so none of those. */
+export function speedStops(l: Limits): number[] {
+  const out: number[] = [];
+  for (let v = Math.ceil(l.minKph); v <= Math.floor(l.maxKph); v++) out.push(v);
+  return out;
+}
+
+/** The grades offered in a side rail: the board's full decline if it has
+ *  one, the hand-picked ones up to 20 %, then every 5 % above that as far as
+ *  this board goes. Trimmed to what it reaches — a stop it would silently
+ *  clamp is a promise the screen can't keep. */
+export const INCLINE_STOPS = [0, 3, 5, 8, 10, 15, 18, 20] as const;
+const INCLINE_STEP_ABOVE = 5;
+export function inclineStops(l: Limits): number[] {
+  const out: number[] = l.minGrade < 0 ? [l.minGrade] : [];
+  out.push(...INCLINE_STOPS.filter((v) => v >= l.minGrade && v <= l.maxGrade));
+  const top = INCLINE_STOPS[INCLINE_STOPS.length - 1]!;
+  for (let v = top + INCLINE_STEP_ABOVE; v <= l.maxGrade; v += INCLINE_STEP_ABOVE) out.push(v);
+  return out;
+}
+
+/** The stop nearest a value: the one a rail keeps in view. */
+export function nearestStop(stops: readonly number[], v: number): number | undefined {
+  let best: number | undefined;
+  for (const s of stops) if (best === undefined || Math.abs(s - v) < Math.abs(best - v)) best = s;
+  return best;
+}
 
 export const FAN_LEVELS = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'AUTO'] as const;
 const FAN_SHORT = ['', 'I', 'II', 'III', 'A'];

@@ -119,6 +119,7 @@ def main():
     sub.add_parser("speed").add_argument("by", type=signed)
     sub.add_parser("setspeed").add_argument("kph", type=float)
     sub.add_parser("incline").add_argument("by", type=signed)
+    sub.add_parser("setincline").add_argument("pct", type=float)
     sub.add_parser("press").add_argument("button", choices=BUTTONS)
     sub.add_parser("key").add_argument("state", choices=("out", "in"))
     sub.add_parser("pulse").add_argument("state", choices=("on", "off"))
@@ -153,6 +154,8 @@ def main():
         con.ctl(a.cmd, "--ef", "by", str(a.by))
     elif a.cmd == "setspeed":
         con.ctl("setspeed", "--ef", "kph", str(a.kph))
+    elif a.cmd == "setincline":
+        con.ctl("setincline", "--ef", "pct", str(a.pct))
     elif a.cmd == "press":
         con.ctl("press", "--es", "button", a.button)
     elif a.cmd == "key":

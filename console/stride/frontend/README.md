@@ -64,8 +64,8 @@ src/
   hooks/                 useTap/useStepper, useClock, useIdleSleep
   components/
     primitives/          Button, PressableCard, Text (Label, Numeral, Heading, Prose), Layout, Overlay
-    molecules/           Metric, StatCard, SideGauge, ChoiceCard, PlanCard, Sparkline, TopBar, StatusChip
-    organisms/           Hero (Track/Path/Phase), Gauges, MetricStrip, ControlBar, FanMenu, CoachRibbon
+    molecules/           Metric, StatCard, ValueRail, RailReading, ChoiceCard, PlanCard, Sparkline, TopBar, StatusChip
+    organisms/           Hero (Track/Path/Phase), Rails, MetricStrip, ControlBar, FanMenu, CoachRibbon
   screens/               welcome (Who/How/Plan steps), workout, summary
   overlays/              paused, safety key, sleep
 ```
@@ -87,3 +87,19 @@ is which.
 
 **Tests** load the real `stride-core.js`, so the track maths, formatters and
 touch handling under test are the ones the console runs.
+
+## The walk screen
+
+The active treadmill screen (`screens/workout`) docks everything to the
+edges. A full-width bar along the top holds incline at its left end, speed at
+its right and the walk's numbers between them. The incline and speed rails
+run down the sides from the bottom of that bar: a fixed + and −, with a
+scrolling list of stops between them. Start, fan and stop are docked along
+the bottom. The hero sits in the middle.
+
+**Its controls are text only.** No fill, no edge, no shadow: just large text
+on the backdrop, with tone and state shown only in the text's colour. The
+whole box is still the touch target. Use `Button size="rail"` or
+`size="dock"`, which are always bare (`.bare` in `Button.module.css`), or
+style a new control the same way. Don't put boxed buttons on this screen.
+The welcome and summary screens and the overlays keep their boxed buttons.
