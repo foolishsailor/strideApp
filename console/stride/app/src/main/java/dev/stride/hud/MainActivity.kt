@@ -1642,6 +1642,10 @@ class MainActivity : Activity() {
 
             Settings.POD_ADDR -> applyPod()
 
+            // A different server may well be one that answers: try the queue
+            // now rather than at the end of a back-off against the old one.
+            Settings.TRAILMATE_URL -> trailmate.kick()
+
             // A reset changes everything at once.
             "" -> {
                 Thread { applyMqttSettings() }.start()

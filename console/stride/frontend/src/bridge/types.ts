@@ -44,6 +44,9 @@ export interface SessionState {
   maxSpeed?: number;
   avgIncline?: number;
   summaryLine?: string;
+  /** The finished walk on its way to TrailMate: sending | sent | waiting |
+   *  failed | reconnect, or empty when it is not going (TrailMate.kt). */
+  trailmate?: string;
 }
 
 /** One stretch of a guided walk, resolved by Plan.kt. Times in seconds. */
