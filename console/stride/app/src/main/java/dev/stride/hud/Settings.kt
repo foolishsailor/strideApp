@@ -460,10 +460,8 @@ class Settings(context: Context) {
     /** Settings only. People, totals and history are not touched. */
     fun resetSettings() {
         val keep = prefs.getString(PEOPLE, null)
-        val ui = prefs.getString(MainActivity.PREF_UI, MainActivity.DEFAULT_UI)
         prefs.edit().clear()
             .putString(PEOPLE, keep)
-            .putString(MainActivity.PREF_UI, ui)
             .apply()
     }
 }

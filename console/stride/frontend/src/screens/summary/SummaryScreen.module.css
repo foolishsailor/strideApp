@@ -4,7 +4,6 @@
 .kicker {
   margin-top: 12px;
   font-size: var(--font-lead);
-  letter-spacing: 0.14em;
 }
 /* The coach's closing line. */
 .coach {

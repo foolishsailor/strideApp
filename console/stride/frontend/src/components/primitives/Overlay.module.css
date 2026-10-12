@@ -1,5 +1,5 @@
 .scrim {
-  background: rgba(5, 11, 31, 0.98);
+  background: var(--role-scrim);
   z-index: var(--layer-overlay);
 }
 .alert {
@@ -7,7 +7,7 @@
 }
 .message {
   margin-top: 14px;
-  font-weight: 400;
+  font-weight: var(--weight-body);
 }
 .actions {
   margin-top: 46px;

@@ -44,18 +44,22 @@ cd strideApp/console/stride
 `run.sh` sets `JAVA_HOME` for you. Calling `./gradlew` directly tends to fail
 in a way that blames the wrong thing.
 
-The five interfaces are plain HTML in
-[`console/stride/app/src/main/assets/ui/`](console/stride/app/src/main/assets/ui/)
-and each one opens standalone in a desktop browser, with a stubbed bridge and
-fake data behind it. You can redesign a screen without going anywhere near a
-treadmill:
+The interface is a React + TypeScript project in
+[`console/stride/frontend/`](console/stride/frontend/), in the TrailMate
+app's design. It builds to `trailmate.html` in
+[`console/stride/app/src/main/assets/ui/`](console/stride/app/src/main/assets/ui/).
+You can redesign a screen in a desktop browser, with a stubbed bridge and fake
+data, without going anywhere near a treadmill:
 
 ```sh
-open console/stride/app/src/main/assets/ui/cluster.html
+cd console/stride/frontend && npm install
+npm run dev    # http://localhost:5173/trailmate.html
 ```
 
-Add `?screen=welcome`, `?screen=summary`, `?screen=paused` and so on to land
-on a particular state, or press the number keys to jump between them.
+Add `?screen=live-guided`, `?screen=summary`, `?screen=paused` and so on to
+land on a particular state, or press the number keys to jump between them.
+See [the frontend README](console/stride/frontend/README.md) for how it is
+organised.
 
 ## Where things live
 

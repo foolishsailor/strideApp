@@ -29,7 +29,6 @@
 }
 .lapCaption {
   margin-top: 10px;
-  letter-spacing: 0.28em;
 }
 
 /* ---- path ----------------------------------------------------------------- */
@@ -40,9 +39,6 @@
   top: 16px;
   text-align: center;
   pointer-events: none;
-}
-.segName {
-  letter-spacing: 0.26em;
 }
 .segSub {
   margin-top: 6px;
@@ -75,13 +71,10 @@
   align-items: center;
   justify-content: center;
 }
-.phaseName {
-  letter-spacing: 0.34em;
-}
 .phaseClock {
   margin-top: 22px;
   font-size: 150px;
-  text-shadow: 0 0 44px rgba(57, 224, 255, 0.35);
+  text-shadow: 0 0 44px var(--role-glow);
 }
 .phaseNote {
   margin-top: 18px;
@@ -89,7 +82,6 @@
 /* What is coming, stated as a preview. Never live plan state. */
 .phasePreview {
   margin-top: 14px;
-  letter-spacing: 0.16em;
 }
 .bar {
   margin-top: 32px;

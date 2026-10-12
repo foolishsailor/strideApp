@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------------------
-   STRIDE "Original" — page-level rules only. Everything else is a CSS module
+   STRIDE — page-level rules only. Everything else is a CSS module
    beside its component, reading the tokens from theme/tokens.ts.
 
    Target viewport is exactly 1280x800 (the console panel). Every screen is
@@ -33,7 +33,7 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
   /* WebView paints a yellow box on tap/focus by default. */
-  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-tap-highlight-color: transparent;
 }
 
 *:focus {
@@ -48,7 +48,7 @@ body::before {
   right: 0;
   bottom: 0;
   left: 0;
-  background: radial-gradient(ellipse 900px 520px at 50% 44%, rgba(28, 58, 140, 0.55) 0%, rgba(10, 21, 51, 0.25) 45%, transparent 72%);
+  background: radial-gradient(ellipse 900px 520px at 50% 44%, var(--role-backdrop-inner) 0%, var(--role-backdrop-mid) 45%, transparent 72%);
   pointer-events: none;
 }
 

@@ -1,5 +1,5 @@
 import type { PlanStep } from '../../bridge/types';
-import { alpha, colour } from '../../theme/tokens';
+import { alpha, colour, theme } from '../../theme/tokens';
 import {
   CT, PH, PW, SAMPLES_U, SEE_AHEAD, SPAN, ST, X0, Y0,
   hash, project, type ProjectedPoint, type View,
@@ -80,12 +80,14 @@ function pines(c: Ctx, offset: number, baseY: number, size: number, spacing: num
   }
 }
 
-const FAR_RIDGE: Ridge = { baseY: PH * 0.4, height: 122, spacing: 118, dark: '#0d1836', light: '#121f45', cap: null };
-const NEAR_RIDGE: Ridge = { baseY: PH * 0.5, height: 96, spacing: 92, dark: '#111f45', light: '#16285a', cap: '#1c3269' };
+const { scenery } = theme;
+const FAR_RIDGE: Ridge = { baseY: PH * 0.4, height: 122, spacing: 118, ...scenery.ridgeFar, cap: null };
+const NEAR_RIDGE: Ridge = { baseY: PH * 0.5, height: 96, spacing: 92, ...scenery.ridgeNear };
 
 /** Erase the scenery back towards the canvas edges, so it dissolves into the
  *  page instead of ending on the hard rectangle of the canvas. Done before the
- *  path is drawn, so the path keeps its own edges. */
+ *  path is drawn, so the path keeps its own edges. The black here is an erase
+ *  mask's opacity, not a colour, which is why it is not in the theme. */
 function fadeEdges(c: Ctx) {
   c.globalCompositeOperation = 'destination-out';
   const wipes: [number, number, number, number][] = [
@@ -132,9 +134,9 @@ function ground(c: Ctx, pts: ProjectedPoint[], flat: ProjectedPoint[]) {
   for (let i = n - 1; i >= 0; i--) c.lineTo(flat[i]!.x, flat[i]!.y + LIP * pts[i]!.p);
   c.closePath();
   const soil = c.createLinearGradient(X0, Y0 + 30, X0 + SPAN * CT, Y0 - SPAN * ST);
-  soil.addColorStop(0, 'rgba(23,42,96,.92)');
-  soil.addColorStop(0.45, 'rgba(17,32,74,.62)');
-  soil.addColorStop(1, 'rgba(12,24,56,0)');
+  soil.addColorStop(0, scenery.soil[0]);
+  soil.addColorStop(0.45, scenery.soil[1]);
+  soil.addColorStop(1, scenery.soil[2]);
   c.fillStyle = soil;
   c.fill();
 
@@ -142,7 +144,7 @@ function ground(c: Ctx, pts: ProjectedPoint[], flat: ProjectedPoint[]) {
      the fill reads as a shadow rather than a surface. */
   polyline(c, pts);
   c.lineWidth = 1.5;
-  c.strokeStyle = 'rgba(90,120,200,.34)';
+  c.strokeStyle = scenery.groundEdge;
   c.stroke();
 
   /* The level line: where the path would run if the ground stayed flat. The
@@ -214,7 +216,7 @@ function walker(c: Ctx, me: ProjectedPoint) {
   c.scale(1, 0.34);
   c.beginPath();
   c.arc(0, 0, 20, 0, Math.PI * 2);
-  c.fillStyle = 'rgba(4,9,26,.55)';
+  c.fillStyle = scenery.contactShadow;
   c.fill();
   c.restore();
 
@@ -242,7 +244,7 @@ export function drawPath(c: Ctx, v: View, steps: readonly PlanStep[]): void {
      numbers around it are what someone is actually reading. */
   ridge(c, v.world * 1.1, FAR_RIDGE, vanishX, 210);
   ridge(c, v.world * 2.2, NEAR_RIDGE, vanishX, 170);
-  pines(c, v.world * 5.5, PH * 0.6, 34, 150, 'rgba(22,40,92,.6)', pts);
+  pines(c, v.world * 5.5, PH * 0.6, 34, 150, scenery.pine, pts);
   fadeEdges(c);
 
   c.lineCap = 'round';

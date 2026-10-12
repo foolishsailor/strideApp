@@ -30,11 +30,8 @@ export function Row({ space = 0, className, children }: {
   );
 }
 
-/** A rounded translucent panel — cards, picks and the coach all sit on one. */
-export function Surface({ radius = 'lg', className, children }: {
-  radius?: 'md' | 'lg' | 'xl';
-  className?: string;
-  children: ReactNode;
-}) {
-  return <div className={cx(styles.surface, styles[radius], className)}>{children}</div>;
+/** A panel that tiles sit on — the summary's results. Fill, edge, radius and
+ *  shadow all come from the theme. */
+export function Surface({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cx(styles.surface, className)}>{children}</div>;
 }

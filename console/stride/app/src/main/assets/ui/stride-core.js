@@ -1,11 +1,9 @@
 /* ===========================================================================
-   STRIDE core — the part every UI shares.
+   STRIDE core — everything the screen needs that is not a look.
 
-   The console runs one HTML document at a time (see MainActivity: the chosen
-   UI is loaded into the WebView by asset name). Each document owns its whole
-   look — its own DOM, its own CSS, no shared stylesheet, because a shared
-   stylesheet is how five deliberately different interfaces start leaking into
-   each other. What they *do* share is everything that is not a look:
+   The console runs one HTML document (MainActivity.UI_URL), built from
+   console/stride/frontend. That document owns the look; this file and
+   stride-settings.js are the hand-written parts beside it:
 
      * the 400 m track maths, which is fiddly and easy to get subtly wrong;
      * the state contract, so one Kotlin snapshot reads the same everywhere;
@@ -876,103 +874,8 @@ function flow(onStep) {
 }
 
 /* ===========================================================================
-   3b. THE FIVE INTERFACES
-   ---------------------------------------------------------------------------
-   Every UI carries a settings screen that can reach the other four, so the
-   list of what exists — and what each one looks like — is shared rather than
-   copied five times.
-
-   The sketches are 160×100 inline SVG, each drawn in its own palette. Inline
-   because the console may boot offline and there is nowhere to fetch an image
-   from; SVG rather than a screenshot because a thumbnail of a layout only has
-   to say "big dials" or "one bright pill", and 300 bytes says that fine.
+   3b. WHO IS SET UP
    =========================================================================== */
-
-var UI_META = [
-  /* The arcs below are drawn on the *same* stadium as the rail under them —
-     top straight plus the right bend, which is exactly half the perimeter. An
-     approximate arc reads as a mistake at this size, because the eye has the
-     rail sitting right there to compare it against. */
-  { id: 'original', name: 'Original', blurb: 'Oval track, big flanking numbers. The one it has been walked on.',
-    sketch:
-      '<rect width="160" height="100" fill="#0a1533"/>' +
-      '<rect x="54" y="24" width="52" height="34" rx="17" fill="none" stroke="#16255a" stroke-width="1.5"/>' +
-      '<path d="M71 24 H89 A17 17 0 0 1 89 58" fill="none" stroke="#39e0ff" stroke-width="2.5" stroke-linecap="round"/>' +
-      '<circle cx="89" cy="58" r="2.5" fill="#eaf0ff"/>' +
-      '<rect x="12" y="30" width="26" height="12" rx="2" fill="#eaf0ff" opacity=".85"/>' +
-      '<rect x="122" y="30" width="26" height="12" rx="2" fill="#eaf0ff" opacity=".85"/>' +
-      '<rect x="12" y="66" width="136" height="1" fill="#16255a"/>' +
-      '<g fill="#16255a"><rect x="12" y="82" width="20" height="10" rx="5"/><rect x="36" y="82" width="20" height="10" rx="5"/>' +
-      '<rect x="60" y="82" width="20" height="10" rx="5"/><rect x="84" y="82" width="20" height="10" rx="5"/>' +
-      '<rect x="108" y="82" width="20" height="10" rx="5"/></g>' +
-      '<rect x="132" y="82" width="16" height="10" rx="5" fill="#ff5c7a" opacity=".6"/>' },
-
-  { id: 'ember', name: 'Ember', blurb: 'Warm near-black, hairlines, one amber light. Built for 6am.',
-    sketch:
-      '<rect width="160" height="100" fill="#0b0a09"/>' +
-      '<rect x="54" y="22" width="52" height="36" rx="18" fill="none" stroke="#221f1c" stroke-width="1"/>' +
-      '<path d="M62 22 H98 A18 18 0 0 1 106 40" fill="none" stroke="#e0a458" stroke-width="2" stroke-linecap="round"/>' +
-      '<rect x="14" y="12" width="18" height="3" fill="#7c756b" opacity=".5"/>' +
-      '<rect x="14" y="64" width="132" height="1" fill="#1c1917"/>' +
-      '<g fill="#f4efe6" opacity=".7"><rect x="14" y="72" width="20" height="7"/><rect x="46" y="72" width="20" height="7"/>' +
-      '<rect x="78" y="72" width="20" height="7"/><rect x="110" y="72" width="20" height="7"/></g>' +
-      '<g fill="none" stroke="#2a2521"><rect x="14" y="86" width="26" height="9"/><rect x="44" y="86" width="20" height="9"/>' +
-      '<rect x="68" y="86" width="20" height="9"/><rect x="92" y="86" width="20" height="9"/></g>' +
-      '<rect x="120" y="86" width="26" height="9" fill="#e0553e"/>' },
-
-  { id: 'cluster', name: 'Cluster', blurb: 'Machined dials and mono figures. An instrument cluster.',
-    sketch:
-      '<rect width="160" height="100" fill="#0d0f10"/>' +
-      '<circle cx="46" cy="40" r="21" fill="none" stroke="#23282b" stroke-width="5"/>' +
-      '<path d="M46 19 A21 21 0 0 1 63 51" fill="none" stroke="#6fd0e0" stroke-width="5" stroke-linecap="round"/>' +
-      '<circle cx="114" cy="40" r="21" fill="none" stroke="#23282b" stroke-width="5"/>' +
-      '<path d="M114 19 A21 21 0 0 1 130 30" fill="none" stroke="#e5b567" stroke-width="5" stroke-linecap="round"/>' +
-      '<g fill="#141719"><rect x="12" y="74" width="32" height="16" rx="3"/><rect x="48" y="74" width="32" height="16" rx="3"/>' +
-      '<rect x="84" y="74" width="32" height="16" rx="3"/></g>' +
-      '<rect x="120" y="74" width="28" height="16" rx="3" fill="#d92d20"/>' },
-
-  /* No oval on this one, because there isn't one: Daylight's casual hero is a
-     lap count set enormous with a progress bar under it. A thumbnail showing a
-     ring would be advertising the wrong interface. What it shows instead is
-     what actually distinguishes it — paper, ink borders, editorial left-align,
-     one big figure. */
-  { id: 'daylight', name: 'Daylight', blurb: 'Warm paper and ink. The light one — bright rooms, older eyes.',
-    sketch:
-      '<rect width="160" height="100" fill="#eae6dc"/>' +
-      '<rect x="11" y="12" width="138" height="2" fill="#1b1a17"/>' +
-      '<text x="11" y="52" font-family="Helvetica,Arial,sans-serif" font-size="38" font-weight="700" fill="#1b1a17">2</text>' +
-      '<rect x="11" y="60" width="88" height="7" fill="#dcd7c9"/>' +
-      '<rect x="11" y="60" width="62" height="7" fill="#3d6b4a"/>' +
-      '<rect x="112" y="22" width="37" height="18" rx="3" fill="#f6f3ea" stroke="#1b1a17" stroke-width="2"/>' +
-      '<rect x="112" y="46" width="37" height="18" rx="3" fill="#f6f3ea" stroke="#1b1a17" stroke-width="2"/>' +
-      '<g fill="#f6f3ea" stroke="#1b1a17" stroke-width="2"><rect x="11" y="78" width="30" height="14" rx="3"/>' +
-      '<rect x="47" y="78" width="26" height="14" rx="3"/><rect x="79" y="78" width="26" height="14" rx="3"/></g>' +
-      '<rect x="111" y="78" width="38" height="14" rx="3" fill="#c02b1d" stroke="#1b1a17" stroke-width="2"/>' },
-
-  { id: 'pacer', name: 'Pacer', blurb: 'Violet and lime, chunky pills, plain-spoken. Hard to misread.',
-    sketch:
-      '<rect width="160" height="100" fill="#16121f"/>' +
-      '<rect x="10" y="10" width="66" height="26" rx="13" fill="#211b2e"/>' +
-      '<rect x="84" y="10" width="66" height="26" rx="13" fill="#211b2e"/>' +
-      '<rect x="10" y="44" width="140" height="26" rx="13" fill="#1c1728"/>' +
-      '<rect x="10" y="44" width="86" height="26" rx="13" fill="#c6f24e"/>' +
-      '<g fill="#2b2340"><rect x="10" y="78" width="34" height="16" rx="8"/><rect x="48" y="78" width="30" height="16" rx="8"/>' +
-      '<rect x="82" y="78" width="30" height="16" rx="8"/></g>' +
-      '<rect x="116" y="78" width="34" height="16" rx="8" fill="#ff4d3d"/>' }
-];
-
-/** Ask the bridge what is actually in this build; fall back to all of them. */
-function uiList() {
-  try {
-    return JSON.parse(global.Stride.availableUis());
-  } catch (e) {
-    return UI_META.map(function (u) { return u.id; });
-  }
-}
-
-function currentUi() {
-  try { return global.Stride.currentUi(); } catch (e) { return 'original'; }
-}
 
 /**
  * Everyone set up on this console, newest state every call.
@@ -1150,7 +1053,7 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
-              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'setUi', 'wakeBoard'];
+              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'wakeBoard'];
 
 /** @return true if this page is running without the console behind it. */
 function stub() {
@@ -1177,13 +1080,6 @@ function stub() {
     if (pretendDead) return;
     global.setTimeout(function () { pretendWake = 'awake'; }, 1500);
   };
-
-  var pretendUi = 'original';
-  s.currentUi = function () { return pretendUi; };
-  s.availableUis = function () {
-    return '["original","ember","cluster","daylight","pacer"]';
-  };
-  s.setUi = function (name) { pretendUi = name; console.log('Stride.setUi', name); };
 
   /* Two routes on the desktop, so the third control card and the route list can
      be designed and reviewed in a browser. Real ones come from the phone, and
@@ -1259,18 +1155,18 @@ function wakeStep(overlay, done) {
 
   var ask = overlay.querySelector('.wakeask');
   if (!ask) {
-    /* Built here rather than in five documents, and styled inline for the same
-       reason: this is one question with one answer, and the five sleep screens
-       are all but identical — a dark field with a clock on it. Deliberately
-       colourless, so it does not have to pick a side between five accents. */
+    /* Built here rather than in each document, and styled inline: this is one
+       question with one answer, on a sleep screen that is a dark field with a
+       clock on it. It takes the theme's --sx-* variables, like Settings. */
     ask = document.createElement('div');
     ask.className = 'wakeask';
     ask.style.cssText = 'position:absolute;top:0;right:0;bottom:0;left:0;' +
       'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
-      'text-align:center;color:#d6d1cb;font-weight:200;z-index:1';
+      'text-align:center;color:var(--sx-ink);font-weight:var(--sx-w-light);' +
+      'font-family:var(--sx-font);z-index:1';
     ask.innerHTML =
       '<div class="wt" style="font-size:44px;letter-spacing:.01em"></div>' +
-      '<div class="ws" style="margin-top:20px;font-size:20px;color:#837d75"></div>' +
+      '<div class="ws" style="margin-top:20px;font-size:20px;color:var(--sx-ink-dim)"></div>' +
       '<div class="wb" style="margin-top:54px;display:flex"></div>';
     overlay.appendChild(ask);
   }
@@ -1290,7 +1186,8 @@ function wakeStep(overlay, done) {
   function button(label, fn) {
     var b = document.createElement('div');
     b.style.cssText = 'margin:0 14px;padding:0 46px;height:84px;line-height:84px;' +
-      'font-size:19px;letter-spacing:.22em;border:1px solid #4d4841;color:#d6d1cb;' +
+      'font-size:19px;letter-spacing:var(--sx-tracking);border:1px solid var(--sx-line);' +
+      'border-radius:var(--sx-radius);color:var(--sx-ink);' +
       'touch-action:manipulation';
     b.textContent = label;
     return tap(b, fn);
@@ -1554,11 +1451,8 @@ global.STRIDE = {
   DURATIONS: DURATIONS,
   SHAPES: SHAPES,
 
-  UI_META: UI_META,
   people: people,
   defaultWalker: defaultWalker,
-  uiList: uiList,
-  currentUi: currentUi,
 
   tap: tap,
   stepper: stepper,

@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.8.0",
   "type": "module",
-  "description": "Source for STRIDE's WebView interfaces. Builds to console/stride/app/src/main/assets/ui.",
+  "description": "Source for STRIDE's console interface. Builds to console/stride/app/src/main/assets/ui/trailmate.html.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node scripts/check-compat.mjs",

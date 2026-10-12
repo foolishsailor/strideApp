@@ -13,7 +13,7 @@ export function ChoiceCard({ icon, name, hint, person, onTap }: {
   onTap: () => void;
 }) {
   return (
-    <PressableCard radius="xl" onTap={onTap} className={cx(styles.card, person && styles.person)}>
+    <PressableCard shape="choice" onTap={onTap} className={cx(styles.card, person && styles.person)}>
       {person ? <span className={styles.initial}>{icon}</span> : <span className={styles.glyph}>{icon}</span>}
       <span className={styles.name}>{name}</span>
       {hint && <span className={styles.hint}>{hint}</span>}

@@ -1,26 +1,25 @@
-/* Design tokens — the single source of the Original palette and scale.
+import { trailmate } from './themes/trailmate';
+import type { Theme } from './types';
 
-   CSS reads them as custom properties (installed on :root by applyTokens at
-   boot); canvas and SVG code import them directly. One table, so the path's
-   glow and a button's border can never drift to two different cyans. */
+export { alpha } from './alpha';
+export type { Theme } from './types';
 
-export const colour = {
-  bg0: '#050b1f', // deepest navy
-  bg1: '#0a1533',
-  surface: '#16255a', // card and button fill, used translucent
-  ink: '#eaf0ff',
-  inkDim: '#7f92c4',
-  inkFaint: '#44548a',
-  accent: '#39e0ff', // primary cyan
-  accentWarm: '#ff9d3c', // progress / effort
-  good: '#5dff9b',
-  alert: '#ff5c7a',
-  trackLine: '#1e3068',
-} as const;
+/* Design tokens.
 
-/** Type scale, px. Named by role, not size, so a component asks for what it is. */
-export const font = {
-  family: '"Helvetica Neue", Arial, sans-serif',
+   Two kinds. The THEME (themes/trailmate.ts) is everything that makes the
+   interface look like TrailMate: palette, fills, shape, type, scenery, and
+   the skin for Settings. The SCALE below is the layout — the console is
+   1280x800 and every band on it is load-bearing — so it lives apart from the
+   look, and a change of look cannot move a button.
+
+   CSS reads everything as custom properties, installed on :root at boot;
+   canvas and SVG code imports `colour` and `theme` directly. */
+
+export const theme: Theme = trailmate;
+export const colour = theme.colour;
+
+/** Type sizes, px. Named by role, not size. */
+export const fontSize = {
   caption: 12,
   label: 13,
   small: 15,
@@ -32,37 +31,45 @@ export const font = {
   hero: 144,
 } as const;
 
-export const radius = { sm: 16, md: 22, lg: 30, xl: 38, pill: 999 } as const;
-
 export const motion = { quick: '.15s', settle: '.32s' } as const;
 
 /** z-order of the layers that sit over the screens. */
 export const layer = { fanMenu: 30, coach: 40, overlay: 50, sleep: 80 } as const;
 
-/** `#rrggbb` at an alpha, for the many translucent fills. */
-export function alpha(hex: string, a: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
-}
-
 function kebab(s: string): string {
   return s.replace(/[A-Z0-9]+/g, (m) => '-' + m.toLowerCase());
 }
 
-/** The tokens as CSS custom properties: --colour-accent, --font-metric, … */
-export function cssVariables(): string {
+const px = (v: number | string) => (typeof v === 'number' ? v + 'px' : v);
+
+/** The theme and the scale as CSS custom properties:
+ *  --colour-accent, --role-fill, --font-metric, --radius-control, … */
+export function cssVariables(t: Theme = theme): string {
   const lines: string[] = [];
-  for (const [k, v] of Object.entries(colour)) lines.push(`--colour-${kebab(k)}:${v}`);
-  for (const [k, v] of Object.entries(font)) lines.push(`--font-${kebab(k)}:${typeof v === 'number' ? v + 'px' : v}`);
-  for (const [k, v] of Object.entries(radius)) lines.push(`--radius-${k}:${v}px`);
-  for (const [k, v] of Object.entries(motion)) lines.push(`--motion-${k}:${v}`);
-  for (const [k, v] of Object.entries(layer)) lines.push(`--layer-${kebab(k)}:${v}`);
+  const group = (prefix: string, obj: Record<string, string | number>, unit = true) => {
+    for (const [k, v] of Object.entries(obj)) lines.push(`--${prefix}-${kebab(k)}:${unit ? px(v) : v}`);
+  };
+  group('colour', t.colour);
+  group('role', t.role);
+  group('font', { family: t.font.family, ...fontSize });
+  group('weight', {
+    numeral: t.font.weightNumeral,
+    heading: t.font.weightHeading,
+    label: t.font.weightLabel,
+    body: t.font.weightBody,
+  }, false);
+  group('tracking', { label: t.font.trackingLabel, numeral: t.font.trackingNumeral });
+  group('radius', t.radius);
+  lines.push(`--edge-width:${t.edgeWidth}px`);
+  for (const [k, v] of Object.entries(t.settings)) lines.push(`--sx-${k}:${v}`);
+  group('motion', motion);
+  group('layer', layer, false);
   return `:root{${lines.join(';')}}`;
 }
 
 export function applyTokens(doc: Document = document): void {
   const style = doc.createElement('style');
-  style.setAttribute('data-tokens', '');
+  style.setAttribute('data-theme', theme.id);
   style.textContent = cssVariables();
   doc.head.appendChild(style);
 }

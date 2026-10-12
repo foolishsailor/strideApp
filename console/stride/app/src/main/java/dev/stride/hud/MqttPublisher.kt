@@ -66,19 +66,9 @@ class MqttPublisher(
      *  reappearing at the start of the next one would be worse than silence. */
     val coachTopic get() = "$prefix/coach/live"
 
-    /**
-     * Which of the console's interfaces to show. Publish a UI name here and
-     * the console switches to it, so a walk can be set up from a phone before
-     * anyone is standing on the belt.
-     *
-     * Retained state on the sibling topic, so an HA `select` can show which
-     * one is up rather than guessing.
-     */
     /** Home Assistant's person registry, published by ha/stride_persons.py. */
     val personsTopic get() = "$prefix/persons"
 
-    val uiTopic get() = "$prefix/ui/set"
-    val uiStateTopic get() = "$prefix/ui/state"
 
     /**
      * Routes converted from real outdoor walks, published by the iOS app via
@@ -370,13 +360,6 @@ class MqttPublisher(
     fun publishState(s: Snapshot) {
         if (!connected) return
         publishRaw(stateTopic, s.toJson(), retained = true)
-    }
-
-    /** Which interface the console is currently showing. Retained: HA should
-     *  know the answer without waiting for the next switch. */
-    fun publishUi(name: String) {
-        if (!connected) return
-        publishRaw(uiStateTopic, name, retained = true)
     }
 
     /** Entity ids have to be stable and boring, whatever someone is called. */
