@@ -203,6 +203,29 @@ A few decisions that will save you reading the code to find them.
 
 ---
 
+## Developing STRIDE
+
+You don't need a treadmill to work on STRIDE:
+
+1. **Screens:** open any interface in `console/stride/app/src/main/assets/ui/`
+   in a browser. It runs on fake data.
+2. **The whole app:** run it in an Android emulator against a **simulated
+   treadmill** that behaves like a Gen 7 board. `tools/sim.py` drives it:
+   speed, incline, the safety key, and the four guided walks.
+3. **The real thing:** a console over `adb`, belt empty first.
+
+```sh
+cd console/stride && ./run.sh      # build, install, launch (JDK 17 + Android SDK)
+py tools/sim.py on                 # debug builds: switch to the simulated treadmill
+py tools/sim.py guided pyramid 4   # and walk a pyramid on it
+```
+
+**[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** covers setup on Windows, macOS
+and Linux, the emulator, the simulator, debug and release builds, the checks
+to run before anyone steps on a change, and troubleshooting.
+
+---
+
 ## Fork it
 
 Please do. STRIDE is [Apache-2.0](LICENSE), so you can change it, ship it, sell

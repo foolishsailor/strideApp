@@ -202,6 +202,8 @@ class MainActivity : Activity() {
 
         const val PREFS = "stride"
         const val PREF_UI = "ui"
+        /** Debug builds: run against SimBoard instead of the USB board. */
+        const val PREF_SIM = "sim"
 
         /** How briskly a ramp winds the belt up. */
         const val RAMP_KPH_PER_SEC = 1.0
@@ -1119,6 +1121,9 @@ class MainActivity : Activity() {
          * this is the cheap second attempt at the moment the screen changes.
          */
         @JavascriptInterface fun home() {
+            // Taken before anything is reset: is there a belt that may still be
+            // turning? Mid-walk, in the cool-down, or still winding down.
+            val wasMoving = Session.isMoving(session) || stopping || beltStillKph() >= STOPPED_KPH
             session = Session.WELCOME
             workout = "none"
             summaryLine = ""
@@ -1139,14 +1144,26 @@ class MainActivity : Activity() {
                 parkDeckAndFan()
             }
             targetKph = 0.0
+            /* IDLE is not a way out of running: the board ignores it (FitPro 1)
+             * or its effect on a moving belt is unproven (FitPro 2), and PAUSE
+             * is the legal exit — see pause(). HOME pressed during a cool-down
+             * used to send IDLE, leave the belt turning behind the welcome
+             * screen, and let enforceStopped catch it as a runaway: stopped,
+             * but logged as an incident with an MQTT alert every time. Found
+             * with the simulated treadmill, 12/10/2026.
+             *
+             * So a belt that may be moving gets PAUSE, and IDLE follows once
+             * it has stopped — see idleStep. */
             pendingWrite = buildMap {
                 put(FitPro.Field.KPH, 0.0)
-                put(FitPro.Field.WORKOUT_MODE, FitPro.Mode.IDLE.toDouble())
+                put(FitPro.Field.WORKOUT_MODE,
+                    (if (wasMoving) FitPro.Mode.PAUSE else FitPro.Mode.IDLE).toDouble())
                 // Only when we are the ones levelling the deck. An incline set
                 // by hand on the summary screen is a choice about the next
                 // walk, and DONE is not the moment to throw it away.
                 if (parked) put(FitPro.Field.GRADE, 0.0)
             }
+            idleWhenStopped = wasMoving
             repaint()
         }
 
@@ -2259,7 +2276,7 @@ class MainActivity : Activity() {
                handover invisible. Navy was only ever right for one of the five
                interfaces. */
             setBackgroundColor(0xFF100F0E.toInt())
-            addJavascriptInterface(Bridge(), "Stride")
+            addJavascriptInterface(bridge, "Stride")
             /* A UI switch reloads the page, and the plan is the one thing sent
                once rather than at poll rate — so it has to go over again or the
                new document draws a guided walk with no ground ahead of it. */
@@ -2284,7 +2301,27 @@ class MainActivity : Activity() {
             registerReceiver(permissionReceiver, filter)
         }
 
-        acquireBoard()
+        registerDebugHooks()
+        val s = sim
+        if (s != null) startSim(s) else acquireBoard()
+    }
+
+    /** The page's bridge; the test harness drives the same one. */
+    private val bridge by lazy { Bridge() }
+
+    /**
+     * Debug builds, when switched on with tools/sim.py: a board in software.
+     * Decided once, at start-up — the USB board is then never looked for or
+     * opened, so nothing this session does can reach the real belt.
+     */
+    private val sim: SimBoard? by lazy {
+        if (BuildConfig.DEBUG && prefs.getBoolean(PREF_SIM, false)) SimBoard() else null
+    }
+
+    private fun startSim(board: SimBoard) {
+        Log.w(TAG, "SIMULATOR: the real board is not opened this session — tools/sim.py off to undo")
+        conn.openSim(board)
+        startLoops()
     }
 
     /**
@@ -2330,12 +2367,17 @@ class MainActivity : Activity() {
     }
 
     private fun start(device: UsbDevice) {
+        // The simulator owns the session; the USB board stays shut.
+        if (sim != null) { Log.w(TAG, "simulator on — not opening the USB board"); return }
         val err = conn.open(device)
         if (err != null) { Log.e(TAG, "open failed: $err"); return }
+        startLoops()
+    }
+
+    private fun startLoops() {
         running = true
         thread(name = "fitpro-poll") { pollLoop() }
         thread(name = "fitpro-watchdog") { watchdog() }
-        registerDebugHooks()
     }
 
     /* ---------------------------------------------------------------- *
@@ -2368,14 +2410,61 @@ class MainActivity : Activity() {
      */
     private fun registerDebugHooks() {
         if (!BuildConfig.DEBUG) return
-        val r = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) {
-                debugStallMs = i.getLongExtra("ms", 8000L).coerceIn(0L, 30_000L)
+        fun listen(action: String, onReceive: (Intent) -> String?) {
+            val r = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, i: Intent) { onReceive(i)?.let { resultData = it } }
             }
+            val f = IntentFilter(action)
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_EXPORTED)
+            else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(r, f)
         }
-        val f = IntentFilter("dev.stride.hud.DEBUG_STALL_POLL")
-        if (Build.VERSION.SDK_INT >= 33) registerReceiver(r, f, Context.RECEIVER_EXPORTED)
-        else @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(r, f)
+
+        listen("dev.stride.hud.DEBUG_STALL_POLL") { i ->
+            debugStallMs = i.getLongExtra("ms", 8000L).coerceIn(0L, 30_000L)
+            "stalling ${debugStallMs} ms"
+        }
+
+        // Simulator on or off. Takes effect at the next start — tools/sim.py
+        // restarts the app — because which board a session talks to is decided
+        // once, before anything has been opened.
+        listen("dev.stride.hud.SIM") { i ->
+            val on = i.getBooleanExtra("on", true)
+            prefs.edit().putBoolean(PREF_SIM, on).commit()
+            Log.w(TAG, "simulator ${if (on) "ON" else "off"} from the next start")
+            if (on) "sim on (restart to apply)" else "sim off (restart to apply)"
+        }
+
+        // The harness. Simulator sessions only: these press the same buttons a
+        // person would, and on a real board that would be driving a belt from
+        // a laptop. Refused unless the session is talking to SimBoard.
+        listen("dev.stride.hud.SIM_CTL") { i -> simControl(i) }
+    }
+
+    /** One harness command. Returns a line for tools/sim.py to print. */
+    private fun simControl(i: Intent): String {
+        val board = sim ?: return "refused: simulator is off — tools/sim.py on"
+        fun f(name: String, def: Float) = i.getFloatExtra(name, def).toDouble()
+        val cmd = i.getStringExtra("cmd") ?: "status"
+        Log.i(TAG, "sim ctl: $cmd")
+        when (cmd) {
+            "start" -> bridge.choose()
+            "guided" -> bridge.chooseGuided(i.getStringExtra("id") ?: "rolling", i.getIntExtra("min", 10))
+            "speed" -> bridge.speed(f("by", 0.1f))
+            "setspeed" -> bridge.setSpeed(f("kph", 3f))
+            "incline" -> bridge.incline(f("by", 1f))
+            "pause" -> bridge.pause()
+            "resume" -> bridge.resume()
+            "end" -> bridge.end()
+            "home" -> bridge.home()
+            "ackkey" -> bridge.ackDmk()
+            "press" -> board.press(i.getStringExtra("button") ?: "")
+            "key" -> board.key(out = i.getBooleanExtra("out", true))
+            "pulse" -> board.pulseOn = i.getBooleanExtra("on", true)
+            "status" -> {}
+            else -> return "unknown command '$cmd'"
+        }
+        return "${Session.name(session)} target=${"%.1f".format(targetKph)} km/h " +
+            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} | ${board.status()}"
     }
     @Volatile private var watchdogTripped = false
     /** Setup and reacquire legitimately take seconds; the watchdog stands down. */
@@ -2616,7 +2705,7 @@ class MainActivity : Activity() {
             val writes = enforceStopped(beltStillKph())
                 ?: enforceLevel(lastActualGrade)
                 ?: enforceFanOff()
-                ?: queued ?: decelStep() ?: rampStep()
+                ?: queued ?: decelStep() ?: rampStep() ?: idleStep()
 
             if (writes != null) lastWriteMs = SystemClock.elapsedRealtime()
 
@@ -2799,6 +2888,26 @@ class MainActivity : Activity() {
             }
             Thread.sleep(POLL_MS)
         }
+    }
+
+    /** HOME paused a moving belt; IDLE goes once it has stopped. See home(). */
+    @Volatile private var idleWhenStopped = false
+
+    /**
+     * The second half of HOME on a moving belt: IDLE, once the belt is still.
+     *
+     * Queued rather than returned, so that a refusal is retried and given up on
+     * by the same rules as any other write. A walk started in the meantime
+     * cancels it — that walk is in charge of the board now.
+     */
+    private fun idleStep(): Map<FitPro.Field, Double>? {
+        if (!idleWhenStopped) return null
+        if (Session.isMoving(session)) { idleWhenStopped = false; return null }
+        if (beltStillKph() >= STOPPED_KPH) return null
+        idleWhenStopped = false
+        pendingWrite = mapOf(FitPro.Field.WORKOUT_MODE to FitPro.Mode.IDLE.toDouble())
+        Log.i(TAG, "home: belt stopped — board back to idle")
+        return null
     }
 
     /**
@@ -3551,6 +3660,15 @@ class MainActivity : Activity() {
 
     private fun reacquireBoard(): Boolean {
         lastReacquireMs = SystemClock.elapsedRealtime()
+        sim?.let { s ->
+            conn.openSim(s)
+            val board = FitPro2Board(conn)
+            if (!board.setup()) return false
+            fp2 = board
+            Log.i(TAG, "simulated board is answering again")
+            lastReplyMs = SystemClock.elapsedRealtime()
+            return true
+        }
         val device = conn.findDevice()
         if (device == null) {
             Log.w(TAG, "board silent and not on the USB bus — waiting for it to re-enumerate")

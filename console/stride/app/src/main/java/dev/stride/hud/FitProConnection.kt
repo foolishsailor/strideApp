@@ -35,7 +35,22 @@ class FitProConnection(private val context: Context) {
     private var epIn: UsbEndpoint? = null
     private var epOut: UsbEndpoint? = null
 
-    val isOpen: Boolean get() = connection != null
+    /** Debug builds: a board in software instead of the USB one. See [openSim]. */
+    @Volatile private var sim: SimBoard? = null
+
+    val isOpen: Boolean get() = connection != null || sim != null
+
+    /**
+     * Talk to [SimBoard] instead of a USB device. Nothing on the bus is opened:
+     * with the simulator attached the real belt cannot be driven at all.
+     */
+    @Synchronized
+    fun openSim(board: SimBoard) {
+        close()
+        sim = board
+        productId = FitPro2.PID
+        board.attached()
+    }
 
     /** The open board's USB product id: 2 is FitPro 1, 3 is FitPro 2. 0 when closed. */
     @Volatile var productId = 0
@@ -84,6 +99,8 @@ class FitProConnection(private val context: Context) {
     /** Safe from any thread — the watchdog calls this from its own. */
     @Synchronized
     fun close() {
+        sim?.released()
+        sim = null
         try { iface?.let { connection?.releaseInterface(it) } } catch (e: Exception) {}
         connection?.close()
         connection = null; iface = null; epIn = null; epOut = null
@@ -121,6 +138,7 @@ class FitProConnection(private val context: Context) {
     /** FitPro 2: write one frame. False if it did not go. Single worker thread only. */
     fun send(frame: ByteArray): Boolean {
         if (!isFitPro2) return false
+        sim?.let { it.fromHost(frame); return true }
         val conn = connection ?: return false
         val out = epOut ?: return false
         // The watchdog may close the connection from its own thread while
@@ -133,6 +151,7 @@ class FitProConnection(private val context: Context) {
     /** FitPro 2: one packet from the board, or null if nothing came in [timeoutMs]. */
     fun receive(timeoutMs: Int): ByteArray? {
         if (!isFitPro2) return null
+        sim?.let { return it.toHost(timeoutMs) }
         val conn = connection ?: return null
         val inn = epIn ?: return null
         val buf = ByteArray(FitPro.MAX_MSG)
