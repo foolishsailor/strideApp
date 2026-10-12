@@ -1129,6 +1129,11 @@ class MainActivity : Activity() {
             val wasMoving = Session.isMoving(session) || stopping || beltStillKph() >= STOPPED_KPH
             session = Session.WELCOME
             workout = "none"
+            // Normally a no-op: the summary has already closed the recording.
+            // From anywhere else, a walk going home without a summary is still
+            // a walk, and it is kept rather than thrown away.
+            recorder.finish()
+            trailmate.clearSummary()
             summaryLine = ""
             summaryUrl = ""
             summarySpoken = false
@@ -1321,6 +1326,9 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun removePerson(name: String): String {
+            // Their TrailMate link goes with them. Left behind, it would be a
+            // working token belonging to nobody on this console.
+            cfg.person(name)?.let { trailmate.disconnect(it.id) }
             cfg.savePeople(cfg.people().filterNot { it.name == name })
             // Whoever is mid-walk keeps walking; only the list changed.
             Log.i(TAG, "settings: removed $name")
@@ -1412,6 +1420,29 @@ class MainActivity : Activity() {
                 .put("name", cfg.phonesName()).put("address", cfg.phonesAddr())
                 .put("connected", phones.connected(cfg.phonesAddr())))
             .toString()
+
+        // --- trailmate ---
+        /*
+         * Connecting a walker to TrailMate, per person, from Who walks. The
+         * page starts a link and then polls trailmateStatus for the code, the
+         * QR and how it is going; see TrailMate for the flow. Nothing here
+         * hands the page a token — status says "linked", not with what.
+         */
+        @JavascriptInterface fun trailmateStatus(): String = trailmate.statusJson()
+
+        @JavascriptInterface fun trailmateConnect(personId: String) {
+            val p = cfg.personById(personId) ?: return
+            Log.i(TAG, "trailmate: connecting ${p.name}")
+            trailmate.startLink(p)
+        }
+
+        @JavascriptInterface fun trailmateCancel() = trailmate.cancelLink()
+
+        @JavascriptInterface fun trailmateDisconnect(personId: String) =
+            trailmate.disconnect(personId)
+
+        /** A walk TrailMate refused, back in the queue to try again. */
+        @JavascriptInterface fun trailmateRetry(workoutId: String) = trailmate.retry(workoutId)
 
         /**
          * Connect with whatever is currently saved and say what happened.
@@ -1697,6 +1728,44 @@ class MainActivity : Activity() {
     /** Every walk this console has recorded — see History. */
     private val history by lazy { History(this) }
 
+    /** Who is connected to TrailMate, and the walks on their way there. */
+    private val trailmate by lazy { TrailMate(this, cfg) }
+
+    /**
+     * The second-by-second trace of the walk under way, for TrailMate — see
+     * WalkRecorder. Finished walks go straight to the queue, which decides
+     * whether the walker is connected and so whether it leaves the console.
+     */
+    private val recorder by lazy { WalkRecorder(this) { id, w -> trailmate.enqueue(id, w) } }
+
+    /**
+     * Start or feed the recording, from the poll loop.
+     *
+     * A recording begins on the first frame of a walk with a profile behind
+     * it, never for a guest — the same line History draws. The plan goes in
+     * at the start, because it is fixed at START and the recording has to be
+     * able to describe the walk on its own after a crash.
+     */
+    private fun record(snap: Snapshot) {
+        // The live session as well as the frame's: END lands on a WebView
+        // thread, and a frame built a moment before it would otherwise open a
+        // fresh recording for a walk that has just been closed.
+        if (Session.isMoving(snap.session) && Session.isMoving(session) &&
+            !recorder.recording && snap.whoId.isNotEmpty()) {
+            val plan = if (planName.isNotEmpty() && planSteps.isNotEmpty())
+                WalkRecorder.PlanInfo(planName, planSteps, route != null, planLoops) else null
+            recorder.begin(snap.whoId, plan, boardName())
+        }
+        recorder.tick(snap, strap.bpm() > 0)
+    }
+
+    /** What the workout says it was recorded on. */
+    private fun boardName(): String = when {
+        sim != null -> "STRIDE simulator"
+        fp2 != null -> fp2?.model?.ifEmpty { "FitPro 2" } ?: "FitPro 2"
+        else -> "FitPro"
+    }
+
     /** The session's average pulse so far, or 0 if nothing ever read. */
     private fun avgPulseNow(): Int =
         if (pulseSamples > 0) (pulseSum / pulseSamples).toInt() else 0
@@ -1979,6 +2048,11 @@ class MainActivity : Activity() {
             plan = planName,
         ))
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
+        // And the trace, closed and handed on. Building the workout happens
+        // off this thread; the summary picks up how sending it went from
+        // TrailMate.summaryState as it changes.
+        trailmate.clearSummary()
+        recorder.finish()
         if (stopping) return          // the wind-down parks the machine after it
         rampReason = ""
         targetKph = 0.0
@@ -2276,6 +2350,10 @@ class MainActivity : Activity() {
         applyStrap()
         applyPod()
         applyPhones()
+        // Anything queued last time goes as soon as there is a network, and a
+        // walk the console did not live to finish is turned into a workout.
+        trailmate.start()
+        recorder.recover()
 
         web = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -2471,11 +2549,20 @@ class MainActivity : Activity() {
             "key" -> board.key(out = i.getBooleanExtra("out", true))
             "pulse" -> board.pulseOn = i.getBooleanExtra("on", true)
             "pod" -> board.podOn = i.getBooleanExtra("on", true)
+            // Walk as somebody, adding them if they are not here yet. A guest
+            // walk is never recorded for TrailMate, so testing the recording
+            // needs a profile, and typing one in on the emulator every time
+            // is no way to test anything.
+            "walker" -> {
+                val name = i.getStringExtra("name") ?: "Tester"
+                if (cfg.person(name) == null) cfg.addPerson(name)
+                bridge.setWalker(name)
+            }
             "status" -> {}
             else -> return "unknown command '$cmd'"
         }
         return "${Session.name(session)} target=${"%.1f".format(targetKph)} km/h " +
-            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} | ${board.status()}"
+            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} who=${walker.ifEmpty { "guest" }} | ${board.status()}"
     }
     @Volatile private var watchdogTripped = false
     /** Setup and reacquire legitimately take seconds; the watchdog stands down. */
@@ -2869,6 +2956,7 @@ class MainActivity : Activity() {
 
             val snap = accumulate(v)
             lastSnap = snap
+            record(snap)
             watchSlip(snap)
             ftms.update(snap)
             // Through repaint() rather than push(), so the session stamped on
@@ -3170,6 +3258,7 @@ class MainActivity : Activity() {
             planClimbM = route?.climbM ?: 0.0,
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
             summaryLine = summaryLine,
+            trailmate = if (session == Session.SUMMARY) trailmate.summaryState() else "",
             planElapsed = planElapsed,
             planLap = planLap,
             planLoops = planLoops,

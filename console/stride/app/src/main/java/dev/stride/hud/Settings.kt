@@ -88,6 +88,10 @@ class Settings(context: Context) {
         const val PHONES_ADDR = "phones_addr"
         const val PHONES_NAME = "phones_name"
 
+        // --- trailmate ---
+        const val TRAILMATE_URL = "trailmate_url"
+        const val TRAILMATE_DEFAULT_URL = "https://www.foolishrunner.com/api"
+
         // --- display ---
         const val SLEEP_MIN = "sleep_min"
         const val CLOCK_24 = "clock_24"
@@ -409,6 +413,20 @@ class Settings(context: Context) {
         prefs.edit().remove(PHONES_ADDR).remove(PHONES_NAME).apply()
     }
 
+    // --- trailmate ------------------------------------------------------------
+
+    /**
+     * Where TrailMate's API is. Production unless somebody says otherwise —
+     * a setting rather than a constant so a console can be pointed at a dev
+     * server (or `tools/trailmate_mock.py`) without a rebuild.
+     *
+     * Only the address lives here. The per-person tokens are secrets and are
+     * kept apart from these preferences on purpose — see [TrailMate] — so
+     * [json] cannot hand one to the settings page.
+     */
+    fun trailmateUrl(): String =
+        (prefs.getString(TRAILMATE_URL, "") ?: "").trim().ifBlank { TRAILMATE_DEFAULT_URL }
+
     // --- display --------------------------------------------------------------
 
     fun sleepMs(): Long = prefs.getInt(SLEEP_MIN, 5) * 60_000L
@@ -466,6 +484,10 @@ class Settings(context: Context) {
         .put(POD_NAME, podName())
         .put(PHONES_ADDR, phonesAddr())
         .put(PHONES_NAME, phonesName())
+        // The address, never a token: those are not in these preferences at
+        // all (see TrailMate), for the same reason the MQTT password is
+        // withheld above.
+        .put(TRAILMATE_URL, trailmateUrl())
         .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
         .put(BRIGHTNESS, prefs.getString(BRIGHTNESS, "normal"))

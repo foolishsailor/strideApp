@@ -174,6 +174,13 @@ data class Snapshot(
     val planPeakIncline: Double = 0.0,
     /** The coach's closing line, ready before the summary appears. */
     val summaryLine: String = "",
+    /**
+     * Where this walk has got to on its way to TrailMate, for the summary:
+     * "sending", "sent", "waiting" (no network, will retry), "failed",
+     * "reconnect", or empty when it is not going — a guest, a short walk, or
+     * somebody who has not connected TrailMate. See TrailMate.summaryState.
+     */
+    val trailmate: String = "",
     /** Plan time wrapped into the current lap. Equals elapsed unless looping. */
     val planElapsed: Double = 0.0,
     /** Which lap of an open-ended circuit; 1 for an ordinary walk. */
@@ -298,6 +305,7 @@ data class Snapshot(
         append("\"planClimbM\":${"%.0f".format(planClimbM)},")
         append("\"planPeakIncline\":${"%.1f".format(planPeakIncline)},")
         append("\"summaryLine\":\"${esc(summaryLine)}\",")
+        append("\"trailmate\":\"${esc(trailmate)}\",")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
         append("\"planLap\":$planLap,")
         append("\"planLoops\":$planLoops,")
