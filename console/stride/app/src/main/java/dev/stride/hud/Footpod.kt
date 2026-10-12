@@ -44,12 +44,13 @@ class Footpod(
          * Steps per minute for each unit of RSC cadence.
          *
          * The specification says only "per minute", not per step or per
-         * stride. Stryd's own app shows steps per minute, so this assumes the
-         * pod sends the same, and the first reading is logged raw (`pod:
-         * reading … spm`) so it can be checked against the app. If it comes in
-         * at half — ~85 for what the app calls 170 — this is 2.
+         * stride. The Stryd sends STRIDES (one foot): a 9.7 km run at
+         * 2.67 m/s on 12 Oct 2026 came in at 93–94 a minute, which TrailMate
+         * classified as a walk, where the same pace off the watch is ~186
+         * steps. So each unit is two steps. The first reading is still logged
+         * raw (`pod: reading … spm (raw …)`) to check a different pod against.
          */
-        const val CADENCE_SCALE = 1
+        const val CADENCE_SCALE = 2
     }
 
     override val subscriptions = listOf(
