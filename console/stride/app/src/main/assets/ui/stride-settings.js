@@ -177,6 +177,19 @@
     '.sx-note{margin-top:20px;padding:18px 20px;border-radius:var(--sx-radius);',
     '  background:rgba(var(--sx-warm-rgb),.09);border-left:3px solid var(--sx-warm);',
     '  font-size:14px;color:var(--sx-ink-dim);line-height:1.55}',
+    /* TrailMate's link: the code large enough to read from the belt, and the
+       QR on a light tile — a QR wants dark modules on light, and the code that
+       draws it may not paint a background of its own. */
+    '.sx-tm{display:flex;align-items:center;margin-top:12px;padding:22px 24px;',
+    '  border-radius:var(--sx-radius);background:rgba(var(--sx-surface-rgb),.36);border:var(--sx-edge) solid var(--sx-line)}',
+    '.sx-tm.sx-on{border-color:var(--sx-accent);background:rgba(var(--sx-accent-rgb),.12)}',
+    '.sx-tm .sx-dn{flex:1;min-width:0;margin-right:18px}',
+    '.sx-qr{flex:none;width:232px;height:232px;padding:14px;margin-right:30px;',
+    '  border-radius:var(--sx-radius);background:var(--sx-ink)}',
+    '.sx-qr img{display:block;width:100%;height:100%}',
+    '.sx-code{font-size:58px;font-weight:var(--sx-w-light);letter-spacing:var(--sx-tracking);',
+    '  color:var(--sx-ink);margin:6px 0 10px}',
+    '.sx-tm .sx-pill{margin-left:14px}',
     '.sx-ro{font-size:19px;font-weight:var(--sx-w-body);color:var(--sx-ink-dim)}',
     '.sx-ro b{color:var(--sx-ink);font-weight:var(--sx-w-body)}'
   ].join('');
@@ -187,6 +200,13 @@
     if (cls) e.className = cls;
     if (html != null) e.innerHTML = html;
     return e;
+  }
+
+  /* For text that came from somewhere else — TrailMate's messages, the name
+     somebody linked as — before it goes anywhere near innerHTML. */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   /* Presses fire on touchstart for the same reason the rest of the console
@@ -477,7 +497,7 @@
   /* ---- sections ---------------------------------------------------------- */
   var ICONS = {
     people: 'M12 12a5 5 0 100-10 5 5 0 000 10zm-9 9a9 9 0 0118 0',
-    hr: 'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z',
+    devices: 'M7 7l10 10-5 5V2l5 5L7 17',
     ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     coach: 'M4 5h16v11H9l-5 4V5z',
@@ -488,7 +508,7 @@
 
   var SECTIONS = [
     ['people', 'Who walks',      paneWho],
-    ['hr',     'Heart rate',     paneHeart],
+    ['devices', 'Devices',       paneDevices],
     ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
@@ -518,6 +538,7 @@
 
     function drawPeople() {
       list.innerHTML = '';
+      var tst = tmStatus();
       (S.people || []).forEach(function (p) {
         var c = el('button', 'sx-person' + (p.name === S.default_walker ? ' sx-on' : ''));
         var bits = [];
@@ -527,6 +548,8 @@
         // knows? Somebody with no link is not broken — they simply only exist
         // here, and saying so is better than leaving it to be guessed.
         bits.push(p.ha_person ? 'linked' : 'console only');
+        var t = tmPerson(tst, p.id);
+        if (t.linked) bits.push(t.reconnect ? 'TrailMate: reconnect' : 'TrailMate');
         c.innerHTML = '<div class="sx-av">' + p.name.charAt(0).toUpperCase() + '</div>' +
                       '<div class="sx-pn">' + p.name + '</div>' +
                       '<div class="sx-pd">' + bits.join(' · ') + '</div>';
@@ -549,6 +572,7 @@
      * dialog is sized for a phone and lands wherever it likes.
      */
     function addPerson() {
+      tmShowing = null;
       detail.innerHTML = '';
       detail.appendChild(el('div', 'sx-gh', 'Add someone'));
 
@@ -618,6 +642,14 @@
           try { S = JSON.parse(bridge().setPersonFlag(p.name, 'publish', on)); } catch (e) {}
           p.publish = on; drawPeople();
         })));
+      // Redrawn from the tick while it is on screen: a link in progress
+      // changes under it, from somebody's phone.
+      if (has('trailmateStatus')) {
+        tmBox = el('div');
+        detail.appendChild(tmBox);
+        tmShowing = p;
+        drawTm(true);
+      }
       detail.appendChild(row('Start as ' + p.name,
         'Assume this person when the belt starts without anyone tapping a name.',
         press(el('button', 'sx-pill', 'MAKE DEFAULT'), function () {
@@ -627,6 +659,7 @@
         'Their recorded walks are not deleted.',
         press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           try { S = JSON.parse(bridge().removePerson(p.name)); } catch (e) {}
+          tmShowing = null;
           detail.innerHTML = ''; drawPeople(); drawDefault(); drawHa();
         })));
     }
@@ -677,61 +710,308 @@
         segment('default_walker', opts, S.default_walker || '', function () { drawPeople(); })));
     }
 
+    /* ---- TrailMate, per person ------------------------------------------
+       Connecting is a code on this screen and a tap on the walker's phone:
+       Kotlin asks TrailMate for a code and a QR, and polls until it is
+       approved, denied or runs out. This only ever shows what trailmateStatus
+       says — never a token, which this page is not given. */
+    var tmShowing = null, tmBox = null, tmKey = '';
+
+    function mmss(s) {
+      s = Math.max(0, Math.round(s || 0));
+      return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    }
+
+    function when(iso) {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return 'a walk';
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' +
+        d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function howFar(m) {
+      return S.units === 'mi' ? (m / 1609.344).toFixed(2) + ' mi' : (m / 1000).toFixed(2) + ' km';
+    }
+
+    function pills(list) {
+      var w = el('div');
+      w.style.cssText = 'display:flex;align-items:center';
+      list.forEach(function (b, i) { if (i) b.style.marginLeft = '12px'; w.appendChild(b); });
+      return w;
+    }
+
+    function call(fn, arg) {
+      try { if (arg === undefined) bridge()[fn](); else bridge()[fn](arg); } catch (e) {}
+      drawTm(true);
+    }
+
+    function drawTm(force) {
+      if (!tmShowing || !tmBox) return;
+      var st = tmStatus();
+      if (!st) { tmBox.innerHTML = ''; return; }
+      var p = tmShowing;
+      var me = tmPerson(st, p.id);
+      var lk = st.link && st.link.personId === p.id ? st.link : null;
+      var failed = (st.failed || []).filter(function (f) { return f.personId === p.id; });
+      var key = JSON.stringify([me, lk && [lk.state, lk.userCode, lk.message],
+        failed.map(function (f) { return f.workoutId; })]);
+      // Only the countdown moves between ticks. Rebuilding the whole box —
+      // the QR with it — every 1.2 s would flicker for nothing.
+      if (key === tmKey && !force) {
+        var left = tmBox.querySelector('.sx-tm-left');
+        if (left && lk) left.textContent = mmss(lk.left) + ' left';
+        return;
+      }
+      var wasLinked = tmKey && JSON.parse(tmKey)[0].linked;
+      tmKey = key;
+      tmBox.innerHTML = '';
+      if (!!wasLinked !== !!me.linked) drawPeople();
+
+      if (lk && (lk.state === 'starting' || lk.state === 'waiting')) {
+        if (lk.state === 'starting') {
+          tmBox.appendChild(row('TrailMate',
+            '<span class="sx-state"><i class="sx-dot sx-busy"></i>Asking TrailMate for a code…</span>',
+            press(el('button', 'sx-pill', 'CANCEL'), function () { call('trailmateCancel'); })));
+          return;
+        }
+        var card = el('div', 'sx-tm sx-on');
+        var qr = el('div', 'sx-qr');
+        // Drawn as a picture from a data URI, never parsed into the page: an
+        // SVG that arrived over the network does not get to be markup here.
+        if (lk.qr) {
+          var img = document.createElement('img');
+          img.alt = '';
+          img.src = 'data:image/svg+xml;base64,' + lk.qr;
+          qr.appendChild(img);
+        }
+        card.appendChild(qr);
+        var txt = el('div', 'sx-dn');
+        txt.appendChild(el('div', 'sx-d',
+          'Scan with your phone, or go to <b>' + esc((lk.uri || '').replace(/^https?:\/\//, '')) +
+          '</b> and enter'));
+        txt.appendChild(el('div', 'sx-code', esc(lk.userCode)));
+        var line = el('div', 'sx-state',
+          '<i class="sx-dot sx-busy"></i>Waiting for ' + esc(p.name) +
+          ' to allow it in TrailMate&nbsp;·&nbsp;<span class="sx-tm-left"></span>');
+        line.querySelector('.sx-tm-left').textContent = mmss(lk.left) + ' left';
+        txt.appendChild(line);
+        card.appendChild(txt);
+        card.appendChild(press(el('button', 'sx-pill', 'CANCEL'), function () { call('trailmateCancel'); }));
+        tmBox.appendChild(row('Connect TrailMate',
+          'Signing in happens on the phone. Nothing is typed here.', el('div')));
+        tmBox.appendChild(card);
+        // It lands below the person's other rows, which is off the bottom of
+        // the panel — and a code nobody can see is no use to anyone.
+        try { card.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+        return;
+      }
+
+      if (lk && lk.state !== 'connected') {
+        var said = lk.state === 'denied' ? 'Declined in TrailMate.'
+          : lk.state === 'expired' ? 'The code ran out before it was used.'
+          : esc(lk.message || 'Something went wrong.');
+        tmBox.appendChild(row('TrailMate',
+          '<span class="sx-state"><i class="sx-dot sx-bad"></i>' + said + '</span>',
+          pills([
+            press(el('button', 'sx-pill sx-go', 'TRY AGAIN'), function () { call('trailmateConnect', p.id); }),
+            press(el('button', 'sx-pill', 'OK'), function () { call('trailmateCancel'); })
+          ])));
+        return;
+      }
+
+      var waiting = me.queued ? ' ' + me.queued + (me.queued === 1 ? ' walk is' : ' walks are') +
+        ' waiting to send.' : '';
+      if (me.linked && me.reconnect) {
+        tmBox.appendChild(row('TrailMate',
+          '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span><br>' +
+          'TrailMate stopped accepting this console\'s link — it was disconnected on the website, ' +
+          'or the account changed. Connect again and the walks waiting here will follow.' + waiting,
+          pills([
+            press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { call('trailmateConnect', p.id); }),
+            press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })
+          ])));
+      } else if (me.linked) {
+        tmBox.appendChild(row('TrailMate',
+          '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
+          (me.account ? ' as ' + esc(me.account) : '') + '</span><br>' +
+          'Each walk goes to TrailMate when it ends, and on to Garmin Connect if that is ' +
+          'connected there.' + waiting,
+          press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })));
+      } else {
+        tmBox.appendChild(row('TrailMate',
+          'Send ' + esc(p.name) + '\'s walks to TrailMate, and from there to Garmin Connect. ' +
+          'Connecting shows a code to scan with a phone. Until then their walks stay on the console.',
+          press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { call('trailmateConnect', p.id); })));
+      }
+
+      // Walks TrailMate turned down. Parked so they do not hold up the ones
+      // behind them; shown so they are not silently lost.
+      failed.forEach(function (f) {
+        var r = el('div', 'sx-dev');
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">Not sent: ' + esc(when(f.startedAt)) +
+          ' · ' + howFar(f.distanceM || 0) + '</div><div class="sx-d">' +
+          esc(f.reason || 'refused') + (f.status ? ' (' + f.status + ')' : '') + '</div></div>';
+        r.appendChild(press(el('button', 'sx-pill', 'RETRY'), function () { call('trailmateRetry', f.workoutId); }));
+        tmBox.appendChild(r);
+      });
+    }
+
+    var g3 = null, queueRow = null, tmPeopleBox = null, tmPeopleKey = '';
+    if (has('trailmateStatus')) {
+      g3 = group('TrailMate');
+      // Everyone and whether they are connected, here where TrailMate is
+      // named — the per-person row inside a card is two taps from anywhere
+      // and was not found. CONNECT opens that person's card and starts the
+      // link, so the code and QR still appear in the one place they are drawn.
+      tmPeopleBox = el('div');
+      g3.appendChild(tmPeopleBox);
+      queueRow = el('div');
+      g3.appendChild(queueRow);
+      g3.appendChild(row('TrailMate server',
+        'Where walks are sent. Leave it alone unless you are testing against a TrailMate of ' +
+        'your own; clearing it goes back to foolishrunner.com.',
+        field('trailmate_url', S.trailmate_url)));
+      sc.appendChild(g3);
+    }
+
+    function drawTmPeople() {
+      if (!tmPeopleBox) return;
+      var st = tmStatus() || {};
+      var people = S.people || [];
+      var key = JSON.stringify(people.map(function (p) {
+        var t = tmPerson(st, p.id);
+        return [p.id, p.name, !!t.linked, !!t.reconnect, t.account || ''];
+      }));
+      if (key === tmPeopleKey) return;
+      tmPeopleKey = key;
+      tmPeopleBox.innerHTML = '';
+      if (!people.length) {
+        tmPeopleBox.appendChild(row('Connect TrailMate',
+          'Add someone above first — each person connects their own TrailMate account. ' +
+          'Guests are never sent.', el('div')));
+        return;
+      }
+      people.forEach(function (p) {
+        var t = tmPerson(st, p.id);
+        var said, btn;
+        if (t.linked && t.reconnect) {
+          said = '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span>';
+          btn = press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { connectFor(p); });
+        } else if (t.linked) {
+          said = '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
+            (t.account ? ' as ' + esc(t.account) : '') + '</span>';
+          btn = press(el('button', 'sx-pill', 'MANAGE'), function () { editPerson(p); });
+        } else {
+          said = 'Not connected — their walks stay on the console.';
+          btn = press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { connectFor(p); });
+        }
+        tmPeopleBox.appendChild(row(esc(p.name), said, btn));
+      });
+    }
+
+    /* Open the person's card and start the link there: the code and QR are drawn by drawTm. */
+    function connectFor(p) {
+      editPerson(p);
+      call('trailmateConnect', p.id);
+    }
+
+    function drawQueue() {
+      if (!queueRow) return;
+      var st = tmStatus() || {};
+      var n = (st.queued || []).length;
+      var said = n ? n + (n === 1 ? ' walk' : ' walks') + ' waiting to send' : 'Nothing waiting to send';
+      var why = '';
+      if (n && st.lastError) why = esc(st.lastError) + (st.retryIn ? ' · trying again in ' + mmss(st.retryIn) : '');
+      else if (n) why = 'Waiting for the walker to connect (or reconnect) TrailMate.';
+      queueRow.innerHTML = '';
+      queueRow.appendChild(row('Walks to send',
+        '<span class="sx-state"><i class="sx-dot ' + (n ? (st.lastError ? 'sx-bad' : 'sx-busy') : 'sx-ok') +
+        '"></i>' + said + '</span>' + (why ? '<br>' + why : ''), el('div')));
+    }
+
     drawPeople();
     drawDefault();
     drawHa();
+    drawQueue();
+    drawTmPeople();
+    pane.sxTick = function () { drawTm(); drawQueue(); drawTmPeople(); };
   }
 
-  // --- heart rate ---
-  function paneHeart(pane) {
-    var sc = head(pane, 'Heart rate',
-      'A Bluetooth chest strap is how most machines get a pulse here. Some ' +
-      'treadmills also wire contact grips on the handlebar to the board, but many do not, including the one STRIDE was built on.');
+  /* What Kotlin says about TrailMate, or null on a build without it. */
+  function tmStatus() {
+    if (!has('trailmateStatus')) return null;
+    try { return JSON.parse(bridge().trailmateStatus()); } catch (e) { return null; }
+  }
 
-    var g = group('Where the pulse comes from');
-    g.appendChild(row('Source',
-      'Automatic prefers a paired strap and falls back to the board. If your machine has no grips, the board reads zero and only a strap will work.',
-      segment('hr_source', [['auto', 'Automatic'], ['strap', 'Strap only'], ['grips', 'Board only']],
-        S.hr_source || 'auto')));
-    sc.appendChild(g);
+  function tmPerson(st, id) {
+    return ((st && st.people) || []).filter(function (x) { return x.id === id; })[0] || {};
+  }
 
-    var g2 = group('Paired strap');
+  // --- devices: heart-rate strap, foot pod, headphones ---
+  /* One place for everything Bluetooth. One scan looks for all three kinds at
+     once; each kind keeps one paired device. Kotlin's devices* calls. */
+  var KINDS = [
+    ['hr', 'Heart rate strap', 'Heart rate'],
+    ['pod', 'Foot pod', 'Foot pod'],
+    ['phones', 'Headphones', 'Headphones']
+  ];
+
+  function paneDevices(pane) {
+    var sc = head(pane, 'Devices',
+      'Heart-rate straps, foot pods such as Stryd, and headphones for the coach. ' +
+      'The console connects to each itself; nothing else needs to be paired.');
+
+    var g1 = group('Your devices');
     var pairedBox = el('div');
-    g2.appendChild(pairedBox);
-    sc.appendChild(g2);
+    g1.appendChild(pairedBox);
+    sc.appendChild(g1);
 
-    var g3 = group('Add a strap');
+    var g2 = group('Add a device');
     var scanBtn = press(el('button', 'sx-pill sx-go', 'SCAN'), function () {
       scanBtn.textContent = 'SCANNING';
       foundBox.innerHTML = '<div class="sx-empty"><span class="sx-state">' +
-        '<i class="sx-dot sx-busy"></i>Looking for straps…</span></div>';
-      try { bridge().hrScan(); } catch (e) {}
-      setTimeout(drawFound, 9000);
+        '<i class="sx-dot sx-busy"></i>Looking for devices…</span></div>';
+      try { bridge().devicesScan(); } catch (e) {}
+      // Sensors answer in a second or two; headphones take the full
+      // discovery, about twelve seconds. Show what there is as it arrives.
+      [3000, 6000, 9000, 13000].forEach(function (ms, i, all) {
+        setTimeout(function () { drawFound(i === all.length - 1); }, ms);
+      });
     });
-    g3.appendChild(row('Scan for straps',
-      'Any strap using the standard Bluetooth heart rate service — Polar, Garmin, ' +
-      'Wahoo, Coospo and most others.', scanBtn));
+    g2.appendChild(row('Scan for devices',
+      'Wear the strap, give the pod a few steps, and put headphones in pairing ' +
+      'mode. A pod your watch holds over Bluetooth may have no room for the console.', scanBtn));
     var foundBox = el('div');
-    g3.appendChild(foundBox);
+    g2.appendChild(foundBox);
+    sc.appendChild(g2);
+
+    var g3 = group('Heart rate');
+    g3.appendChild(row('Source',
+      'Automatic prefers a paired strap and falls back to the board. If your machine has no grips, the board reads zero and only a strap will work.',
+      segment('hr_source', [['auto', 'Automatic'], ['strap', 'Strap only'], ['grips', 'Board only']],
+        S.hr_source || 'auto')));
     sc.appendChild(g3);
 
-    function drawFound() {
-      scanBtn.textContent = 'SCAN AGAIN';
+    function drawFound(done) {
       var list = [];
-      try { list = JSON.parse(bridge().hrFound()); } catch (e) {}
+      try { list = JSON.parse(bridge().devicesFound()); } catch (e) {}
+      if (!list.length && !done) return;
+      if (done) scanBtn.textContent = 'SCAN AGAIN';
       foundBox.innerHTML = '';
       if (!list.length) {
         foundBox.appendChild(el('div', 'sx-empty',
-          'No straps found.<br>Put yours on — most only advertise once they detect skin.'));
+          'Nothing found.<br>Straps advertise once they touch skin, pods once they move, ' +
+          'and headphones only in pairing mode.'));
         return;
       }
       list.forEach(function (d) {
+        var kind = KINDS.filter(function (k) { return k[0] === d.kind; })[0];
         var r = el('div', 'sx-dev');
         r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + d.name + ' · ' +
-          d.address.slice(0, 8) + '</div><div class="sx-d">Heart rate service · ' +
-          d.rssi + ' dBm</div></div>';
+          d.address.slice(0, 8) + '</div><div class="sx-d">' + (kind ? kind[2] : d.kind) +
+          ' · ' + d.rssi + ' dBm</div></div>';
         r.appendChild(press(el('button', 'sx-pill sx-go', 'PAIR'), function () {
-          try { bridge().hrPair(d.address, d.name); } catch (e) {}
+          try { bridge().devicePair(d.kind, d.address, d.name); } catch (e) {}
           foundBox.innerHTML = '';
           scanBtn.textContent = 'SCAN';
           load(); drawPaired();
@@ -740,37 +1020,49 @@
       });
     }
 
+    /* The live reading beside each device: what it is there to provide. */
+    function reading(kind, d) {
+      if (kind === 'hr') return d.bpm > 0 ? d.bpm + ' <small>bpm</small>' : '— <small>bpm</small>';
+      if (kind === 'pod') return d.cadence > 0 ? d.cadence + ' <small>spm</small>' : '— <small>spm</small>';
+      return '';
+    }
+
     function drawPaired() {
       var st = {};
-      try { st = JSON.parse(bridge().hrStatus()); } catch (e) {}
+      try { st = JSON.parse(bridge().devicesStatus()); } catch (e) {}
       pairedBox.innerHTML = '';
-
       if (!st.available) {
         pairedBox.appendChild(el('div', 'sx-empty',
-          'Bluetooth is off, or this console has none.<br>Without a strap there is no pulse unless your machine has grips.'));
+          'Bluetooth is off, or this console has none.'));
         return;
       }
-      if (!st.address) {
-        pairedBox.appendChild(el('div', 'sx-empty',
-          'No strap paired.<br>Put yours on and scan.'));
-        return;
-      }
-      var r = el('div', 'sx-dev' + (st.connected ? ' sx-on' : ''));
-      var bits = [st.connected ? 'Connected' : 'Not in range'];
-      if (st.battery >= 0) bits.push('battery ' + st.battery + '%');
-      r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (st.name || 'Strap') +
-        ' · ' + st.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
-        '</div></div><div class="sx-bpm">' + (st.bpm > 0 ? st.bpm : '—') +
-        ' <small>bpm</small></div>';
-      r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
-        try { bridge().hrForget(); } catch (e) {}
-        load(); drawPaired();
-      }));
-      pairedBox.appendChild(r);
+      KINDS.forEach(function (k) {
+        var d = st[k[0]] || {};
+        var r;
+        if (!d.address) {
+          r = el('div', 'sx-dev');
+          r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + k[1] +
+            '</div><div class="sx-d">None paired</div></div>';
+          pairedBox.appendChild(r);
+          return;
+        }
+        r = el('div', 'sx-dev' + (d.connected ? ' sx-on' : ''));
+        var bits = [k[1], d.connected ? 'Connected' : 'Not in range'];
+        if (d.battery >= 0) bits.push('battery ' + d.battery + '%');
+        if (d.watts > 0) bits.push(d.watts + ' W');
+        r.innerHTML = '<div class="sx-dn"><div class="sx-n">' + (d.name || k[1]) +
+          ' · ' + d.address.slice(0, 8) + '</div><div class="sx-d">' + bits.join(' · ') +
+          '</div></div><div class="sx-bpm">' + reading(k[0], d) + '</div>';
+        r.appendChild(press(el('button', 'sx-pill sx-warn', 'FORGET'), function () {
+          try { bridge().deviceForget(k[0]); } catch (e) {}
+          load(); drawPaired();
+        }));
+        pairedBox.appendChild(r);
+      });
     }
 
     drawPaired();
-    pane.sxTick = drawPaired;   // live bpm while this section is open
+    pane.sxTick = drawPaired;   // live readings while this section is open
   }
 
   // --- home assistant ---

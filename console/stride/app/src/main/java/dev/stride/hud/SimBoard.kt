@@ -66,6 +66,8 @@ class SimBoard {
     /** Let go of by the host: the belt stops, the state does not say so. */
     private var released = false
     @Volatile var pulseOn = false
+    /** A pretend foot pod: see MainActivity.podNow. Off until asked for. */
+    @Volatile var podOn = false
 
     init {
         for (id in FEATURES) v[id] = 0f

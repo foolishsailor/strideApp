@@ -56,6 +56,7 @@ attached.
 | `key out` / `key in`, `ackkey` | Pull or replace the safety key; acknowledge the banner |
 | `pause` / `resume` / `end` / `home` | As on screen |
 | `pulse on\|off` | A made-up heart rate that follows speed and grade |
+| `pod on\|off` | A made-up foot pod: cadence, power, stride and pod speed that follow the belt |
 | `scenario basic` | Every control once, about two minutes |
 | `scenario guided-all [minutes]` | The four shapes back to back, default 4 min each |
 

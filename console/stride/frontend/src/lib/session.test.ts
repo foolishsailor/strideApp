@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canStop, coachHoldMs, DEFAULT_LIMITS, greeting, inclineStops, modeLabel, nearestStop, normaliseMode,
-  parseLimits, pausedWhere, phasePreview, phaseProgress, primaryAction, primaryLabel, screenFor,
+  paceSecPerKm, parseLimits, pausedWhere, phasePreview, phaseProgress, primaryAction, primaryLabel, screenFor,
   segmentSubtitle, speedStops, suggestion,
 } from './session';
 
@@ -87,6 +87,10 @@ describe('numbers', () => {
     expect(parseLimits('{"maxGrade":20}').maxGrade).toBe(20);
     expect(parseLimits('nonsense')).toEqual(DEFAULT_LIMITS);
     expect(nearestStop([0, 3, 5, 8], 6.9)).toBe(8);
+  });
+
+  it('turns belt speed into a pace, and a crawl into none', () => {
+    expect([paceSecPerKm(6), paceSecPerKm(5.4), paceSecPerKm(0.2), paceSecPerKm(undefined)]).toEqual([600, 667, 0, 0]);
   });
 
   it('clamps phase progress', () => {

@@ -6,6 +6,16 @@ import { Button, Fill, Heading, Label, Prose, Row } from '../../components/primi
 import { StatCard } from '../../components/molecules';
 import styles from './SummaryScreen.module.css';
 
+/* Where the walk has got to on its way to TrailMate. Nothing at all for a
+   guest, a walk too short to send, or somebody who has not connected. */
+const TRAILMATE: Record<string, string> = {
+  sending: 'Sending to TrailMate…',
+  sent: 'Sent to TrailMate',
+  waiting: 'Will send to TrailMate when online',
+  failed: 'TrailMate could not take this walk — see Settings',
+  reconnect: 'Reconnect TrailMate in Settings to send this walk',
+};
+
 export function SummaryScreen() {
   const s = useSession((st) => st.snapshot);
   const walker = useWelcome((w) => w.walker);
@@ -28,6 +38,9 @@ export function SummaryScreen() {
         <StatCard label="Max speed" unit="km/h">{fixed1(s.maxSpeed)}</StatCard>
         <StatCard label="Avg incline" unit="%">{fixed1(s.avgIncline)}</StatCard>
       </Row>
+      {s.trailmate && TRAILMATE[s.trailmate] && (
+        <Label tone="dim" className={styles.sent}>{TRAILMATE[s.trailmate]}</Label>
+      )}
       <div className={styles.done}>
         <Button tone="primary" size="wide" onTap={() => bridge().home()}>DONE</Button>
       </div>

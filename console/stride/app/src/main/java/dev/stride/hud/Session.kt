@@ -86,6 +86,14 @@ data class Snapshot(
     val elapsed: Double,
     val calories: Double,
     val pulse: Int,
+    /** From the foot pod (see Footpod): steps per minute, watts, metres per
+     *  step and the pod's own km/h. Zero when there is no pod or no reading. */
+    val cadence: Int = 0,
+    val power: Int = 0,
+    val strideM: Double = 0.0,
+    val podKph: Double = 0.0,
+    /** Metres climbed so far this walk: rise over the ground covered. */
+    val climbM: Double = 0.0,
     val fan: Int,
     val session: Int,
     val workout: String,
@@ -166,6 +174,13 @@ data class Snapshot(
     val planPeakIncline: Double = 0.0,
     /** The coach's closing line, ready before the summary appears. */
     val summaryLine: String = "",
+    /**
+     * Where this walk has got to on its way to TrailMate, for the summary:
+     * "sending", "sent", "waiting" (no network, will retry), "failed",
+     * "reconnect", or empty when it is not going — a guest, a short walk, or
+     * somebody who has not connected TrailMate. See TrailMate.summaryState.
+     */
+    val trailmate: String = "",
     /** Plan time wrapped into the current lap. Equals elapsed unless looping. */
     val planElapsed: Double = 0.0,
     /** Which lap of an open-ended circuit; 1 for an ordinary walk. */
@@ -252,6 +267,11 @@ data class Snapshot(
         append("\"elapsed\":${"%.0f".format(elapsed)},")
         append("\"calories\":${"%.0f".format(calories)},")
         append("\"pulse\":$pulse,")
+        append("\"cadence\":$cadence,")
+        append("\"power\":$power,")
+        append("\"strideM\":${"%.2f".format(strideM)},")
+        append("\"podKph\":${"%.1f".format(podKph)},")
+        append("\"climbM\":${"%.0f".format(climbM)},")
         append("\"fan\":$fan,")
         append("\"workout\":\"${esc(workout)}\",")
         append("\"dmk\":$dmk,")
@@ -285,6 +305,7 @@ data class Snapshot(
         append("\"planClimbM\":${"%.0f".format(planClimbM)},")
         append("\"planPeakIncline\":${"%.1f".format(planPeakIncline)},")
         append("\"summaryLine\":\"${esc(summaryLine)}\",")
+        append("\"trailmate\":\"${esc(trailmate)}\",")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
         append("\"planLap\":$planLap,")
         append("\"planLoops\":$planLoops,")

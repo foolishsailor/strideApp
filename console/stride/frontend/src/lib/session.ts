@@ -173,3 +173,8 @@ export function greeting(hour: number): string {
 /** How long a coach line stays up: long enough to read twice at a walk, and
  *  scaled with the sentence so a long line is never cut short. */
 export const coachHoldMs = (line: string): number => Math.min(18000, Math.max(9000, 5000 + line.length * 90));
+
+/** Seconds per kilometre at a belt speed, or 0 when the belt is barely
+ *  turning and a pace would read as hours. */
+export const paceSecPerKm = (kph: number | undefined): number =>
+  kph && kph >= 0.5 ? Math.round(3600 / kph) : 0;

@@ -117,6 +117,20 @@ describe('workout', () => {
     expect(screen.queryByText('HIGH')).toBeNull();
   });
 
+  it('shows the foot pod and the worked-out numbers, and dashes without a pod', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', speed: 6, cadence: 136, power: 212, strideM: 0.73, podKph: 5.9, climbM: 42 }));
+    expect(screen.getByText('10:00')).toBeTruthy();     // pace at 6 km/h
+    expect(screen.getByText('136')).toBeTruthy();
+    expect(screen.getByText('212')).toBeTruthy();
+    expect(screen.getByText('0.73')).toBeTruthy();
+    expect(screen.getByText('5.9')).toBeTruthy();
+    expect(screen.getByText('42')).toBeTruthy();
+    act(() => window.render({ mode: 'running', speed: 6 }));
+    // Heart rate, cadence, power, stride and pod speed: no reading, not zero.
+    expect(screen.getAllByText('—')).toHaveLength(5);
+  });
+
   it('raises the safety-key overlay over everything', () => {
     const b = mockBridge();
     render(<App />);

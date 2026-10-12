@@ -426,6 +426,12 @@ class MainActivity : Activity() {
        console's radio cannot scan as a central and hold a peripheral link at
        the same time. See HeartRate.seek. */
     private val strap by lazy { HeartRate(this) { ftms.listeners > 0 } }
+    /** A Stryd or other foot pod: cadence, power, stride. Held off the same way. */
+    private val pod by lazy { Footpod(this) { ftms.listeners > 0 } }
+    /** Bluetooth headphones, for hearing the coach. Classic Bluetooth, not BLE. */
+    private val phones by lazy { Headphones(this) }
+    /** The scan the location-permission dialog interrupted. */
+    @Volatile private var scanAfterPermission: (() -> Unit)? = null
     /** The treadmill as a standard Bluetooth fitness machine, for Zwift and
      *  friends. Telemetry only, and silent on a radio that cannot advertise. */
     private val ftms by lazy { Ftms(this) }
@@ -1123,6 +1129,11 @@ class MainActivity : Activity() {
             val wasMoving = Session.isMoving(session) || stopping || beltStillKph() >= STOPPED_KPH
             session = Session.WELCOME
             workout = "none"
+            // Normally a no-op: the summary has already closed the recording.
+            // From anywhere else, a walk going home without a summary is still
+            // a walk, and it is kept rather than thrown away.
+            recorder.finish()
+            trailmate.clearSummary()
             summaryLine = ""
             summaryUrl = ""
             summarySpoken = false
@@ -1315,6 +1326,9 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun removePerson(name: String): String {
+            // Their TrailMate link goes with them. Left behind, it would be a
+            // working token belonging to nobody on this console.
+            cfg.person(name)?.let { trailmate.disconnect(it.id) }
             cfg.savePeople(cfg.people().filterNot { it.name == name })
             // Whoever is mid-walk keeps walking; only the list changed.
             Log.i(TAG, "settings: removed $name")
@@ -1346,44 +1360,89 @@ class MainActivity : Activity() {
             return cfg.json().toString()
         }
 
-        // --- heart rate strap ---
-        @JavascriptInterface fun hrScan() {
-            // Asking is asynchronous: the dialog is still on screen when this
-            // returns. Scanning through it is the documented way to get an
-            // empty list that looks exactly like "no straps here", so the scan
-            // waits for the answer — see onRequestPermissionsResult.
-            if (ensureScanPermission()) strap.scan()
+        // --- devices: heart-rate strap, foot pod, headphones ---
+        /*
+         * One Settings section for everything Bluetooth, so one scan looks for
+         * all three kinds at once. Each kind still has its own class and its
+         * own saved address; `kind` is "hr", "pod" or "phones".
+         */
+        @JavascriptInterface fun devicesScan() {
+            // Asking for location is asynchronous: the dialog is still on
+            // screen when this returns. Scanning through it is the documented
+            // way to get an empty list that looks exactly like "nothing here",
+            // so the scan waits for the answer — see onRequestPermissionsResult.
+            if (ensureScanPermission { scanAll() }) scanAll()
         }
 
-        @JavascriptInterface fun hrFound(): String = JSONArray().apply {
-            strap.found().forEach {
-                put(JSONObject().put("address", it.address)
+        @JavascriptInterface fun devicesFound(): String = JSONArray().apply {
+            fun add(kind: String, list: List<BleSensor.Found>) = list.forEach {
+                put(JSONObject().put("kind", kind).put("address", it.address)
                     .put("name", it.name).put("rssi", it.rssi))
             }
+            add("hr", strap.found())
+            add("pod", pod.found())
+            add("phones", phones.found())
         }.toString()
 
-        @JavascriptInterface fun hrPair(address: String, name: String) {
-            strap.stopScan()
-            cfg.saveStrap(address, name)
-            strap.connect(address)
-            Log.i(TAG, "hr: pairing with $name")
+        @JavascriptInterface fun devicePair(kind: String, address: String, name: String) {
+            strap.stopScan(); pod.stopScan(); phones.stopScan()
+            when (kind) {
+                "hr" -> { cfg.saveStrap(address, name); strap.connect(address) }
+                "pod" -> { cfg.savePod(address, name); pod.connect(address) }
+                "phones" -> { cfg.savePhones(address, name); phones.pair(address) }
+                else -> return
+            }
+            Log.i(TAG, "$kind: pairing with $name")
         }
 
-        @JavascriptInterface fun hrForget() {
-            strap.disconnect()
-            cfg.forgetStrap()
-            Log.i(TAG, "hr: strap forgotten")
+        @JavascriptInterface fun deviceForget(kind: String) {
+            when (kind) {
+                "hr" -> { strap.disconnect(); cfg.forgetStrap() }
+                "pod" -> { pod.disconnect(); cfg.forgetPod() }
+                "phones" -> { phones.forget(cfg.phonesAddr()); cfg.forgetPhones() }
+                else -> return
+            }
+            Log.i(TAG, "$kind: forgotten")
         }
 
-        @JavascriptInterface fun hrStatus(): String = JSONObject()
+        @JavascriptInterface fun devicesStatus(): String = JSONObject()
             .put("available", strap.available)
-            .put("scanning", strap.scanning)
-            .put("connected", strap.connected)
-            .put("bpm", strap.bpm())
-            .put("battery", strap.battery)
-            .put("name", cfg.hrName())
-            .put("address", cfg.hrAddr())
+            .put("scanning", strap.scanning || pod.scanning || phones.scanning)
+            .put("hr", JSONObject()
+                .put("name", cfg.hrName()).put("address", cfg.hrAddr())
+                .put("connected", strap.connected).put("battery", strap.battery)
+                .put("bpm", strap.bpm()))
+            .put("pod", JSONObject()
+                .put("name", cfg.podName()).put("address", cfg.podAddr())
+                .put("connected", pod.connected).put("battery", pod.battery)
+                .put("cadence", pod.cadence()).put("watts", pod.watts()))
+            .put("phones", JSONObject()
+                .put("name", cfg.phonesName()).put("address", cfg.phonesAddr())
+                .put("connected", phones.connected(cfg.phonesAddr())))
             .toString()
+
+        // --- trailmate ---
+        /*
+         * Connecting a walker to TrailMate, per person, from Who walks. The
+         * page starts a link and then polls trailmateStatus for the code, the
+         * QR and how it is going; see TrailMate for the flow. Nothing here
+         * hands the page a token — status says "linked", not with what.
+         */
+        @JavascriptInterface fun trailmateStatus(): String = trailmate.statusJson()
+
+        @JavascriptInterface fun trailmateConnect(personId: String) {
+            val p = cfg.personById(personId) ?: return
+            Log.i(TAG, "trailmate: connecting ${p.name}")
+            trailmate.startLink(p)
+        }
+
+        @JavascriptInterface fun trailmateCancel() = trailmate.cancelLink()
+
+        @JavascriptInterface fun trailmateDisconnect(personId: String) =
+            trailmate.disconnect(personId)
+
+        /** A walk TrailMate refused, back in the queue to try again. */
+        @JavascriptInterface fun trailmateRetry(workoutId: String) = trailmate.retry(workoutId)
 
         /**
          * Connect with whatever is currently saved and say what happened.
@@ -1468,6 +1527,29 @@ class MainActivity : Activity() {
         "grips" -> fromBoard
         "strap" -> strap.bpm()
         else -> strap.bpm().takeIf { it > 0 } ?: fromBoard
+    }
+
+    private data class PodReading(val cadence: Int, val watts: Int, val strideM: Double, val kph: Double)
+
+    /**
+     * The foot pod's numbers, all zero without a recent reading.
+     *
+     * Under the simulator with `tools/sim.py pod on`, a stand-in worked out
+     * from the belt instead, so the screen can be built and checked on the
+     * emulator, which has no Bluetooth: cadence rising with pace, and power
+     * from a 75 kg walker at about 1.04 W/kg per m/s plus the lift against
+     * gravity on the incline. Plausible, not physiology.
+     */
+    private fun podNow(kph: Double, grade: Double): PodReading {
+        val s = sim
+        if (s == null || !s.podOn) {
+            return PodReading(pod.cadence(), pod.watts(), pod.strideM(), pod.speedKph())
+        }
+        if (kph <= 0.0) return PodReading(0, 0, 0.0, 0.0)
+        val ms = kph / 3.6
+        val cadence = Math.round(100 + 6 * kph).toInt()
+        val watts = Math.round(75 * ms * (1.04 + 9.81 * grade.coerceAtLeast(0.0) / 100)).toInt()
+        return PodReading(cadence, watts, ms * 60 / cadence, kph * 0.98)
     }
 
     // --- applying settings ----------------------------------------------------
@@ -1558,11 +1640,18 @@ class MainActivity : Activity() {
 
             Settings.HR_SOURCE, Settings.HR_ADDR -> applyStrap()
 
+            Settings.POD_ADDR -> applyPod()
+
+            // A different server may well be one that answers: try the queue
+            // now rather than at the end of a back-off against the old one.
+            Settings.TRAILMATE_URL -> trailmate.kick()
+
             // A reset changes everything at once.
             "" -> {
                 Thread { applyMqttSettings() }.start()
                 applyBrightness()
                 applyStrap()
+                applyPod()
             }
         }
     }
@@ -1577,19 +1666,37 @@ class MainActivity : Activity() {
         else strap.connect(cfg.hrAddr())
     }
 
+    /** Hold a connection to the foot pod whenever one is paired. */
+    private fun applyPod() {
+        if (cfg.podAddr().isBlank()) pod.disconnect() else pod.connect(cfg.podAddr())
+    }
+
+    /** Reconnect saved headphones; most do it themselves, this is the nudge. */
+    private fun applyPhones() {
+        if (cfg.phonesAddr().isNotBlank()) phones.connect(cfg.phonesAddr())
+    }
+
+    /** One Settings scan looks for every kind of device at once. */
+    private fun scanAll() {
+        strap.scan()
+        pod.scan()
+        phones.scan()
+    }
+
     /**
      * A BLE scan on API 23–30 returns an empty list, not an error, without a
      * location permission. This app targets 28, so that is the rule that
      * applies — and an empty list is exactly what "no straps here" looks like,
      * which makes it the single most confusing way for this feature to fail.
      */
-    private fun ensureScanPermission(): Boolean {
+    private fun ensureScanPermission(then: () -> Unit): Boolean {
         if (android.os.Build.VERSION.SDK_INT < 23) return true
         val perm = android.Manifest.permission.ACCESS_COARSE_LOCATION
         if (checkSelfPermission(perm) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
             return true
         }
-        Log.i(TAG, "hr: asking for location permission so a BLE scan can return results")
+        Log.i(TAG, "ble: asking for location permission so a BLE scan can return results")
+        scanAfterPermission = then
         requestPermissions(arrayOf(perm), SCAN_PERMISSION)
         return false
     }
@@ -1602,8 +1709,9 @@ class MainActivity : Activity() {
         if (code != SCAN_PERMISSION) return
         val granted = results.firstOrNull() ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (granted) strap.scan()
-        else Log.w(TAG, "hr: location refused, a BLE scan will find nothing")
+        if (granted) scanAfterPermission?.invoke()
+        else Log.w(TAG, "ble: location refused, a BLE scan will find nothing")
+        scanAfterPermission = null
     }
 
     /**
@@ -1623,6 +1731,44 @@ class MainActivity : Activity() {
 
     /** Every walk this console has recorded — see History. */
     private val history by lazy { History(this) }
+
+    /** Who is connected to TrailMate, and the walks on their way there. */
+    private val trailmate by lazy { TrailMate(this, cfg) }
+
+    /**
+     * The second-by-second trace of the walk under way, for TrailMate — see
+     * WalkRecorder. Finished walks go straight to the queue, which decides
+     * whether the walker is connected and so whether it leaves the console.
+     */
+    private val recorder by lazy { WalkRecorder(this) { id, w -> trailmate.enqueue(id, w) } }
+
+    /**
+     * Start or feed the recording, from the poll loop.
+     *
+     * A recording begins on the first frame of a walk with a profile behind
+     * it, never for a guest — the same line History draws. The plan goes in
+     * at the start, because it is fixed at START and the recording has to be
+     * able to describe the walk on its own after a crash.
+     */
+    private fun record(snap: Snapshot) {
+        // The live session as well as the frame's: END lands on a WebView
+        // thread, and a frame built a moment before it would otherwise open a
+        // fresh recording for a walk that has just been closed.
+        if (Session.isMoving(snap.session) && Session.isMoving(session) &&
+            !recorder.recording && snap.whoId.isNotEmpty()) {
+            val plan = if (planName.isNotEmpty() && planSteps.isNotEmpty())
+                WalkRecorder.PlanInfo(planName, planSteps, route != null, planLoops) else null
+            recorder.begin(snap.whoId, plan, boardName())
+        }
+        recorder.tick(snap, strap.bpm() > 0)
+    }
+
+    /** What the workout says it was recorded on. */
+    private fun boardName(): String = when {
+        sim != null -> "STRIDE simulator"
+        fp2 != null -> fp2?.model?.ifEmpty { "FitPro 2" } ?: "FitPro 2"
+        else -> "FitPro"
+    }
 
     /** The session's average pulse so far, or 0 if nothing ever read. */
     private fun avgPulseNow(): Int =
@@ -1906,6 +2052,11 @@ class MainActivity : Activity() {
             plan = planName,
         ))
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
+        // And the trace, closed and handed on. Building the workout happens
+        // off this thread; the summary picks up how sending it went from
+        // TrailMate.summaryState as it changes.
+        trailmate.clearSummary()
+        recorder.finish()
         if (stopping) return          // the wind-down parks the machine after it
         rampReason = ""
         targetKph = 0.0
@@ -2201,6 +2352,12 @@ class MainActivity : Activity() {
         refreshWalkerHrMax()
         applyBrightness()
         applyStrap()
+        applyPod()
+        applyPhones()
+        // Anything queued last time goes as soon as there is a network, and a
+        // walk the console did not live to finish is turned into a workout.
+        trailmate.start()
+        recorder.recover()
 
         web = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -2395,11 +2552,21 @@ class MainActivity : Activity() {
             "press" -> board.press(i.getStringExtra("button") ?: "")
             "key" -> board.key(out = i.getBooleanExtra("out", true))
             "pulse" -> board.pulseOn = i.getBooleanExtra("on", true)
+            "pod" -> board.podOn = i.getBooleanExtra("on", true)
+            // Walk as somebody, adding them if they are not here yet. A guest
+            // walk is never recorded for TrailMate, so testing the recording
+            // needs a profile, and typing one in on the emulator every time
+            // is no way to test anything.
+            "walker" -> {
+                val name = i.getStringExtra("name") ?: "Tester"
+                if (cfg.person(name) == null) cfg.addPerson(name)
+                bridge.setWalker(name)
+            }
             "status" -> {}
             else -> return "unknown command '$cmd'"
         }
         return "${Session.name(session)} target=${"%.1f".format(targetKph)} km/h " +
-            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} | ${board.status()}"
+            "grade=${"%.1f".format(targetGrade)} % plan=${planName.ifEmpty { "-" }} who=${walker.ifEmpty { "guest" }} | ${board.status()}"
     }
     @Volatile private var watchdogTripped = false
     /** Setup and reacquire legitimately take seconds; the watchdog stands down. */
@@ -2793,6 +2960,7 @@ class MainActivity : Activity() {
 
             val snap = accumulate(v)
             lastSnap = snap
+            record(snap)
             watchSlip(snap)
             ftms.update(snap)
             // Through repaint() rather than push(), so the session stamped on
@@ -3026,6 +3194,7 @@ class MainActivity : Activity() {
             if (route != null) routeTick(sessionDistance) else planTick(elapsedNow)
         }
         val step = currentStep()
+        val foot = podNow(speed, incline)
 
         return Snapshot(
             speed = speed,
@@ -3038,6 +3207,11 @@ class MainActivity : Activity() {
             elapsed = elapsedSec(),
             calories = sessionCalories,
             pulse = pulse,
+            cadence = foot.cadence,
+            power = foot.watts,
+            strideM = foot.strideM,
+            podKph = foot.kph,
+            climbM = climbM,
             fan = fanState,
             session = session,
             workout = workout,
@@ -3088,6 +3262,7 @@ class MainActivity : Activity() {
             planClimbM = route?.climbM ?: 0.0,
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
             summaryLine = summaryLine,
+            trailmate = if (session == Session.SUMMARY) trailmate.summaryState() else "",
             planElapsed = planElapsed,
             planLap = planLap,
             planLoops = planLoops,

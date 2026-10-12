@@ -21,6 +21,13 @@ export interface SessionState {
   distance?: number;
   calories?: number;
   pulse?: number;
+  /** Foot pod: steps per minute, watts, metres per step, the pod's own km/h. */
+  cadence?: number;
+  power?: number;
+  strideM?: number;
+  podKph?: number;
+  /** Metres climbed this walk. */
+  climbM?: number;
   fan?: number;
   ramping?: string;
   phaseLeft?: number;
@@ -37,6 +44,9 @@ export interface SessionState {
   maxSpeed?: number;
   avgIncline?: number;
   summaryLine?: string;
+  /** The finished walk on its way to TrailMate: sending | sent | waiting |
+   *  failed | reconnect, or empty when it is not going (TrailMate.kt). */
+  trailmate?: string;
 }
 
 /** One stretch of a guided walk, resolved by Plan.kt. Times in seconds. */

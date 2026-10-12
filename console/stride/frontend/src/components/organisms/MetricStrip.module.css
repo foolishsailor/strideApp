@@ -1,25 +1,39 @@
-/* The top bar, 0 – 128, edge to edge: incline reading, the metrics with the
-   status under them, speed reading. The rails start where it ends. No panel
-   of its own. */
+/* The top bar, 0 – 140, edge to edge: incline reading, the metrics in two
+   rows with the status in the middle of the second, speed reading. The rails
+   start where it ends. No panel of its own. */
 .strip {
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
-  height: 128px;
+  height: 140px;
   padding-top: 8px;
   display: flex;
   align-items: flex-start;
 }
 .middle {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 .row > * {
-  min-width: 180px;
+  margin: 0 28px;
+}
+.second {
+  margin-top: 4px;
+  align-items: center;
+}
+.second > * {
+  margin: 0 24px;
 }
 .status {
-  margin-top: 6px;
+  margin: 0 36px;
+}
+
+/* At 1280 wide the six large numbers need the room. See Metric.module.css. */
+@media (max-width: 1500px) {
+  .row > * { margin: 0 12px; }
+  .second > * { margin: 0 14px; }
 }
