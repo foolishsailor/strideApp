@@ -1,25 +1,26 @@
-# STRIDE "Original": source
+# STRIDE interface: source
 
-The **Original** interface is written here in React and TypeScript. It's built
-into a single file, `app/src/main/assets/ui/original.html`, which is the file
-the console loads. Nothing on the Android side knows this project exists:
-Kotlin still loads `ui/original.html` by name and talks to it through the same
-`Stride` bridge and `window.render` / `window.plan` / `window.coach` calls.
+The console's interface is written here in React and TypeScript, in the
+TrailMate app's design (teal, mountain green and copper). It builds into one
+self-contained file, `app/src/main/assets/ui/trailmate.html`. Kotlin loads it
+(`MainActivity.UI_URL`) and talks to it through the `Stride` bridge and the
+`window.render` / `window.plan` / `window.coach` calls.
 
 The built file is committed, so building the APK doesn't need Node. If you
-change anything here, run `npm run build` and commit both the source and the
-rebuilt `original.html`.
+change anything here, run `npm run build` and commit the source and the
+rebuilt file.
 
-The other four interfaces (Ember, Cluster, Daylight, Pacer) are still
-hand-written HTML. They share `stride-core.js` and `stride-settings.js` with
-this one.
+Settings (`stride-settings.js`) and the core (`stride-core.js`) are
+hand-written scripts beside it. Settings and the core's wake prompt take the
+theme through `--sx-*` CSS variables (`theme.settings`); a test fails if they
+read one the theme does not define.
 
 ## Commands
 
 ```sh
 npm install
-npm run dev        # Vite dev server with hot reload: /original.html
-npm run build      # typecheck, build into assets/ui, then check-compat
+npm run dev      # Vite dev server with hot reload: /trailmate.html
+npm run build    # typecheck, build into assets/ui, then check-compat
 npm test           # Vitest, once
 npm run typecheck
 ```
@@ -51,7 +52,7 @@ pulls the safety key.
 ## Layout
 
 ```
-original.html            template; the build writes assets/ui/original.html
+trailmate.html           template; the build writes assets/ui/trailmate.html
 scripts/check-compat.mjs Chromium 83 gate, run after every build
 src/
   main.tsx               boot: stub the bridge, install the Kotlin entry points, mount
@@ -59,7 +60,7 @@ src/
   bridge/                the contract with Kotlin and stride-core (types, accessors, entry points)
   store/                 Zustand: session (from Kotlin), ui (menus, sleep), welcome (choices)
   lib/                   pure logic: session rules, plans, formatting, path geometry and scene
-  theme/                 tokens.ts (the single palette and scale) and global.css
+  theme/                 types.ts, themes/trailmate.ts, tokens.ts (scale, CSS variables), global.css
   hooks/                 useTap/useStepper, useClock, useIdleSleep
   components/
     primitives/          Button, PressableCard, Text (Label, Numeral, Heading, Prose), Layout, Overlay
@@ -69,11 +70,20 @@ src/
   overlays/              paused, safety key, sleep
 ```
 
-**Theming:** colours, type sizes, radii and layers live only in
-`theme/tokens.ts`. At boot they're installed as CSS custom properties
-(`--colour-accent`, `--font-metric`, and so on) that the CSS modules read.
-Canvas and SVG code imports the same values, so the path's glow and a button's
-border can't drift apart.
+**Theming:** the look is data, `theme/themes/trailmate.ts`, of the shape in
+`theme/types.ts`: palette, fills by role, type weights and tracking, radii,
+edge width, the path-ahead scenery, and the Settings skin. Type sizes, motion
+and layers live apart from it in `theme/tokens.ts`, because they are the
+layout. At boot the theme is installed as CSS custom properties
+(`--colour-accent`, `--role-fill`, `--radius-control`, …) that the CSS modules
+read; canvas and SVG code imports the same values. No stylesheet carries a
+colour of its own, and a test fails if any stylesheet reads a variable the
+theme does not define.
+
+The values come from the TrailMate app's design tokens (`shared/design` in
+the TrailMate repository); where it has no equivalent (the scenery, the sleep
+screen) they are derived from its palette. `themes/trailmate.ts` says which
+is which.
 
 **Tests** load the real `stride-core.js`, so the track maths, formatters and
 touch handling under test are the ones the console runs.

@@ -15,7 +15,7 @@ export function Metric({ label, unit, children }: { label: string; unit?: string
 /** A Metric on its own card — the summary's results. */
 export function StatCard(props: { label: string; unit?: string; children: ReactNode }) {
   return (
-    <Surface radius="md" className={styles.card}>
+    <Surface className={styles.card}>
       <Metric {...props} />
     </Surface>
   );

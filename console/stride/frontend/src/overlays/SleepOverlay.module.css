@@ -8,20 +8,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--role-sleep-bg);
   z-index: var(--layer-sleep);
 }
 /* Barely there: the console lives in the room, and at rest it should be dark. */
 .clock {
   font-size: 112px;
-  font-weight: 100;
-  color: #1d2a4d;
+  font-weight: var(--weight-heading);
+  color: var(--role-sleep-clock);
   font-variant-numeric: tabular-nums;
 }
 .hint {
   margin-top: 26px;
   font-size: var(--font-body);
-  color: #16203c;
-  letter-spacing: 0.3em;
+  color: var(--role-sleep-hint);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }

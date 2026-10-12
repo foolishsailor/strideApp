@@ -118,27 +118,27 @@ its own fails in ways that blame the wrong thing.
 
 ## 1. The browser preview
 
-The five interfaces are plain HTML in `console/stride/app/src/main/assets/ui/`.
-Each opens on its own in a desktop browser, with a stubbed bridge and fake
-data, so you can redesign a screen without a device:
+The interface is built into `console/stride/app/src/main/assets/ui/`. It
+opens on its own in a desktop browser, with a stubbed bridge and fake data, so
+you can look at a screen without a device:
 
 ```sh
-open console/stride/app/src/main/assets/ui/original.html     # macOS
-start console\stride\app\src\main\assets\ui\original.html     # Windows
+open console/stride/app/src/main/assets/ui/trailmate.html     # macOS
+start console\stride\app\src\main\assets\ui\trailmate.html     # Windows
 ```
 
-Add `?screen=welcome`, `?screen=live`, `?screen=paused` or `?screen=summary`
-to land on a state, or press the number keys. Edit, then refresh.
+Add `?screen=live-guided`, `?screen=paused` or `?screen=summary` to land on a
+state, or press the number keys.
 
-**Original is the exception.** Its `original.html` is built from React and
-TypeScript source in `console/stride/frontend/`; don't edit the built file. See
+It is built from React and TypeScript source in `console/stride/frontend/`;
+don't edit the built file. See
 [`console/stride/frontend/README.md`](../console/stride/frontend/README.md):
 
 ```sh
 cd console/stride/frontend
 npm install
-npm run dev      # http://localhost:5173/original.html?screen=live-guided
-npm run build    # writes assets/ui/original.html, then checks it for Chromium 83
+npm run dev      # http://localhost:5173/trailmate.html?screen=live-guided
+npm run build    # writes assets/ui/trailmate.html, then checks it for Chromium 83
 ```
 
 ---

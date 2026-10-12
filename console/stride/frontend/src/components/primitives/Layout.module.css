@@ -22,9 +22,8 @@
 }
 
 .surface {
-  background: rgba(22, 37, 90, 0.45);
-  border: 2px solid var(--colour-track-line);
+  background: var(--role-fill-card);
+  border: var(--edge-width) solid var(--role-edge);
+  border-radius: var(--radius-card);
+  box-shadow: var(--role-shadow-raised);
 }
-.md { border-radius: 26px; }
-.lg { border-radius: var(--radius-lg); }
-.xl { border-radius: var(--radius-xl); }

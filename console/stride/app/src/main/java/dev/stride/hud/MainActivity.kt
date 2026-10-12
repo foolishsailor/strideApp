@@ -187,21 +187,18 @@ class MainActivity : Activity() {
         const val MQTT_RETRY_MAX_MS = 60_000L
 
         /**
-         * The selectable interfaces, in the order the settings screen shows them.
+         * The interface: one document, built from console/stride/frontend in
+         * the TrailMate theme. It implements the page's entry points —
+         * `window.render(state)`, `window.plan(p)`, `window.coach(c)` — and
+         * Kotlin never needs to know more about it than this address.
          *
-         * Each is one document in `assets/ui/`, owning its whole DOM and CSS and
-         * implementing the same two entry points — `window.render(state)` and
-         * `window.plan(p)`. They are not themes: switching one for another is
-         * expected to change what the screen is made of, not just its colours.
-         *
-         * Anything named here but not yet present in the APK falls back to
-         * [DEFAULT_UI], so this list can run ahead of the files.
+         * There used to be a choice of interfaces, saved under the "ui" pref
+         * and switchable from Settings or over MQTT. It went on 12 October 2026;
+         * a stale "ui" pref on an upgraded console is simply never read.
          */
-        val UIS = listOf("original", "ember", "cluster", "daylight", "pacer")
-        const val DEFAULT_UI = "original"
+        const val UI_URL = "file:///android_asset/ui/trailmate.html"
 
         const val PREFS = "stride"
-        const val PREF_UI = "ui"
         /** Debug builds: run against SimBoard instead of the USB board. */
         const val PREF_SIM = "sim"
 
@@ -1252,27 +1249,6 @@ class MainActivity : Activity() {
             coach.hush()
         }
 
-        /**
-         * Switch to another interface.
-         *
-         * Reloads the WebView rather than swapping the DOM about. Simpler, and a
-         * 2 GB device would much rather parse one document than hold five. The
-         * session survives it untouched — Kotlin owns all of that and repaints
-         * the new page at the next poll, 200 ms later — and [onPageFinished]
-         * re-sends the plan, which is the one thing that goes over only once.
-         *
-         * Refused while the belt is moving. The reload takes a beat, and during
-         * that beat there is no STOP button on a running treadmill.
-         */
-        @JavascriptInterface fun setUi(name: String) = switchUi(name)
-
-        @JavascriptInterface fun currentUi(): String = chosenUi()
-
-        /** Only the ones actually in this build, so the settings screen cannot
-         *  offer a blank page. */
-        @JavascriptInterface fun availableUis(): String =
-            org.json.JSONArray(available()).toString()
-
         // --- settings -------------------------------------------------------
         //
         // The settings screen is one shared document (assets/ui/stride-settings.js)
@@ -1510,14 +1486,10 @@ class MainActivity : Activity() {
         // Re-registered because reconfigure() dropped the client, and a clean
         // session forgets subscriptions with it.
         mqtt.onMessage(mqtt.coachTopic, ::onCoachLine)
-        mqtt.onMessage(mqtt.uiTopic, ::onUiCommand)
         mqtt.onMessage(mqtt.personsTopic, ::onPersons)
         mqtt.onMessage(mqtt.routesTopic, routes::accept)
         val err = mqtt.connect()
-        if (err == null) {
-            if (mqtt.connected) mqtt.publishUi(chosenUi())
-            return
-        }
+        if (err == null) return
         Log.w(TAG, "mqtt: $err")
         retryMqtt(gen)
     }
@@ -1551,7 +1523,6 @@ class MainActivity : Activity() {
                 val err = mqtt.connect()
                 if (err == null) {
                     Log.i(TAG, "mqtt: connected on retry")
-                    if (mqtt.connected) mqtt.publishUi(chosenUi())
                     return@Thread
                 }
                 wait = (wait * 2).coerceAtMost(MQTT_RETRY_MAX_MS)
@@ -1623,45 +1594,6 @@ class MainActivity : Activity() {
         else Log.w(TAG, "hr: location refused, a BLE scan will find nothing")
     }
 
-    // --- which interface ------------------------------------------------------
-
-    /** The UIs named in [UIS] that are actually in this APK. */
-    private fun available(): List<String> {
-        val present = try {
-            assets.list("ui")?.toSet() ?: emptySet()
-        } catch (e: java.io.IOException) {
-            Log.w(TAG, "ui: cannot list assets/ui (${e.message})")
-            emptySet<String>()
-        }
-        return UIS.filter { present.contains("$it.html") }
-    }
-
-    /** Whatever was chosen last, if it still exists in this build. */
-    private fun chosenUi(): String {
-        val saved = prefs.getString(PREF_UI, DEFAULT_UI) ?: DEFAULT_UI
-        return if (available().contains(saved)) saved else DEFAULT_UI
-    }
-
-    private fun assetFor(name: String) = "file:///android_asset/ui/$name.html"
-
-    /** Both routes in — a tap on the settings screen and a publish from HA —
-     *  land here, so neither can switch under conditions the other refuses. */
-    private fun switchUi(name: String) {
-        if (Session.isMoving(session)) {
-            Log.i(TAG, "ui: not switching to $name while the belt is moving")
-            return
-        }
-        if (!available().contains(name)) {
-            Log.w(TAG, "ui: no such interface: $name")
-            return
-        }
-        if (name == chosenUi()) return
-        prefs.edit().putString(PREF_UI, name).apply()
-        Log.i(TAG, "ui: switching to $name")
-        mqtt.publishUi(name)
-        runOnUiThread { web.loadUrl(assetFor(name)) }
-    }
-
     /**
      * Home Assistant's people, retained on the broker by ha/stride_persons.py.
      *
@@ -1691,12 +1623,6 @@ class MainActivity : Activity() {
         Log.i(TAG, "persons: received ${haPersons.length} bytes from HA")
     }
 
-    /** A UI name published from Home Assistant. */
-    private fun onUiCommand(payload: String) {
-        val name = payload.trim().lowercase()
-        Log.i(TAG, "ui: requested \"$name\" over mqtt")
-        switchUi(name)
-    }
 
     /**
      * Start easing the belt down, and say whether there was anything to ease.
@@ -2264,28 +2190,24 @@ class MainActivity : Activity() {
         applyBrightness()
         applyStrap()
 
-        val ui = chosenUi()
-        Log.i(TAG, "ui: $ui (available: ${available().joinToString(", ")})")
-
         web = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
-            /* The launch screen's field colour, not Original's navy. The
-               WebView paints this before the document does, so it is the one
-               frame between the splash and the UI — matching it makes the
-               handover invisible. Navy was only ever right for one of the five
-               interfaces. */
+            /* The launch screen's field colour. The WebView paints this before
+               the document does, so it is the one frame between the splash and
+               the UI — matching it makes the handover invisible. */
             setBackgroundColor(0xFF100F0E.toInt())
             addJavascriptInterface(bridge, "Stride")
-            /* A UI switch reloads the page, and the plan is the one thing sent
-               once rather than at poll rate — so it has to go over again or the
-               new document draws a guided walk with no ground ahead of it. */
+            /* A reload (the WebView recovering, or DevTools) starts the page
+               from nothing, and the plan is the one thing sent once rather than
+               at poll rate — so it has to go over again or the page draws a
+               guided walk with no ground ahead of it. */
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     if (planSteps.isNotEmpty()) pushPlan()
                 }
             }
-            loadUrl(assetFor(ui))
+            loadUrl(UI_URL)
         }
         setContentView(web)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -2651,11 +2573,9 @@ class MainActivity : Activity() {
             readSleepConfig()
         }
         mqtt.onMessage(mqtt.coachTopic, ::onCoachLine)
-        mqtt.onMessage(mqtt.uiTopic, ::onUiCommand)
         mqtt.onMessage(mqtt.personsTopic, ::onPersons)
         mqtt.onMessage(mqtt.routesTopic, routes::accept)
         applyMqttSettings()
-        mqtt.publishUi(chosenUi())
 
         var sinceMqtt = 0L
         var rejects = 0

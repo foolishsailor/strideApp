@@ -38,8 +38,8 @@
 .settings {
   right: 38px;
   font-size: 14px;
-  letter-spacing: 0.16em;
   color: var(--colour-ink-faint);
-  border-color: rgba(22, 37, 90, 0.8);
-  background: rgba(22, 37, 90, 0.3);
+  border-color: var(--role-edge-quiet);
+  background: var(--role-fill-quiet);
+  box-shadow: none;
 }

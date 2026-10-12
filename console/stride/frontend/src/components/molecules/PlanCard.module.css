@@ -6,7 +6,8 @@
 
 .name {
   font-size: 22px;
-  letter-spacing: 0.14em;
+  font-weight: var(--weight-label);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 /* A route's name gets out from under the loop mark rather than running
@@ -37,8 +38,8 @@
   top: 10px;
   width: 52px;
   height: 52px;
-  border: 2px solid var(--colour-track-line);
-  border-radius: 26px;
+  border: var(--edge-width) solid var(--role-edge);
+  border-radius: 50%;
 }
 .loop svg {
   position: absolute;
@@ -50,7 +51,7 @@
 }
 .loopOn {
   border-color: var(--colour-accent);
-  background: rgba(57, 224, 255, 0.16);
+  background: var(--role-selected);
 }
 .loopOn svg {
   fill: var(--colour-accent);

@@ -4,10 +4,11 @@
   right: 34px;
   top: 478px;
   height: 80px;
-  background: rgba(10, 21, 51, 0.96);
-  border: 2px solid rgba(57, 224, 255, 0.34);
+  background: var(--role-fill-floating);
+  border: var(--edge-width) solid var(--role-edge-floating);
   border-left: 3px solid var(--colour-accent);
-  border-radius: 18px;
+  border-radius: var(--radius-floating);
+  box-shadow: var(--role-shadow-raised);
   z-index: var(--layer-coach); /* over the fan menu, under the overlays */
   opacity: 0;
   transform: translateY(10px);
@@ -21,7 +22,7 @@
   pointer-events: auto;
 }
 .coach:global(.down) {
-  background: rgba(22, 37, 90, 0.96);
+  background: var(--role-fill-floating-down);
 }
 
 .who {
@@ -29,7 +30,8 @@
   left: 26px;
   top: 31px;
   font-size: var(--font-caption);
-  letter-spacing: 0.28em;
+  font-weight: var(--weight-label);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--colour-accent);
 }
@@ -42,7 +44,7 @@
   display: flex;
   align-items: center;
   font-size: 23px;
-  font-weight: 300;
+  font-weight: var(--weight-body);
   line-height: 1.3;
   overflow: hidden;
 }
@@ -58,6 +60,6 @@
   font-size: 14px;
   line-height: 80px;
   text-align: center;
-  letter-spacing: 0.18em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }

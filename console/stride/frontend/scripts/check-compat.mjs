@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Fails the build if the output uses something the Gen 6 console's Chromium 83
+/* Fails the build if an output uses something the Gen 6 console's Chromium 83
    WebView (2020) does not have.
 
    The bundler lowers *syntax* to chrome83, but it cannot polyfill an API or
@@ -9,11 +9,9 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const OUT = fileURLToPath(new URL('../../app/src/main/assets/ui/original.html', import.meta.url));
-const html = readFileSync(OUT, 'utf8');
-
-const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
-const styles = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+/** Everything this project builds. */
+const OUTPUTS = ['trailmate'];
+const UI = fileURLToPath(new URL('../../app/src/main/assets/ui/', import.meta.url));
 
 /** [pattern, what it is, first Chromium with it] */
 const JS = [
@@ -38,13 +36,23 @@ const CSS = [
   [/\boklch\(|\boklab\(|color-mix\(/, 'modern colour functions', 111],
 ];
 
-const found = [];
-for (const [re, what, since] of JS) if (re.test(scripts)) found.push(`JS  ${what} (Chromium ${since})`);
-for (const [re, what, since] of CSS) if (re.test(styles)) found.push(`CSS ${what} (Chromium ${since})`);
+function check(name) {
+  const html = readFileSync(`${UI}${name}.html`, 'utf8');
+  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join('\n');
+  const styles = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
 
-if (found.length) {
-  console.error('\noriginal.html uses features the Chromium 83 WebView lacks:\n  ' + found.join('\n  ') + '\n');
-  process.exit(1);
+  const found = [];
+  for (const [re, what, since] of JS) if (re.test(scripts)) found.push(`JS  ${what} (Chromium ${since})`);
+  for (const [re, what, since] of CSS) if (re.test(styles)) found.push(`CSS ${what} (Chromium ${since})`);
+
+  if (found.length) {
+    console.error(`\n${name}.html uses features the Chromium 83 WebView lacks:\n  ${found.join('\n  ')}\n`);
+    return false;
+  }
+  const kb = (Buffer.byteLength(html) / 1024).toFixed(0);
+  console.log(`check-compat: ${name}.html (${kb} KB) is Chromium 83 safe.`);
+  return true;
 }
-const kb = (Buffer.byteLength(html) / 1024).toFixed(0);
-console.log(`check-compat: original.html (${kb} KB) is Chromium 83 safe.`);
+
+const ok = OUTPUTS.map(check).every(Boolean);
+if (!ok) process.exit(1);

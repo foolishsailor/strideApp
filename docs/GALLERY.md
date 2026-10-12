@@ -2,35 +2,12 @@
 
 1280×800, straight off the console. Mocked-up numbers, made-up names.
 
-## The five interfaces
+## A casual walk
 
-Each one is a separate document with its own layout — not a theme. The
-treadmill behaves the same in all of them.
+A 400 m oval, lap count in the middle, in the TrailMate app's design: deep
+teal, mountain green and copper, square corners, no glow.
 
-### Original
-A 400 m oval, lap count in the middle.
-
-![Original](screenshots/oval-original.png)
-
-### Ember
-Near-black and amber. Built for 6am.
-
-![Ember](screenshots/oval-ember.png)
-
-### Cluster
-Dials and mono figures. An instrument panel.
-
-![Cluster](screenshots/oval-cluster.png)
-
-### Daylight
-The light one, for a bright room.
-
-![Daylight](screenshots/oval-daylight.png)
-
-### Pacer
-Chunky pills, hard to misread mid-stride.
-
-![Pacer](screenshots/oval-pacer.png)
+![A casual walk](screenshots/oval-trailmate.png)
 
 ## A guided walk
 
@@ -38,11 +15,7 @@ The oval is replaced by the ground ahead — the profile, where you are on it,
 and the next segment. STRIDE moves the incline; "lift to 6.4 km/h" is only a
 suggestion and the belt doesn't act on it.
 
-![Original, guided walk](screenshots/ui-original.png)
-
-Same walk in Pacer, drawn as a lane:
-
-![Pacer, guided walk](screenshots/ui-pacer.png)
+![A guided walk](screenshots/ui-trailmate.png)
 
 ## Settings
 

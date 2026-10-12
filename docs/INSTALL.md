@@ -398,7 +398,6 @@ Everything is on the treadmill's own screen. There are no config files.
 
 - **Settings → Who walks.** Add yourself. Nobody is pre-configured.
 - **Settings → Treadmill.** Units, warm-up, cool-down, guided-walk speed limit.
-- **Settings → Interface.** Pick one of five. *Original* is the most tested.
 
 ✅ Clip the safety key, choose a workout, and check the belt starts and the
 distance climbs.

@@ -42,7 +42,7 @@ if you'd rather read the story than the steps.
 **[v0.8](https://github.com/keranm/strideApp/releases/latest)**, in daily use,
 and it now pairs with Zwift over Bluetooth FTMS.
 
-![STRIDE on a NordicTrack console](docs/screenshots/oval-original.png)
+![STRIDE on a NordicTrack console](docs/screenshots/oval-trailmate.png)
 
 **[More screenshots →](docs/GALLERY.md)**
 
@@ -52,7 +52,7 @@ and it now pairs with Zwift over Bluetooth FTMS.
 
 | | |
 |---|---|
-| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided walks, and gives you five completely different interfaces to pick from. |
+| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided walks, and draws them in the TrailMate app's design. |
 | **`homeassistant/`** | Optional scripts for the coach, the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
 | **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
@@ -185,8 +185,8 @@ coach and reminders need.
 
 A few decisions that will save you reading the code to find them.
 
-- **Kotlin owns the treadmill, HTML owns the screen.** The five interfaces are
-  HTML in a WebView, so you can design them in a browser. Tap SPEED+ and the
+- **Kotlin owns the treadmill, HTML owns the screen.** The interface is
+  HTML in a WebView, so you can design it in a browser. Tap SPEED+ and the
   belt speeds up, but the request goes through Kotlin first, which clamps it to
   whatever the board says it can do. A bad layout can't outrun the machine.
 - **The coach decides when to speak, Home Assistant decides what it says.**
@@ -207,7 +207,7 @@ A few decisions that will save you reading the code to find them.
 
 You don't need a treadmill to work on STRIDE:
 
-1. **Screens:** open any interface in `console/stride/app/src/main/assets/ui/`
+1. **Screens:** open `console/stride/app/src/main/assets/ui/trailmate.html`
    in a browser. It runs on fake data.
 2. **The whole app:** run it in an Android emulator against a **simulated
    treadmill** that behaves like a Gen 7 board. `tools/sim.py` drives it:

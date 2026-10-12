@@ -6,15 +6,12 @@ Every screen and overlay can be checked against fabricated state without
 arming the treadmill, which is how the design screenshots in `claudeDesign/`
 were made and how any new UI should be reviewed before it is trusted.
 
-    python3 tools/hud_drive.py screens            # the full set, whichever UI is up
-    python3 tools/hud_drive.py screens ember      # switch to Ember first, then capture
+    python3 tools/hud_drive.py screens            # the full set
     python3 tools/hud_drive.py guided             # hold one guided-walk frame on screen
     python3 tools/hud_drive.py casual             # hold one casual-walk frame on screen
-    python3 tools/hud_drive.py ui ember           # just switch, and leave it there
     python3 tools/hud_drive.py release            # hand the screen back to Kotlin
 
-Shots land in `claudeDesign/<ui>/` for every UI except the original, which
-keeps the flat `claudeDesign/` it has always used.
+Shots land in `claudeDesign/`.
 
 Three things that will otherwise waste your afternoon:
 
@@ -25,10 +22,8 @@ Three things that will otherwise waste your afternoon:
   It returns a frame with the path blank and everything else correct, which
   looks exactly like a rendering bug. Screenshots here come from
   `adb exec-out screencap`, which reads the real framebuffer.
-* **The pre-workout flow is driven with real taps**, which means per-UI
+* **The pre-workout flow is driven with real taps**, so it needs screen
   coordinates — see TAPS. Everything after it is injected and layout-agnostic.
-  Switching UI reloads the WebView, so the DevTools socket has to be reopened
-  after one.
 """
 import json
 import os
@@ -46,16 +41,9 @@ DEV = os.environ.get("STRIDE_DEVICE") or subprocess.run(
 PKG = "dev.stride.hud"
 OUT = "claudeDesign"
 
-# Where to tap to walk the pre-workout flow: profile, walk, guided. Each UI
-# lays those cards out differently, so each needs its own three coordinates.
-# Measured from the CSS, not from a screenshot.
-TAPS = {
-    "original": [(286, 492), (476, 492), (804, 492)],
-    "ember":    [(226, 400), (412, 410), (868, 410)],
-    "daylight": [(185, 455), (335, 450), (944, 450)],
-    "pacer":    [(197, 430), (397, 445), (883, 450)],
-    "cluster":  [(205, 390), (403, 400), (877, 400)],
-}
+# Where to tap to walk the pre-workout flow: profile, walk, guided. Measured
+# from the CSS, not from a screenshot; re-measure if the welcome screen moves.
+TAPS = [(286, 492), (476, 492), (804, 492)]
 
 # Rolling hills at 30 minutes, resolved the way Plan.kt would.
 SHAPE = [(0.11, 0.0, "Settle in"), (0.09, 4.0, "First rise"),
@@ -138,49 +126,21 @@ class Hud:
         open(f"{self.out}/{name}.png", "wb").write(data)
         print(f"  {name:26} {len(data)//1024:4} KB")
 
-    def which_ui(self):
-        return self.ev("Stride.currentUi()")
-
 
 CASUAL = dict(plan="", segment=0, segments=0, segmentLabel="", segmentLeft=0,
               suggestPace=0, inclineAuto=False, incline=1.5, targetIncline=1.5)
 
 
-def switch_ui(name):
-    """Ask the console to change interface, and wait for the reload to land."""
-    Hud().ev(f"Stride.setUi({json.dumps(name)})")
-    time.sleep(4)
-
-
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else "screens"
-    ui = sys.argv[2] if len(sys.argv) > 2 else None
 
     if what == "release":
         Hud().release()
         print("renderer released — Kotlin has the screen back")
         return
 
-    if what == "ui":
-        if not ui:
-            sys.exit("which one? " + ", ".join(TAPS))
-        switch_ui(ui)
-        print(f"now showing {Hud().which_ui()}")
-        return
-
-    if ui:
-        switch_ui(ui)
-
     hud = Hud()
-    ui = hud.which_ui()
-    # The original keeps the flat directory it has always written to; anything
-    # else gets its own, so four sets of eleven do not collide.
-    out = OUT if ui == "original" else f"{OUT}/{ui}"
-    hud = Hud(out)
-    taps = TAPS.get(ui)
-    if not taps:
-        sys.exit(f"no tap coordinates for {ui} — add them to TAPS")
-    print(f"{ui} -> {out}/")
+    taps = TAPS
 
     if what in ("guided", "casual"):
         hud.park()
@@ -193,7 +153,7 @@ def main():
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")
     time.sleep(7)
-    hud = Hud(out)
+    hud = Hud()
     print("welcome flow:")
     hud.shot("01-welcome-who")
     adb("shell", "input", "tap", *map(str, taps[0]))    # the leftmost profile
@@ -222,20 +182,21 @@ def main():
              calories=6, segments=0, plan="", segment=0, segmentLabel="",
              segmentLeft=0, suggestPace=0)
     hud.shot("08-phase-warmup")
+    # The "Workout paused" question is opened by STOP itself, inside the app's
+    # own state, so an injected frame shows the paused HUD without it. Press
+    # STOP on the console for the overlay.
     hud.push(mode="paused", speed=0.0)
-    hud.ev("document.getElementById('confirm').classList.add('show')")
-    hud.shot("09-paused-confirm")
-    hud.ev("document.getElementById('confirm').classList.remove('show')")
+    hud.shot("09-paused")
     hud.push(dmk=True)
     hud.shot("10-safety-key")
     hud.push(mode="summary", elapsed=1800, distance=3120, calories=214)
     hud.shot("11-summary")
 
-    # Settings > UI. Opened by script rather than by tapping at coordinates,
-    # which would have to be re-measured every time the welcome screen moves.
+    # Settings. Opened by script rather than by tapping at coordinates, which
+    # would have to be re-measured every time the welcome screen moves.
     hud.push(mode="welcome")
-    hud.ev("buildUis(); var s=document.getElementById('settings');s.classList.add('show'); s.classList.add('on')")
-    hud.shot("12-settings-ui")
+    hud.ev("STRIDE_SETTINGS.open()")
+    hud.shot("12-settings")
 
     adb("shell", "am", "force-stop", PKG)
     adb("shell", "am", "start", "-n", f"{PKG}/.MainActivity")

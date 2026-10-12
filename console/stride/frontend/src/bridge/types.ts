@@ -143,7 +143,7 @@ declare global {
     render: (s: SessionState) => void;
     plan: (p: Plan) => void;
     coach: (c: CoachLine) => void;
-    /** Calls Kotlin made before the app module ran; see original.html. */
+    /** Calls Kotlin made before the app module ran; see trailmate.html. */
     __early?: { render?: SessionState; plan?: Plan; coach?: CoachLine };
   }
 }

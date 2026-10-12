@@ -15,7 +15,7 @@ export function installKotlinEntryPoints(): void {
      platform media stack is what can be relied on to make a sound. */
   window.coach = (c) => useSession.getState().sayCoach(c);
 
-  /* Calls that arrived before this module ran (see original.html). Plan
+  /* Calls that arrived before this module ran (see trailmate.html). Plan
      first, so the first snapshot already has its ground. An early coach line
      is dropped: it was said before there was a screen to say it on. */
   const early = window.__early;

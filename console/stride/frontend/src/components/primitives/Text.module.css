@@ -9,34 +9,39 @@
 /* ---- label --------------------------------------------------------------- */
 .label {
   text-transform: uppercase;
-  letter-spacing: 0.2em;
+  font-weight: var(--weight-label);
+  letter-spacing: var(--tracking-label);
 }
 .label.caption { font-size: var(--font-caption); }
 .label.label { font-size: var(--font-label); }
-.label.small { font-size: var(--font-small); letter-spacing: 0.22em; }
-.label.title { font-size: var(--font-title); letter-spacing: 0.22em; }
+.label.small { font-size: var(--font-small); }
+.label.title { font-size: var(--font-title); }
 
 /* ---- numeral ------------------------------------------------------------- */
 .numeral {
   font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-numeral);
+  letter-spacing: var(--tracking-numeral);
   line-height: 1;
 }
-.metric { font-size: var(--font-metric); font-weight: 300; line-height: normal; }
-.display { font-size: var(--font-display); font-weight: 200; }
-.hero { font-size: var(--font-hero); font-weight: 200; line-height: 0.9; }
-.glow { text-shadow: 0 0 44px rgba(57, 224, 255, 0.45); }
+.metric { font-size: var(--font-metric); line-height: normal; }
+.display { font-size: var(--font-display); }
+.hero { font-size: var(--font-hero); line-height: 0.9; }
+.glow { text-shadow: 0 0 44px var(--role-glow); }
 .unit {
   font-size: 17px;
+  font-weight: var(--weight-body);
+  letter-spacing: 0;
   color: var(--colour-ink-dim);
   margin-left: 4px;
 }
 
 /* ---- heading and prose ---------------------------------------------------- */
-.heading { font-weight: 200; }
+.heading { font-weight: var(--weight-heading); }
 .page { font-size: 62px; letter-spacing: 0.01em; }
 .section { font-size: 52px; letter-spacing: 0.02em; }
 
-.prose { font-weight: 300; }
+.prose { font-weight: var(--weight-body); }
 .prose.small { font-size: var(--font-small); }
 .prose.body { font-size: var(--font-body); }
 .prose.lead { font-size: var(--font-lead); }

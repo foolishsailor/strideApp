@@ -1,7 +1,7 @@
 import { core } from '../../bridge/stride';
 import type { Track } from '../../bridge/types';
 import { useField } from '../../store/session';
-import { colour } from '../../theme/tokens';
+import { alpha, colour, theme } from '../../theme/tokens';
 import { Label, Numeral } from '../primitives';
 import styles from './Hero.module.css';
 
@@ -54,7 +54,7 @@ function LapProgress({ distance }: { distance: number }) {
           stays whole and the dot never waits for a redraw. Nothing to erase on
           the first lap. */}
       <path
-        d={d} fill="none" stroke="rgba(57,224,255,.22)" strokeWidth={6} strokeLinecap="round" pathLength={1000}
+        d={d} fill="none" stroke={alpha(colour.accent, 0.22)} strokeWidth={6} strokeLinecap="round" pathLength={1000}
         strokeDasharray={`${(1000 - dash).toFixed(1)} 1000`} strokeDashoffset={(-dash).toFixed(1)}
         opacity={laps > 0 ? 1 : 0}
       />
@@ -85,7 +85,7 @@ export function TrackHero() {
             <stop offset="100%" stopColor={colour.accentWarm} />
           </linearGradient>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="7" result="b" />
+            <feGaussianBlur stdDeviation={theme.glowBlur} result="b" />
             <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>

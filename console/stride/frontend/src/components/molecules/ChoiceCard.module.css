@@ -18,18 +18,19 @@
 .initial {
   width: 84px;
   height: 84px;
-  border-radius: 42px;
+  border-radius: 50%;
   border: 2px solid var(--colour-accent);
   color: var(--colour-accent);
   font-size: 38px;
-  font-weight: 200;
+  font-weight: var(--weight-heading);
   line-height: 82px;
   text-align: center;
 }
 .name {
   margin-top: 18px;
   font-size: var(--font-title);
-  letter-spacing: 0.22em;
+  font-weight: var(--weight-label);
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
 .person .name {
