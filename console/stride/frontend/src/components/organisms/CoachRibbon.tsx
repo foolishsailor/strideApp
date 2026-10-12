@@ -6,8 +6,8 @@ import { coachHoldMs } from '../../lib/session';
 import { useSession } from '../../store/session';
 import styles from './CoachRibbon.module.css';
 
-/** The coach, docked in its own band (566 – 646) between the hero and the
- *  controls, inside the rails.
+/** The coach, docked in its own band just above the bottom controls, between
+ *  the rails.
  *
  *  It used to float over the top of the hero, where it covered the segment
  *  header and the warm-up countdown — the two things most worth reading at the

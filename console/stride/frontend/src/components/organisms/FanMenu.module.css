@@ -2,7 +2,7 @@
   position: absolute;
   left: 50%;
   margin-left: -85px; /* centred over FAN, the middle of three */
-  bottom: 132px;
+  bottom: 116px; /* just above the docked controls */
   width: 170px;
   padding: 10px;
   background: var(--role-fill-floating);

@@ -2,7 +2,7 @@
   position: absolute;
   left: 256px;
   right: 256px;
-  top: 566px;
+  bottom: 116px; /* just above the docked controls */
   height: 80px;
   background: var(--role-fill-floating);
   border: var(--edge-width) solid var(--role-edge-floating);
