@@ -1,0 +1,14 @@
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.label {
+  margin-bottom: 6px;
+}
+/* Six of these have to fit 1280px with room to breathe at both ends. */
+.card {
+  flex: none;
+  width: 178px;
+  padding: 26px 0;
+}

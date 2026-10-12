@@ -1,0 +1,36 @@
+import { bridge } from '../../bridge/stride';
+import { fixed1, mmss, nf } from '../../lib/format';
+import { useSession } from '../../store/session';
+import { useWelcome } from '../../store/welcome';
+import { Button, Fill, Heading, Label, Prose, Row } from '../../components/primitives';
+import { StatCard } from '../../components/molecules';
+import styles from './SummaryScreen.module.css';
+
+export function SummaryScreen() {
+  const s = useSession((st) => st.snapshot);
+  const walker = useWelcome((w) => w.walker);
+  const kind = s.workout && s.workout !== 'none' ? s.workout : 'workout';
+
+  return (
+    <Fill centred>
+      {/* The walker's own name, or none for a guest — better than
+          congratulating somebody by the wrong name. */}
+      <Heading className={styles.head}>{walker ? `Nice work, ${walker}` : 'Nice work'}</Heading>
+      {/* Under the kicker, not between it and the headline: "Nice work / WALK
+          COMPLETE" is one thought and the coach's sentence is another. */}
+      <Label size="title" tone="dim" className={styles.kicker}>{kind} complete</Label>
+      {s.summaryLine && <Prose tone="accent" className={styles.coach}>{s.summaryLine}</Prose>}
+      <Row space={16} className={styles.cards}>
+        <StatCard label="Time">{mmss(s.elapsed ?? 0)}</StatCard>
+        <StatCard label="Distance" unit="m">{nf(s.distance ?? 0)}</StatCard>
+        <StatCard label="Calories" unit="kcal">{nf(s.calories ?? 0)}</StatCard>
+        <StatCard label="Avg speed" unit="km/h">{fixed1(s.avgSpeed)}</StatCard>
+        <StatCard label="Max speed" unit="km/h">{fixed1(s.maxSpeed)}</StatCard>
+        <StatCard label="Avg incline" unit="%">{fixed1(s.avgIncline)}</StatCard>
+      </Row>
+      <div className={styles.done}>
+        <Button tone="primary" size="wide" onTap={() => bridge().home()}>DONE</Button>
+      </div>
+    </Fill>
+  );
+}

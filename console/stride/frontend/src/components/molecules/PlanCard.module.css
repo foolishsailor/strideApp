@@ -1,0 +1,57 @@
+.card {
+  display: block;
+  width: 250px;
+  padding: 22px 16px 18px;
+}
+
+.name {
+  font-size: 22px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* A route's name gets out from under the loop mark rather than running
+   beneath it; a second line pushes the rest down instead of landing on it. */
+.route .name {
+  padding: 0 50px;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+}
+.blurb {
+  margin-top: 7px;
+  font-size: 14px;
+  color: var(--colour-ink-faint);
+  min-height: 34px;
+}
+.spark {
+  display: block;
+  margin: 6px auto 0;
+}
+
+/* Its own corner of the card, and a 56px target: it is pressed by somebody
+   about to stand on a treadmill, and catching it by accident sets off twice
+   the walk they chose. */
+.loop {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 52px;
+  height: 52px;
+  border: 2px solid var(--colour-track-line);
+  border-radius: 26px;
+}
+.loop svg {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 28px;
+  height: 28px;
+  fill: var(--colour-ink-faint);
+}
+.loopOn {
+  border-color: var(--colour-accent);
+  background: rgba(57, 224, 255, 0.16);
+}
+.loopOn svg {
+  fill: var(--colour-accent);
+}

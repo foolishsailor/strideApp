@@ -130,6 +130,17 @@ start console\stride\app\src\main\assets\ui\original.html     # Windows
 Add `?screen=welcome`, `?screen=live`, `?screen=paused` or `?screen=summary`
 to land on a state, or press the number keys. Edit, then refresh.
 
+**Original is the exception.** Its `original.html` is built from React and
+TypeScript source in `console/stride/frontend/`; don't edit the built file. See
+[`console/stride/frontend/README.md`](../console/stride/frontend/README.md):
+
+```sh
+cd console/stride/frontend
+npm install
+npm run dev      # http://localhost:5173/original.html?screen=live-guided
+npm run build    # writes assets/ui/original.html, then checks it for Chromium 83
+```
+
 ---
 
 ## 2. An emulator with the simulated treadmill

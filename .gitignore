@@ -19,6 +19,7 @@ console/*/app/build/
 console/*/.gradle/
 *.iml
 .idea/
+node_modules/
 
 # --- private working notes --------------------------------------------------
 # The build journal, session plans and the v1.0 prep document. Kept locally

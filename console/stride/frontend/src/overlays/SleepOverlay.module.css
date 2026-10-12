@@ -1,0 +1,27 @@
+.sleep {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  z-index: var(--layer-sleep);
+}
+/* Barely there: the console lives in the room, and at rest it should be dark. */
+.clock {
+  font-size: 112px;
+  font-weight: 100;
+  color: #1d2a4d;
+  font-variant-numeric: tabular-nums;
+}
+.hint {
+  margin-top: 26px;
+  font-size: var(--font-body);
+  color: #16203c;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}

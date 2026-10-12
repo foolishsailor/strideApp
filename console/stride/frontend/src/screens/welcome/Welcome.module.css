@@ -1,0 +1,45 @@
+/* The step is sized by its widest row — the four plan cards — so its text
+   needs centring explicitly or it hugs the left of that box. */
+.step {
+  text-align: center;
+}
+.ask {
+  margin-top: 16px;
+}
+.choices {
+  margin-top: 66px;
+}
+.durations {
+  margin-top: 26px;
+}
+.askShape {
+  margin-top: 34px;
+}
+.plans {
+  margin-top: 30px;
+}
+
+.foot {
+  position: absolute;
+  bottom: 44px;
+  font-size: 16px;
+  color: var(--colour-ink-faint);
+}
+
+/* Corner buttons, held clear of the bezel. */
+.back,
+.begin,
+.settings {
+  position: absolute;
+  bottom: 40px;
+}
+.back { left: 38px; }
+.begin { right: 56px; }
+.settings {
+  right: 38px;
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  color: var(--colour-ink-faint);
+  border-color: rgba(22, 37, 90, 0.8);
+  background: rgba(22, 37, 90, 0.3);
+}

@@ -1,0 +1,110 @@
+/* The hero band, 62 – 466. Track, path and phase panel all occupy exactly
+   this box; only one is ever mounted. */
+.hero {
+  position: absolute;
+  left: 274px;
+  top: 62px;
+  width: 732px;
+  height: 404px;
+}
+.hero svg,
+.canvas {
+  display: block;
+  width: 732px;
+  height: 404px;
+}
+
+/* ---- track ---------------------------------------------------------------- */
+.lap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.lapCaption {
+  margin-top: 10px;
+  letter-spacing: 0.28em;
+}
+
+/* ---- path ----------------------------------------------------------------- */
+.segment {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+.segName {
+  letter-spacing: 0.26em;
+}
+.segSub {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--colour-ink-faint);
+}
+/* Tappable: pressing it takes the pace. */
+.suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 16px;
+  color: var(--colour-ink-dim);
+  touch-action: manipulation;
+}
+.suggest b {
+  color: var(--colour-accent-warm);
+  font-weight: 600;
+}
+.manual b {
+  color: var(--colour-ink-faint);
+}
+
+/* ---- phase (warm-up / cool-down) ------------------------------------------ */
+.phase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.phaseName {
+  letter-spacing: 0.34em;
+}
+.phaseClock {
+  margin-top: 22px;
+  font-size: 150px;
+  text-shadow: 0 0 44px rgba(57, 224, 255, 0.35);
+}
+.phaseNote {
+  margin-top: 18px;
+}
+/* What is coming, stated as a preview. Never live plan state. */
+.phasePreview {
+  margin-top: 14px;
+  letter-spacing: 0.16em;
+}
+.bar {
+  margin-top: 32px;
+  width: 420px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--colour-track-line);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--colour-accent);
+}
+.cooldown .bar i {
+  background: var(--colour-accent-warm);
+}
