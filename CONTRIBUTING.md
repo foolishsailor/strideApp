@@ -62,6 +62,7 @@ on a particular state, or press the number keys to jump between them.
 | `protocol/` | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md) (Gen 6) and [FitPro 2](protocol/FITPRO2_PROTOCOL.md) (Gen 7), decoded. Start here for a different machine. |
 | `homeassistant/` | Optional coach, reminders and dashboard scripts. |
 | `tools/unchain.sh` | Disables the iFit packages in the order that matters. |
+| `tools/sim.py` | Drives a simulated treadmill in debug builds: speed, incline, the four guided walks, the safety key. See [TEST_HARNESS.md](docs/TEST_HARNESS.md). |
 
 ## If you touch anything that moves the belt
 
