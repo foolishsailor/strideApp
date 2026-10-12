@@ -4,7 +4,7 @@ The console's interface is written here in React and TypeScript, in the
 TrailMate app's design (teal, mountain green and copper). It builds into one
 self-contained file, `app/src/main/assets/ui/trailmate.html`. Kotlin loads it
 (`MainActivity.UI_URL`) and talks to it through the `Stride` bridge and the
-`window.render` / `window.plan` / `window.coach` calls.
+`window.render` / `window.plan` / `window.stopPressed` calls.
 
 The built file is committed, so building the APK doesn't need Node. If you
 change anything here, run `npm run build` and commit the source and the
@@ -28,8 +28,7 @@ npm run typecheck
 In the browser, the core stubs the bridge, so the page runs without a
 treadmill. Add `?screen=live-guided` (or `welcome`, `warmup`, `live-casual`,
 `paused`, `cooldown`, `summary`) to drive it with the core's 5 Hz demo. The
-number keys switch screens, `&coach=1` brings up a coach line and `&dmk=1`
-pulls the safety key.
+number keys switch screens and `&dmk=1` pulls the safety key.
 
 ## Constraints
 
@@ -65,7 +64,7 @@ src/
   components/
     primitives/          Button, PressableCard, Text (Label, Numeral, Heading, Prose), Layout, Overlay
     molecules/           Metric, StatCard, ValueRail, RailReading, ChoiceCard, PlanCard, Sparkline, TopBar, StatusChip
-    organisms/           Hero (Track/Path/Phase), Rails, MetricStrip, ControlBar, FanMenu, CoachRibbon
+    organisms/           Hero (Track/Path/Phase), Rails, MetricStrip, ControlBar, FanMenu
   screens/               welcome (Who/How/Plan steps), workout, summary
   overlays/              paused, safety key, sleep
 ```

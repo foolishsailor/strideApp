@@ -10,8 +10,7 @@
 #
 # None of this is needed to use the treadmill — the console shows up in Home
 # Assistant on its own. This is for the things that need accumulated history:
-# the coach knowing what you did this week, and the reminders knowing when you
-# last weighed in.
+# the reminders knowing when you last weighed in.
 #
 # The console's distance counter resets at the start of every walk, which is
 # right for a session and no use for "how far this week", so the accumulating
@@ -85,17 +84,3 @@ input_datetime:
     name: Blood pressure reminder time
     has_date: false
     has_time: true
-
-# --- how the coach speaks ---------------------------------------------------
-#
-# Read when the coach writes a line, so a change applies to the next one.
-input_select:
-  stride_coach_personality:
-    name: Coach personality
-    options:
-      - Supportive Friend
-      - Drill Sergeant
-      - Data Nerd
-      - Zen Master
-    initial: Supportive Friend
-    icon: mdi:account-voice

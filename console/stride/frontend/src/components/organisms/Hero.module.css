@@ -46,22 +46,14 @@
   font-size: 14px;
   color: var(--colour-ink-faint);
 }
-/* Tappable: pressing it takes the pace. */
-.suggest {
+/* Under the path: said only once the incline has been taken by hand. */
+.inclineNote {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 8px;
   text-align: center;
   font-size: 16px;
-  color: var(--colour-ink-dim);
-  touch-action: manipulation;
-}
-.suggest b {
-  color: var(--colour-accent-warm);
-  font-weight: 600;
-}
-.manual b {
   color: var(--colour-ink-faint);
 }
 

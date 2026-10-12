@@ -143,7 +143,7 @@ ROUTE_TOPIC = "stride/routes"
 # because without it **nothing in Home Assistant can tell a fresh number from a
 # stale one**, and that is not hypothetical:
 #
-#   On 2026-07-31 at 07:30 the coach opened with "9,063 steps and 54 exercise
+#   On 2026-07-31 at 07:30 the dashboard showed "9,063 steps and 54 exercise
 #   minutes before 7:30". Both were the previous day's closing totals. The
 #   phone had not synced since 22:44 the night before, and every sensor here
 #   uses `default(this.state)` — by design, so an absent key keeps its reading

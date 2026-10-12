@@ -4,7 +4,7 @@ import { speedText, speedUnit, walked } from '../../lib/units';
 import { useUnits } from '../../store/settings';
 import { useSession } from '../../store/session';
 import { useWelcome } from '../../store/welcome';
-import { Button, Fill, Heading, Label, Prose, Row } from '../../components/primitives';
+import { Button, Fill, Heading, Label, Row } from '../../components/primitives';
 import { StatCard } from '../../components/molecules';
 import styles from './SummaryScreen.module.css';
 
@@ -30,10 +30,7 @@ export function SummaryScreen() {
       {/* The walker's own name, or none for a guest — better than
           congratulating somebody by the wrong name. */}
       <Heading className={styles.head}>{walker ? `Nice work, ${walker}` : 'Nice work'}</Heading>
-      {/* Under the kicker, not between it and the headline: "Nice work / WALK
-          COMPLETE" is one thought and the coach's sentence is another. */}
       <Label size="title" tone="dim" className={styles.kicker}>{kind} complete</Label>
-      {s.summaryLine && <Prose tone="accent" className={styles.coach}>{s.summaryLine}</Prose>}
       <Row space={16} className={styles.cards}>
         <StatCard label="Time">{mmss(s.elapsed ?? 0)}</StatCard>
         <StatCard label="Distance" unit={dist.unit}>{dist.value}</StatCard>

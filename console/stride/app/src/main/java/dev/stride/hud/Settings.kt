@@ -11,25 +11,24 @@ import org.json.JSONObject
  * The console shipped with a household baked into it. Not as configuration
  * anyone had chosen to inline, but as the ordinary residue of building
  * something for one house: four names in an HTML array, a broker in
- * `local.properties`, kilometres everywhere, and — the one that actually
- * changed behaviour — a live coach gated on `walker == "Sam"`, so a second
- * person in the same house silently got a different product.
+ * `local.properties`, kilometres everywhere, and behaviour gated on one
+ * person's name, so a second person in the same house silently got a
+ * different product.
  *
  * Three rules this file exists to hold:
  *
  * * **A default must be a working treadmill.** Nothing here is required. With
- *   no broker set and no people added, the deck still runs, still counts, still
- *   coaches from its built-in lines. Home Assistant is an addition, never a
- *   dependency — so a fresh install is usable before it is configured.
+ *   no broker set and no people added, the deck still runs and still counts.
+ *   Home Assistant is an addition, never a dependency — so a fresh install is
+ *   usable before it is configured.
  *
  * * **Preferences are not permissions.** Anything the *board* reports —
  *   incline range, speed range — is read from the machine and is not in here.
  *   Storing a max incline someone typed would be storing a way to ask the deck
  *   for something it cannot do.
  *
- * * **Per-person things belong to the person.** Coaching and publishing are
- *   properties of a walker, not of the console, which is the whole fix for the
- *   name comparison.
+ * * **Per-person things belong to the person.** Publishing is a property of a
+ *   runner, not of the console, which is the whole fix for the name comparison.
  *
  * Stored in SharedPreferences because it is a handful of scalars and one small
  * list, read at start-up and on every settings save. A database would be a
@@ -70,13 +69,6 @@ class Settings(context: Context) {
         /** The belt's measured speed table, as JSON. See [BeltCalibration].
          *  Written only through [saveBeltCalibration], never by [set]. */
         const val BELT_CAL = "belt_cal"
-
-        // --- coach ---
-        const val COACH_ON = "coach_on"
-        const val COACH_TALK = "coach_talk"       // "sparing" | "normal" | "chatty"
-        const val COACH_VOICE = "coach_voice"
-        const val COACH_REMOTE = "coach_remote"
-        const val COACH_MILESTONES = "coach_milestones"
 
         // --- heart rate ---
         const val HR_SOURCE = "hr_source"         // "auto" | "strap" | "grips"
@@ -121,41 +113,35 @@ class Settings(context: Context) {
     // --- people ---------------------------------------------------------------
 
     /**
-     * One walker.
+     * One runner.
      *
-     * @param coached  may the live coach speak to them
-     * @param publish  do their walks leave the console for Home Assistant
+     * @param publish  do their runs leave the console for Home Assistant
      *
-     * Both default true for someone added deliberately, and both are the
-     * replacement for the name comparison. Coaching is a preference; publishing
-     * is closer to consent, and it is the reason a household member can use the
-     * treadmill without appearing on somebody else's dashboard.
+     * Publishing is closer to consent than to a preference, and it is the
+     * reason a household member can use the treadmill without appearing on
+     * somebody else's dashboard.
      */
     data class Person(
         val id: String,
         val name: String,
-        val coached: Boolean,
         val publish: Boolean,
         /** `person.jane_doe`, or empty for somebody who exists only here. */
         val haPerson: String = "",
         /**
          * Years, or 0 for "has not said" — which is the default and stays the
          * default. It buys one thing: heart-rate zones, via the usual
-         * 220-minus-age. That formula is crude enough (±10-12 bpm between two
-         * people of the same age) that the coach talks in its terms rather than
-         * quoting it, and a walker who leaves this alone still gets effort
-         * coaching measured against their own session average instead. Nobody
-         * has to tell a treadmill their age to be coached by it.
+         * 220-minus-age, which is crude (±10-12 bpm between two people of the
+         * same age). Nobody has to tell a treadmill their age.
          *
          * Per person, not per console: there is a person registry here because
-         * more than one person walks on this machine, and one shared age would
+         * more than one person runs on this machine, and one shared age would
          * be wrong for all but one of them.
          */
         val age: Int = 0,
     ) {
         fun json(): JSONObject = JSONObject()
             .put("id", id).put("name", name)
-            .put("coached", coached).put("publish", publish)
+            .put("publish", publish)
             .put("ha_person", haPerson)
             .put("age", age)
 
@@ -200,7 +186,6 @@ class Settings(context: Context) {
         val p = Person(
             id = freshId(clean, list.map { it.id }.toSet()),
             name = clean,
-            coached = true,
             // Somebody who is not in Home Assistant has nothing there to be
             // recorded against, so it starts off. It can be turned on — it
             // simply creates a device with no matching person, which is a
@@ -234,7 +219,6 @@ class Settings(context: Context) {
                         name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
                     },
                     name = name,
-                    coached = o.optBoolean("coached", true),
                     publish = o.optBoolean("publish", true),
                     haPerson = o.optString("ha_person"),
                     // Absent for everyone who existed before zones did, which
@@ -262,14 +246,11 @@ class Settings(context: Context) {
     fun personById(id: String): Person? = people().firstOrNull { it.id == id }
 
     /**
-     * May the coach speak to this walker, and may their walk be published.
+     * May this runner's run be published.
      *
-     * **Unknown walkers get neither.** A guest is someone who has not agreed to
-     * anything, so their walk stays on the console. That is the opposite of the
-     * old behaviour, where an unrecognised name simply meant "not Sam" and
-     * fell through to no coaching but full publishing.
+     * **Unknown runners may not.** A guest is someone who has not agreed to
+     * anything, so their run stays on the console.
      */
-    fun coachedFor(name: String): Boolean = person(name)?.coached ?: false
     fun publishFor(name: String): Boolean = person(name)?.publish ?: false
 
     fun defaultWalker(): String = prefs.getString(DEFAULT_WALKER, ASK) ?: ASK
@@ -372,21 +353,6 @@ class Settings(context: Context) {
         prefs.edit().putString(BELT_CAL, cal.json().toString()).apply()
     }
 
-    // --- coach ----------------------------------------------------------------
-
-    fun coachOn(): Boolean = prefs.getBoolean(COACH_ON, true)
-    fun coachRemote(): Boolean = prefs.getBoolean(COACH_REMOTE, true)
-    fun coachMilestones(): Boolean = prefs.getBoolean(COACH_MILESTONES, true)
-    fun coachVoice(): String = prefs.getString(COACH_VOICE, "Supportive Friend")
-        ?: "Supportive Friend"
-
-    /** Multiplies every gap in [Coach]. Sparing talks about half as often. */
-    fun coachGapScale(): Double = when (prefs.getString(COACH_TALK, "normal")) {
-        "sparing" -> 2.0
-        "chatty" -> 0.6
-        else -> 1.0
-    }
-
     // --- heart rate -----------------------------------------------------------
 
     fun hrSource(): String = prefs.getString(HR_SOURCE, "auto") ?: "auto"
@@ -486,11 +452,6 @@ class Settings(context: Context) {
         .put(WARMUP_KPH, prefs.getFloat(WARMUP_KPH, 2.0f).toDouble())
         .put(INCLINE_RATE, prefs.getString(INCLINE_RATE, "normal"))
         .put(OPEN_LAP_MIN, openLapMin())
-        .put(COACH_ON, coachOn())
-        .put(COACH_TALK, prefs.getString(COACH_TALK, "normal"))
-        .put(COACH_VOICE, coachVoice())
-        .put(COACH_REMOTE, coachRemote())
-        .put(COACH_MILESTONES, coachMilestones())
         .put(HR_SOURCE, hrSource())
         .put(HR_ADDR, hrAddr())
         .put(HR_NAME, hrName())
@@ -516,8 +477,8 @@ class Settings(context: Context) {
     fun set(key: String, value: String) {
         val e = prefs.edit()
         when (key) {
-            ALLOW_GUEST, HA_ENABLED, MQTT_TLS, COACH_ON, COACH_REMOTE,
-            COACH_MILESTONES, CLOCK_24, KEEP_AWAKE ->
+            ALLOW_GUEST, HA_ENABLED, MQTT_TLS,
+            CLOCK_24, KEEP_AWAKE ->
                 e.putBoolean(key, value == "true" || value == "1")
 
             MQTT_PORT, WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->

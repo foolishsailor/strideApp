@@ -90,8 +90,7 @@ WS = HA.replace("https://", "wss://").replace("http://", "ws://") + "/api/websoc
 # integration entirely.
 #
 # The defaults are what a clean STRIDE install produces. Anything that does not
-# resolve is treated as absent rather than fatal: the coach already knows how
-# to say nothing about a metric it was not given.
+# resolve is treated as absent rather than fatal.
 
 def treadmill(name: str) -> str:
     """`sensor.treadmill_distance`, unless the device was renamed."""
@@ -101,18 +100,6 @@ def treadmill(name: str) -> str:
 def optional(key: str) -> str:
     """An entity id that may legitimately not exist. Empty means absent."""
     return conf(key, "")
-
-
-def ai_task() -> str:
-    """
-    The AI task entity the coach asks for words.
-
-    There is no sensible default. It depends on which conversation integration
-    somebody set up — `ai_task.claude_ai_task`, `ai_task.google_ai_task`,
-    something local — and getting it wrong fails at call time with an error
-    that does not say what is wrong.
-    """
-    return conf("coach_ai_task")
 
 
 def broker() -> str:

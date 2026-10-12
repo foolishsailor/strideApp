@@ -117,9 +117,8 @@ data class Snapshot(
      * The *walker's* maximum heart rate, or 0 when they have not given an age.
      *
      * Not [maxPulse], which is the highest beat seen during this walk. This one
-     * is a property of the person and the reason zones can be spoken about at
-     * all — see Settings.Person.age. Zero is the ordinary case and means the
-     * coach falls back to comparing against the session's own average.
+     * is a property of the person and the reason zones exist at all — see
+     * Settings.Person.age. Zero is the ordinary case.
      */
     val hrMax: Int = 0,
     /**
@@ -144,11 +143,8 @@ data class Snapshot(
     /**
      * The walker's stable profile id, or empty for a guest.
      *
-     * Sent to Home Assistant alongside [who] so the coach can tell whose walk
-     * this is without matching on a display name. The prompt keys every personal
-     * figure — weight, blood pressure, sleep — off this, and attaches none of
-     * them when it is empty. A guest on the belt gets coaching about the walk
-     * and nothing about anybody's body. See Settings.Person.id.
+     * Sent to Home Assistant alongside [who] so it can tell whose session this
+     * is without matching on a display name. See Settings.Person.id.
      */
     val whoId: String = "",
     /** Guided walk, or empty on a casual one. */
@@ -161,7 +157,7 @@ data class Snapshot(
      *  driven by distance, so "how much of this stretch is left" is a distance
      *  too. See MainActivity.routeTick. */
     val segmentLeftIsDistance: Boolean = false,
-    /** The segment after this one, so the coach can warn before it arrives. */
+    /** The segment after this one, so the screen can show what is coming. */
     val nextLabel: String = "",
     val nextIncline: Double = 0.0,
     /** Total plan length in seconds — one lap on a circuit. */
@@ -172,8 +168,6 @@ data class Snapshot(
     val planClimbM: Double = 0.0,
     /** The steepest gradient anywhere in the plan. */
     val planPeakIncline: Double = 0.0,
-    /** The coach's closing line, ready before the summary appears. */
-    val summaryLine: String = "",
     /**
      * Where this walk has got to on its way to TrailMate, for the summary:
      * "sending", "sent", "waiting" (no network, will retry), "failed",
@@ -187,8 +181,6 @@ data class Snapshot(
     val planLap: Int = 1,
     /** True when the route is a circuit with no end but STOP. */
     val planLoops: Boolean = false,
-    /** Pace the plan is suggesting, km/h. 0 when it has no opinion. */
-    val suggestPace: Double = 0.0,
     /** False once a manual incline press has taken the deck back for this segment. */
     val inclineAuto: Boolean = false,
     /** False while the board is refusing frames. The numbers here are then the
@@ -238,8 +230,8 @@ data class Snapshot(
     /**
      * JSON string escaping, for the fields that carry text somebody else wrote.
      *
-     * [summaryLine] and the coach's lines come from a language model, plan and
-     * segment labels come from a route file, and names are typed in by hand.
+     * Plan and segment labels come from a route file, and names are typed in
+     * by hand.
      * Any of them may contain a quote or a backslash, and one of those dropped
      * raw into this object produces JSON the HUD cannot parse — a blank screen
      * for the rest of the walk, from one apostrophe.
@@ -306,12 +298,10 @@ data class Snapshot(
         append("\"planTotalSec\":${"%.0f".format(planTotalSec)},")
         append("\"planClimbM\":${"%.0f".format(planClimbM)},")
         append("\"planPeakIncline\":${"%.1f".format(planPeakIncline)},")
-        append("\"summaryLine\":\"${esc(summaryLine)}\",")
         append("\"trailmate\":\"${esc(trailmate)}\",")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
         append("\"planLap\":$planLap,")
         append("\"planLoops\":$planLoops,")
-        append("\"suggestPace\":${"%.1f".format(suggestPace)},")
         append("\"inclineAuto\":$inclineAuto,")
         append("\"calib\":${calib?.toJson() ?: "null"},")
         append("\"mode\":\"$mode\"")

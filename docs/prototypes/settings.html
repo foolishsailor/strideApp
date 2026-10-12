@@ -17,9 +17,8 @@
 
   What drove the inventory: an audit of the Kotlin and the UI assets for things
   that are true of Sam's house and would be wrong for anybody else. The worst
-  of them is not a value but a branch — MainActivity gates the live coach on
-  `walker == "Sam"`, so a second person in the same household silently gets a
-  different product.
+  of them is not a value but a branch: behaviour gated on one person's name,
+  so a second person in the same household silently gets a different product.
 -->
 <style>
 :root{
@@ -259,12 +258,6 @@ body::before{
             <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
           </div>
         </div>
-        <div class="note">
-          <b>This is the one that matters most.</b> The live coach is currently gated on the
-          walker literally being called Sam — <code>walker == "Sam"</code> in MainActivity —
-          so a second person in the same house silently gets a different product. It should be a
-          per-person setting, which is the <i>Coaching</i> switch on each card above.
-        </div>
       </div>
     </div>
 
@@ -322,7 +315,7 @@ body::before{
     <div class="pane" data-p="ha">
       <div class="ph">Home Assistant</div>
       <div class="psub">Optional. The treadmill runs perfectly well with none of this set —
-        you lose the history, the dashboards and the talking coach, and nothing else.</div>
+        you lose the history and the dashboards, and nothing else.</div>
       <div class="scroll">
         <div class="group">
           <div class="gh">Connection</div>
@@ -438,46 +431,6 @@ body::before{
       </div>
     </div>
 
-    <!-- ================= COACH ================= -->
-    <div class="pane" data-p="coach">
-      <div class="ph">Coach</div>
-      <div class="psub">Marks your kilometres and says something occasionally. It never
-        touches the belt — every pace change is yours.</div>
-      <div class="scroll">
-        <div class="group">
-          <div class="row">
-            <div class="lbl"><div class="n">Coach</div>
-              <div class="d">Off means a silent walk with no ribbon at all.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">How much it talks</div>
-              <div class="d">Sparing marks kilometres and little else. Chatty adds pace and rhythm observations.</div></div>
-            <div class="ctl"><div class="seg" data-seg="talk">
-              <button>Sparing</button><button class="on">Normal</button><button>Chatty</button>
-            </div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Voice</div>
-              <div class="d">Only affects wording, never what it is willing to say.</div></div>
-            <div class="ctl"><div class="seg" data-seg="voice">
-              <button class="on">Supportive</button><button>Drill sergeant</button><button>Data nerd</button><button>Zen</button>
-            </div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Written by Home Assistant</div>
-              <div class="d">Off keeps every line on the console — the built-in ones, which are shorter and never late.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-          <div class="row">
-            <div class="lbl"><div class="n">Announce milestones</div>
-              <div class="d">First mark at 500 m, then every kilometre.</div></div>
-            <div class="ctl"><div class="sw on" data-sw><i></i></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- ================= INTERFACE ================= -->
     <div class="pane" data-p="ui">
       <div class="ph">Interface</div>
@@ -566,7 +519,6 @@ const SECTIONS = [
   ['hr',     'Heart rate',     'M12 21s-8-5.4-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.6-8 11-8 11z'],
   ['ha',     'Home Assistant', 'M3 11l9-8 9 8M5 10v10h14V10'],
   ['deck',   'Treadmill',      'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3'],
-  ['coach',  'Coach',          'M4 5h16v11H9l-5 4V5z'],
   ['ui',     'Interface',      'M3 4h18v14H3zM3 9h18M9 9v9'],
   ['screen', 'Display',        'M3 4h18v12H3zM8 20h8M12 16v4'],
   ['about',  'About',          'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01'],
@@ -590,8 +542,8 @@ navs.addEventListener('click', e => {
 
 /* ---- people ------------------------------------------------------------ */
 const PEOPLE = [
-  { name: 'Sam',  note: 'Coaching · to Home Assistant' },
-  { name: 'Alex',   note: 'Coaching off · console only' },
+  { name: 'Sam',  note: 'to Home Assistant' },
+  { name: 'Alex',   note: 'console only' },
   { name: 'Jo',  note: 'Console only' },
   { name: 'Robin', note: 'Console only' },
 ];

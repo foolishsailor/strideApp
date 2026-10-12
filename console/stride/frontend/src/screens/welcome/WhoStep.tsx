@@ -10,9 +10,8 @@ import styles from './Welcome.module.css';
 
 /** Step 1 — who is walking.
  *
- *  Everyone is read from Settings rather than written here. Now that the coach
- *  is gated per person, a name on this picker that Settings does not have
- *  would be a walker who silently gets no coaching and no history. One list,
+ *  Everyone is read from Settings rather than written here. A name on this
+ *  picker that Settings does not have would be a runner with no history. One list,
  *  in one place, re-read whenever Settings closes. */
 export function WhoStep() {
   const now = useNow();

@@ -20,13 +20,15 @@ Run:  python3 ha/stride_reminders.py
 import json
 import urllib.request
 
-from stride_coach_llm import KINDS
 from stride_config import HA, conf, token
 
 
 WEIGHT = conf("weight_entity", "")
 SYSTOLIC = conf("systolic_entity", "")
 DIASTOLIC = conf("diastolic_entity", "")
+# Where a reminder is pushed. Blank falls back to a persistent notification in
+# Home Assistant, which is visible but does not reach a phone.
+NOTIFY = conf("notify_service", "") or "persistent_notification.create"
 
 
 def post(path: str, payload: dict, tok: str):
@@ -65,8 +67,7 @@ def stamp(slug: str, entity: str, target: str) -> dict:
     }
 
 
-def remind(slug: str, label: str, at: str, last: str, interval: str,
-           task: str) -> dict:
+def remind(label: str, at: str, last: str, interval: str, message: str) -> dict:
     return {
         "alias": f"STRIDE — {label} reminder",
         "description": "Nudges only when one is actually due. A fixed cadence is "
@@ -86,19 +87,12 @@ def remind(slug: str, label: str, at: str, last: str, interval: str,
                 ),
             }
         ],
-        # There is one coach, and it speaks in one voice to both the dashboard
-        # card and the phone. This used to publish its own fixed sentence
-        # straight to the coach feed and send its own notification, which meant
-        # two authors writing into one retained slot: a nag would land on top of
-        # the morning session plan and wipe it, in noticeably different prose.
-        #
-        # Now the reminder decides *that* something is due and the coach decides
-        # what to say about it. The script publishes the message and sends the
-        # push itself, so this stays a trigger rather than a second author.
+        # A plain, fixed message straight to the phone (or a Home Assistant
+        # notification when none is configured).
         "actions": [
             {
-                "action": "script.stride_coach",
-                "data": {"kind": f"{slug}_due", "task": task},
+                "action": NOTIFY,
+                "data": {"title": "STRIDE", "message": message},
             },
         ],
     }
@@ -108,14 +102,14 @@ AUTOMATIONS = {
     "stride_stamp_weigh_in": stamp("weigh-in", WEIGHT, "input_datetime.stride_last_weigh_in"),
     "stride_stamp_bp": stamp("BP", SYSTOLIC, "input_datetime.stride_last_bp"),
     "stride_remind_weigh_in": remind(
-        "weigh_in", "weigh-in", "input_datetime.stride_weigh_in_time",
+        "weigh-in", "input_datetime.stride_weigh_in_time",
         "input_datetime.stride_last_weigh_in", "input_number.stride_weigh_in_interval",
-        KINDS["weigh_in_due"],
+        "A weigh-in is due.",
     ),
     "stride_remind_bp": remind(
-        "bp", "BP", "input_datetime.stride_bp_time",
+        "BP", "input_datetime.stride_bp_time",
         "input_datetime.stride_last_bp", "input_number.stride_bp_interval",
-        KINDS["bp_due"],
+        "A blood-pressure reading is due.",
     ),
 }
 

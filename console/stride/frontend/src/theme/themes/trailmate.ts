@@ -39,14 +39,12 @@ export const trailmate: Theme = {
     fillCard: surface,
     fillQuiet: alpha(surface, 0.5),
     fillFloating: alpha(surface, 0.98),
-    fillFloatingDown: '#0C4448',
     pressed: alpha(c.accent, 0.24),
     pressedCard: alpha(c.accent, 0.2), // TINT.overlay
     selected: alpha(c.accent, 0.2), // TINT.fill — the tonal container
     active: alpha(c.good, 0.2),
     edge: alpha(c.ink, 0.2), // surfaces.hairline
     edgeQuiet: alpha(c.ink, 0.1),
-    edgeFloating: alpha(c.ink, 0.2),
     scrim: alpha(c.bg0, 0.97),
     pulse: alpha(c.accent, 0.5),
     glow: 'transparent',

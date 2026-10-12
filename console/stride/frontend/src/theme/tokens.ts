@@ -34,7 +34,7 @@ export const fontSize = {
 export const motion = { quick: '.15s', settle: '.32s' } as const;
 
 /** z-order of the layers that sit over the screens. */
-export const layer = { fanMenu: 30, coach: 40, overlay: 50, sleep: 80 } as const;
+export const layer = { fanMenu: 30, overlay: 50, sleep: 80 } as const;
 
 function kebab(s: string): string {
   return s.replace(/[A-Z0-9]+/g, (m) => '-' + m.toLowerCase());

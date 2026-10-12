@@ -3,9 +3,9 @@
 Install the STRIDE health dashboard into Home Assistant.
 
 Creates a *new* dashboard at /stride-health and leaves `stride-console` exactly
-where it is. That one proved the plumbing — live treadmill state, the coach,
-some body numbers bolted on the end — and it is still the right place to stand
-while a walk is happening. This is the other thing: what the numbers have been
+where it is. That one proved the plumbing — live treadmill state, some body
+numbers bolted on the end — and it is still the right place to stand while a
+run is happening. This is the other thing: what the numbers have been
 doing over years, which is a different question and wants a different page.
 
 Run:  python3 ha/stride_health_dashboard.py
@@ -38,8 +38,7 @@ assumed, because a dashboard is only as honest as its worst card.
 
 THE TWO RULES THAT ARE NOT NEGOTIABLE
 -------------------------------------
-Both are carried over from the coach, for the same reasons, and they constrain
-the layout as much as they constrain the words:
+They constrain the layout as much as they constrain the words:
 
 * **Blood pressure is a tracked trend, never an alarm.** Sam has
   readings here are trends, not diagnoses. So the BP cards use no severity
@@ -84,7 +83,6 @@ DIST_TODAY = "sensor.withings_distance_travelled_today"
 CALS_TODAY = "sensor.withings_active_calories_burnt_today"
 ACTIVE_TODAY = "sensor.withings_active_time_today"
 
-COACH = "sensor.stride_coach"
 LAST_WEIGH = "input_datetime.stride_last_weigh_in"
 LAST_BP = "input_datetime.stride_last_bp"
 
@@ -224,16 +222,9 @@ def stats(entities, days, period, types, chart="line", title=None):
 # One screen that answers "where am I". Nothing here is a chart: charts are for
 # the other three views, and the point of this one is the current number and
 # how old it is.
-COACH_CARD = markdown(
-    "### {{ states('" + COACH + "') }}\n\n"
-    "{{ state_attr('" + COACH + "','body') }}\n\n"
-    "<small>{{ state_attr('" + COACH + "','source') }} · "
-    "{{ relative_time(states." + COACH + ".last_changed) }} ago</small>"
-)
-
 # Arithmetic against the target, which is a fact. No direction-of-travel
-# language: three months of readings is not a trend and saying so would be
-# the exact failure mode the coach is forbidden.
+# language: three months of readings is not a trend, and saying so would be
+# wrong.
 WEIGHT_CARD = markdown(
     "{% set w = states('" + WEIGHT + "') | float(0) %}"
     "{% set togo = (w - " + str(TARGET) + ") | round(1) %}"
@@ -383,7 +374,6 @@ TODAY = {
     "type": "sections",
     "max_columns": 3,
     "sections": [
-        grid([heading("Coach", "mdi:account-voice"), COACH_CARD]),
         grid([
             heading("Weight", "mdi:scale-bathroom"),
             WEIGHT_CARD,

@@ -188,9 +188,9 @@ class Ftms(private val context: Context) {
             // while the belt is still running, which reads as the treadmill
             // slowing to a halt and is nothing of the sort.
             //
-            // Off the main thread as well. That one runs the WebView and the
-            // coach's speech, and a frame that waits behind a repaint is a
-            // frame that did not go out on time.
+            // Off the main thread as well. That one runs the WebView, and a
+            // frame that waits behind a repaint is a frame that did not go out
+            // on time.
             try {
                 last?.let { send(it) }
             } catch (e: Exception) {

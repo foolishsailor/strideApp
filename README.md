@@ -53,7 +53,7 @@ and it now pairs with Zwift over Bluetooth FTMS.
 | | |
 |---|---|
 | **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided walks, and draws them in the TrailMate app's design. |
-| **`homeassistant/`** | Optional scripts for the coach, the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
+| **`homeassistant/`** | Optional scripts for the reminders and a health dashboard. The treadmill shows up in Home Assistant without any of them. |
 | **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
 There used to be an `ios/` folder. That's now its own thing,
@@ -79,8 +79,8 @@ custom component.
 Build whatever dashboard you like from it. There's no STRIDE dashboard you have
 to accept.
 
-The `homeassistant/` scripts are for the extras: the coach, the reminders, and
-an opinionated health dashboard if you want a starting point.
+The `homeassistant/` scripts are for the extras: the reminders, and an
+opinionated health dashboard if you want a starting point.
 
 ---
 
@@ -143,7 +143,7 @@ In outline:
    Pick one and stay on it — they're signed with different keys, so swapping
    later means uninstalling and losing your settings.
 8. **Optional:** enter broker details on the console to get the treadmill into
-   Home Assistant, then add the coach.
+   Home Assistant.
 
 Stop after step 7 and you've got a treadmill with no subscription. Steps 1 to 7
 need nothing installed on the Home Assistant side.
@@ -157,7 +157,7 @@ That's how most of my own installs have gone.
 ## Configuration
 
 **The console configures itself.** Broker details, who walks, units, warm-up,
-coach, heart rate, display: all of it lives in Settings on the treadmill's own
+heart rate, display: all of it lives in Settings on the treadmill's own
 screen. No config files, no rebuild.
 
 **The Home Assistant side reads one file:**
@@ -167,17 +167,13 @@ cp homeassistant/stride.conf.example homeassistant/stride.conf
 ```
 
 Every key is documented in the example. Leave anything blank and that subject
-is simply absent, so no scale, no blood-pressure cuff, no phone. The coach says
-nothing about what it wasn't given rather than guessing at it.
-
-`coach_ai_task` has no default, because which AI entity you have depends on
-which integration you set up.
+is simply absent, so no scale, no blood-pressure cuff, no phone.
 
 **For weekly and monthly totals**, copy
 [`homeassistant/packages/stride.yaml`](homeassistant/packages/stride.yaml) into
 your Home Assistant config. The console's distance counter resets every walk,
 so the accumulating has to happen in HA. That file also creates the helpers the
-coach and reminders need.
+reminders need.
 
 ---
 
@@ -189,17 +185,13 @@ A few decisions that will save you reading the code to find them.
   HTML in a WebView, so you can design it in a browser. Tap SPEED+ and the
   belt speeds up, but the request goes through Kotlin first, which clamps it to
   whatever the board says it can do. A bad layout can't outrun the machine.
-- **The coach decides when to speak, Home Assistant decides what it says.**
-  With HA unreachable it still marks your kilometres, using a set of lines
-  built into the console.
 - **Never hand over a number without its age.** Health metrics that reset at
   midnight are withheld entirely if they haven't changed since midnight, rather
   than being passed on as today's. This one came from a real incident: the
   sensors hold yesterday's closing total and look exactly like today's running
-  total, so the coach quoted yesterday's numbers back at me as though they were
-  fresh.
-- **Coaching and recording are per person, not per console.** Guests get
-  neither. They're summarised at the end of a walk and then forgotten.
+  total, so yesterday's numbers were shown as though they were fresh.
+- **Recording is per person, not per console.** Guests are never
+  recorded. They're summarised at the end of a walk and then forgotten.
 
 ---
 

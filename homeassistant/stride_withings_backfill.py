@@ -6,7 +6,7 @@ statistics.
 HA holds no Withings history from before the integration was linked (2026-07-01)
 — the integration only pushes new readings, and the recorder is the only archive.
 `recorder/import_statistics` can write history retroactively, so a Health Mate
-data export gives the dashboard, and the coach, fourteen years of trend instead
+data export gives the dashboard fourteen years of trend instead
 of one month.
 
 Two kinds of target, chosen per metric:
@@ -62,7 +62,7 @@ UTC = dt.timezone.utc
 # The 2012–13 rows contain someone else's weigh-ins (19–31 kg) on the same
 # account. Rather than blacklisting dates, every metric declares the range a
 # reading has to fall in to be believed; anything outside is dropped and
-# counted. A coach told to find a trend must never be handed a foreign number.
+# counted. A trend must never be built on a foreign number.
 BANDS = {
     "weight": (40, 250), "fat_mass": (2, 120), "bone_mass": (0.5, 10),
     "muscle_mass": (10, 150), "fat_ratio": (2, 70), "fat_free_mass": (20, 200),

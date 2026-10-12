@@ -37,8 +37,6 @@ var STORE = {
   mqtt_tls: false, mqtt_prefix: 'stride',
   warmup_min: 2, cooldown_min: 2, warmup_kph: 2.0,
   incline_rate: 'normal', open_lap_min: 20,
-  coach_on: true, coach_talk: 'normal', coach_voice: 'Supportive Friend',
-  coach_remote: true, coach_milestones: true,
   hr_source: 'auto', hr_addr: '', hr_name: '',
   sleep_min: 5, clock_24: true, brightness: 'normal', keep_awake: true
 };
@@ -54,7 +52,7 @@ window.Stride = {
   },
   addPerson: function (n) {
     if (n && !STORE.people.some(function (p) { return p.name === n; }))
-      STORE.people.push({ name: n, coached: true, publish: true });
+      STORE.people.push({ name: n, publish: true });
     return JSON.stringify(STORE);
   },
   removePerson: function (n) {

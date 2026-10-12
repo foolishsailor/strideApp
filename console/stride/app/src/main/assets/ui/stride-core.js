@@ -298,9 +298,8 @@ function profile(steps, opts) {
      misleads. Reported from a walk on 2026-08-07: a steady -3% drew as a flat
      line, because an unchanging gradient *is* flat on a gradient axis, and it
      read as level ground. Worse, a decline easing -3 → -2 → -1 drew as a
-     rising line and looked like a climb, while the walker was still going down
-     and the coach was correctly saying the decline was ending. Two readings of
-     one picture, and the picture was the one that was wrong.
+     rising line and looked like a climb, while the runner was still going down.
+     Two readings of one picture, and the picture was the one that was wrong.
 
      Integrating settles the jaggedness too: a 1% rung is a visible step on a
      gradient axis, but on an elevation axis it is a change of slope — which is
@@ -526,10 +525,6 @@ function adapt(raw) {
                 nextName: raw.nextLabel || '',
                 nextIncline: raw.nextIncline || 0 },
 
-    /* The coach's closing line, asked for before the walk ends so it is here
-       when the summary appears rather than arriving after it. */
-    summaryLine: raw.summaryLine || '',
-
     session:  { elapsed: raw.elapsed || 0,
                 distance: distance,
                 calories: raw.calories || 0,
@@ -658,8 +653,7 @@ function beatStyle(bpm) {
  *
  * A hill is a *run* of climbing — the transitions from not-going-up to
  * going-up. The 0.5% floor keeps the profile's own rounding between two grid
- * steps from registering as terrain, which is the same reasoning the coach uses
- * before it will speak about a gradient change.
+ * steps from registering as terrain.
  */
 function hillCount(steps) {
   var hills = 0, climbing = false;
@@ -720,17 +714,17 @@ function screenFor(state) {
  * interfaces share, so fixing `original.html` alone fixed one screen out of
  * five and left Ember, Cluster, Daylight and Pacer still offering strangers.
  *
- * It matters more than it looks now that coaching and recording are per person:
- * a name offered here that Settings does not have is a walker who silently gets
- * neither. The picker and the store have to be one list.
+ * It matters more than it looks now that recording is per person: a name
+ * offered here that Settings does not have is a runner who silently gets no
+ * history. The picker and the store have to be one list.
  */
 function profiles() {
   var names = people().map(function (p) { return p.name; });
 
   /* Guest sits alongside the household rather than instead of it: somebody
      else's turn on the belt is common, and it should not mean picking a name
-     that is not yours. It is never coached and never published, because a
-     guest has not agreed to anything — Settings.coachedFor / publishFor return
+     that is not yours. It is never published, because a guest has not agreed
+     to anything — Settings.publishFor returns
      false for any name that is not in the people list, so "Guest" needs no
      special case in Kotlin.
 
@@ -881,9 +875,9 @@ function flow(onStep) {
  * Everyone set up on this console, newest state every call.
  *
  * The welcome screen used to hold this as a literal — four names of one
- * household, in a file that ships to anybody. Worse than untidy: the coach is
- * now gated per person, so a name that exists on the picker but not in Settings
- * is a walker who silently gets no coaching and no history. The picker and the
+ * household, in a file that ships to anybody. Worse than untidy: a name that
+ * exists on the picker but not in Settings is a runner who silently gets no
+ * history. The picker and the
  * store have to be the same list, and this is the only copy of it.
  *
  * Empty is a real answer, not a failure — a console nobody has set up yet.
@@ -1053,7 +1047,7 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setIncline',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
-              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'wakeBoard',
+              'setWalker', 'ackDmk', 'dim', 'wakeBoard',
               'calibrate', 'calNudge', 'calUseStryd', 'calSave', 'calDone'];
 
 /** @return true if this page is running without the console behind it. */
@@ -1269,7 +1263,6 @@ function wakeStep(overlay, done) {
 
        ?screen=live-guided   open straight onto one screen
        ?dmk=1                safety key out
-       ?coach=1              a coach line on arrival
 
    Number keys 1-9 and 0 jump between screens while it runs.
    =========================================================================== */
@@ -1345,12 +1338,6 @@ function demo(opts) {
   }
 
   if (guided && global.plan) global.plan({ name: 'Rolling hills', steps: steps });
-  if (q.coach === '1' && global.coach) {
-    setTimeout(function () {
-      global.coach({ line: 'Nine and a half percent for the next forty seconds. ' +
-                           'Shorten your stride and stay tall.', kind: 'local' });
-    }, 400);
-  }
 
   frame();
   setInterval(frame, 200);

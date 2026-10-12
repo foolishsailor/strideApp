@@ -271,7 +271,7 @@ class History(context: Context) {
          */
         const val KEEP = 750
 
-        /** Shorter than this is an interruption, not a session — see Coach.SUMMARY_MIN_MS. */
+        /** Shorter than this is an interruption, not a session. */
         const val MIN_DISTANCE_M = 300.0
         const val MIN_ELAPSED_S = 180.0
 

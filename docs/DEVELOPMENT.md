@@ -284,7 +284,7 @@ installed, belt idle" is worth knowing; so is "not walked on yet".
 | `treadmills/` | What each generation and machine is like |
 | `tools/unchain.sh` | Takes a console from iFit to STRIDE |
 | `tools/sim.py` | Drives the simulator |
-| `homeassistant/` | Optional coach, reminders, dashboard |
+| `homeassistant/` | Optional reminders, dashboard |
 
 ---
 

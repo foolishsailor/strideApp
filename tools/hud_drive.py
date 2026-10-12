@@ -170,8 +170,6 @@ def main():
     hud.shot("05-workout-casual-oval")
     hud.push()
     hud.shot("06-workout-guided-path")
-    hud.ev("""window.coach({line:"Ease off a touch — this one lasts.",kind:"segment"})""")
-    hud.shot("07-workout-coach")
     # Warm-up runs *first*, so its telemetry is warm-up scale. Injecting a
     # mid-session elapsed under a WARMING UP badge produced a screenshot that
     # looked like the HUD's bug rather than the driver's, and the numbers were

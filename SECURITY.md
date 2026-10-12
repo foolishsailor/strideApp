@@ -31,9 +31,7 @@ These are design decisions, not oversights. Knowing them is most of the
 security model.
 
 **Your network is the boundary.** MQTT to Home Assistant is plain TCP with a
-username and password. The coach's audio is fetched over plain HTTP, because
-the console's clock reads 2022 and TLS validation fails against a correct
-certificate. Nothing here is safe to expose to the internet, and nothing here
+username and password. Nothing here is safe to expose to the internet, and nothing here
 tries to be. Keep the console and the broker on a network you trust.
 
 **ADB is a key to the treadmill.** Installing STRIDE means enabling ADB, and

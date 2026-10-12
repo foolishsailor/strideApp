@@ -500,7 +500,6 @@
     devices: 'M7 7l10 10-5 5V2l5 5L7 17',
     ha: 'M3 11l9-8 9 8M5 10v10h14V10',
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
-    coach: 'M4 5h16v11H9l-5 4V5z',
     screen: 'M3 4h18v12H3zM8 20h8M12 16v4',
     routes: 'M3 18l6-3 6 3 6-3V6l-6 3-6-3-6 3zM9 15V6M15 18V9',
     about: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01'
@@ -512,7 +511,6 @@
     ['ha',     'Home Assistant', paneHa],
     ['deck',   'Treadmill',      paneDeck],
     ['routes', 'My routes',      paneRoutes],
-    ['coach',  'Coach',          paneCoach],
     ['screen', 'Display',        paneScreen],
     ['about',  'About',          paneAbout]
   ];
@@ -542,7 +540,6 @@
       (S.people || []).forEach(function (p) {
         var c = el('button', 'sx-person' + (p.name === S.default_walker ? ' sx-on' : ''));
         var bits = [];
-        bits.push(p.coached ? 'Coaching' : 'No coaching');
         // Being linked is a different fact from being published, and the one
         // people actually ask about: is this the same person Home Assistant
         // knows? Somebody with no link is not broken — they simply only exist
@@ -600,8 +597,8 @@
       wrap.appendChild(press(el('button', 'sx-pill sx-go', 'ADD'), commit));
 
       detail.appendChild(row('Their name',
-        'Everyone who walks gets their own totals. Coaching and recording are ' +
-        'set per person once they are here.', wrap));
+        'Everyone who runs gets their own totals. Recording is set per person ' +
+        'once they are here.', wrap));
 
       // Straight into the keyboard — the only reason to be on this screen is
       // to type a name.
@@ -622,19 +619,9 @@
             + 'person in Home Assistant.',
         el('div', 'sx-ro', p.ha_person
           ? '<b>' + p.ha_person + '</b>' : 'console only')));
-      detail.appendChild(row('Coaching',
-        'Send this walk to Home Assistant to be turned into words. The prompt there ' +
-        'carries one person\'s weight and blood pressure, which is why this is per person.',
-        toggle(null, p.coached, function (on) {
-          try { S = JSON.parse(bridge().setPersonFlag(p.name, 'coached', on)); } catch (e) {}
-          p.coached = on; drawPeople();
-        })));
       detail.appendChild(row('Age',
-        'Only used for heart-rate zones. With it the coach can tell "taking it ' +
-        'easy" from "working hard"; without it, it can still tell "harder than ' +
-        'earlier in this walk" and says so. Leaving it unset costs the first of ' +
-        'those and nothing else — the estimate behind it is rough anyway, so ' +
-        'the coach talks in words rather than numbers either way.',
+        'Only used for heart-rate zones on the summary. Leaving it unset costs ' +
+        'nothing else, and the estimate behind it is rough anyway.',
         ageStepper(p)));
       detail.appendChild(row('Record to Home Assistant',
         'Their distance, time and calories, published under their own name.',
@@ -698,7 +685,7 @@
     g2.appendChild(defRow);
     g2.appendChild(row('Guest walks',
       'A one-off walk counted on the console but never recorded against a person. ' +
-      'Guests are never coached and never published.',
+      'Guests are never published.',
       toggle('allow_guest', S.allow_guest !== false)));
     sc.appendChild(g2);
 
@@ -958,7 +945,7 @@
 
   function paneDevices(pane) {
     var sc = head(pane, 'Devices',
-      'Heart-rate straps, foot pods such as Stryd, and headphones for the coach. ' +
+      'Heart-rate straps, foot pods such as Stryd, and headphones. ' +
       'The console connects to each itself; nothing else needs to be paired.');
 
     var g1 = group('Your devices');
@@ -1069,7 +1056,7 @@
   function paneHa(pane) {
     var sc = head(pane, 'Home Assistant',
       'Optional. The treadmill runs perfectly well with none of this set — you lose ' +
-      'the history, the dashboards and the talking coach, and nothing else.');
+      'the history and the dashboards, and nothing else.');
 
     var g = group('Connection');
     g.appendChild(row('Publish to Home Assistant',
@@ -1223,33 +1210,6 @@
     draw();
     return g;
   }
-
-  // --- coach ---
-  function paneCoach(pane) {
-    var sc = head(pane, 'Coach',
-      'Marks your kilometres and says something occasionally. It never touches the ' +
-      'belt — every pace change is yours.');
-
-    var g = group('');
-    g.appendChild(row('Coach', 'Off means a silent walk with no ribbon at all.',
-      toggle('coach_on', S.coach_on !== false)));
-    g.appendChild(row('How much it talks',
-      'Sparing marks kilometres and little else. Chatty adds pace and rhythm observations.',
-      segment('coach_talk', [['sparing', 'Sparing'], ['normal', 'Normal'], ['chatty', 'Chatty']],
-        S.coach_talk || 'normal')));
-    g.appendChild(row('Voice', 'Only affects wording, never what it is willing to say.',
-      segment('coach_voice', [
-        ['Supportive Friend', 'Supportive'], ['Drill Sergeant', 'Drill sergeant'],
-        ['Data Nerd', 'Data nerd'], ['Zen Master', 'Zen']
-      ], S.coach_voice || 'Supportive Friend')));
-    g.appendChild(row('Written by Home Assistant',
-      'Off keeps every line on the console — the built-in ones, which are shorter and never late.',
-      toggle('coach_remote', S.coach_remote !== false)));
-    g.appendChild(row('Announce milestones', 'First mark at 500 m, then every kilometre.',
-      toggle('coach_milestones', S.coach_milestones !== false)));
-    sc.appendChild(g);
-  }
-
 
   // --- display ---
   function paneScreen(pane) {

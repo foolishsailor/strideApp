@@ -449,7 +449,7 @@ the package to match.
 > **Gap:** this file is valid YAML and mirrors a working configuration, but has
 > not been installed on a clean Home Assistant.
 
-### 2.3 Optional: the coach and reminders
+### 2.3 Optional: reminders
 
 ```sh
 cd homeassistant
@@ -458,18 +458,14 @@ cp stride.conf.example stride.conf
 
 1. Open `stride.conf`. Every key is documented in the file. Leave a key blank to
    skip that subject.
-2. Set `coach_ai_task`. Find your AI entity under Developer Tools → States,
-   prefix `ai_task.`.
-3. Run what you want:
+2. Run what you want:
 
    ```sh
-   python3 stride_coach_llm.py      # coach, and the automations that fire it
    python3 stride_reminders.py      # weigh-in and blood-pressure reminders
    python3 stride_persons.py        # publishes your HA people to the console
    ```
 
-✅ `script.stride_coach` exists. Run it with `kind: morning` and a `task`, and a
-message appears on `sensor.stride_coach`.
+✅ The reminder automations appear under Settings → Automations.
 
 After `stride_persons.py`, the console's **Settings → Who walks** lists your
 Home Assistant people under *From Home Assistant*.

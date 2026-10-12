@@ -5,11 +5,11 @@
 # `stride.conf` is gitignored. Every script in this directory reads it.
 #
 # The treadmill itself needs none of this — the console registers itself in
-# Home Assistant over MQTT. This is for the extras: the coach, the reminders,
-# the dashboard and the Apple Health webhook.
+# Home Assistant over MQTT. This is for the extras: the reminders, the
+# dashboard and the Apple Health webhook.
 #
 # Leave anything blank and that subject is just absent. No scale, no BP cuff,
-# no phone — the coach won't mention what it wasn't given.
+# no phone — nothing is drawn or sent for what was not given.
 
 
 # === Required, for anything in this directory to run =======================
@@ -27,30 +27,15 @@ mqtt_user: stride
 mqtt_pass: change-me
 
 
-# === The coach =============================================================
+# === Reminders and the dashboard ==========================================
 
-# Which AI task entity writes the coach's lines. No default, because it depends
-# on your integration — and a wrong one fails later with an unhelpful error.
-# Find yours in Developer Tools -> States, filtered to `ai_task.`.
-coach_ai_task: ai_task.your_ai_task_here
-
-# What the coach calls you. Blank and it says "there", which reads fine.
-walker_name:
-
-# Your working weight target in kg, if you have one. Shared with the dashboard.
-# Blank and the coach says nothing about a goal and the dashboard draws no
-# target line.
+# Your working weight target in kg, if you have one. Blank and the dashboard
+# draws no target line.
 weight_target_kg:
 
-# Subjects the coach must not comment on. Free text - "my blood pressure", "my
-# weight", "anything about sleep" - passed through as an instruction. It won't
-# give medical advice or express concern either way; this is for anything else
-# you'd rather it left alone.
-coach_avoid:
-
-# Where a coach message is pushed. Find yours under `notify.` in Developer
-# Tools -> Actions. Blank falls back to a persistent notification in Home
-# Assistant, which is visible but does not reach a phone.
+# Where a reminder is pushed. Find yours under `notify.` in Developer Tools ->
+# Actions. Blank falls back to a persistent notification in Home Assistant,
+# which is visible but does not reach a phone.
 notify_service:
 
 
@@ -108,7 +93,7 @@ withings_steps_entity:
 
 # === The dashboard ==========================================================
 
-# Console walkers to show treadmill tiles for, comma separated, using the ids
+# Console runners to show treadmill tiles for, comma separated, using the ids
 # the console publishes - usually first names in lower case:
 #
 #     console_people: sam,alex

@@ -38,12 +38,10 @@ export interface SessionState {
   segmentLabel?: string;
   segmentLeft?: number;
   segmentLeftIsDistance?: boolean;
-  suggestPace?: number;
   inclineAuto?: boolean;
   avgSpeed?: number;
   maxSpeed?: number;
   avgIncline?: number;
-  summaryLine?: string;
   /** The finished walk on its way to TrailMate: sending | sent | waiting |
    *  failed | reconnect, or empty when it is not going (TrailMate.kt). */
   trailmate?: string;
@@ -92,11 +90,6 @@ export interface Plan {
   steps?: PlanStep[];
 }
 
-export interface CoachLine {
-  line?: string;
-  kind?: string;
-}
-
 /** A route cached on the console (Routes.kt). Segments are [startM, endM, incline]. */
 export interface Route {
   id: string;
@@ -124,7 +117,6 @@ export interface StrideBridge {
   setFan(level: number): void;
   setWalker(name: string): void;
   ackDmk(): void;
-  hushCoach(): void;
   dim(on: boolean): void;
   routes(): string;
   /** Belt calibration — see BeltCalibration.kt. The panel drives these. */
@@ -211,11 +203,10 @@ declare global {
     STRIDE_SETTINGS: StrideSettings;
     render: (s: SessionState) => void;
     plan: (p: Plan) => void;
-    coach: (c: CoachLine) => void;
     /** Kotlin calls this when the treadmill's own STOP is pressed. */
     stopPressed: () => void;
     overApp: (on: boolean) => void;
     /** Calls Kotlin made before the app module ran; see trailmate.html. */
-    __early?: { render?: SessionState; plan?: Plan; coach?: CoachLine };
+    __early?: { render?: SessionState; plan?: Plan };
   }
 }

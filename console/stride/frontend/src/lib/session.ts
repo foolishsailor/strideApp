@@ -89,22 +89,6 @@ export function segmentSubtitle(s: SessionState, u: Units = 'km'): string {
   return `${s.plan} · ${s.segment} of ${s.segments} · ${remaining} left`;
 }
 
-export interface Suggestion {
-  verb: 'lift to' | 'ease to' | 'hold';
-  kph: number;
-  /** The hill is the walker's until the next stretch. */
-  manualIncline: boolean;
-}
-
-/** The coach's suggested pace, phrased against the current target. */
-export function suggestion(s: SessionState): Suggestion | null {
-  const kph = s.suggestPace ?? 0;
-  if (!(kph > 0)) return null;
-  const delta = kph - (s.targetSpeed || 0);
-  const verb = delta > 0.15 ? 'lift to' : delta < -0.15 ? 'ease to' : 'hold';
-  return { verb, kph, manualIncline: !s.inclineAuto };
-}
-
 /** Warm-up and cool-down are both two minutes — WARMUP_MS / COOLDOWN_MS. */
 export const PHASE_SECONDS = 120;
 
@@ -184,10 +168,6 @@ export function greeting(hour: number): string {
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
 }
-
-/** How long a coach line stays up: long enough to read twice at a walk, and
- *  scaled with the sentence so a long line is never cut short. */
-export const coachHoldMs = (line: string): number => Math.min(18000, Math.max(9000, 5000 + line.length * 90));
 
 /** Seconds per kilometre at a belt speed, or 0 when the belt is barely
  *  turning and a pace would read as hours. */
