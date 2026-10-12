@@ -202,6 +202,8 @@ data class Snapshot(
      *  one is "the board is not answering", the other is "the board wants us to
      *  authenticate and we are doing it". */
     val boardLocked: Boolean = false,
+    /** A belt calibration in progress, or null. See [CalibrationLive]. */
+    val calib: CalibrationLive? = null,
 ) {
     val mode: String get() = Session.name(session)
 
@@ -311,7 +313,53 @@ data class Snapshot(
         append("\"planLoops\":$planLoops,")
         append("\"suggestPace\":${"%.1f".format(suggestPace)},")
         append("\"inclineAuto\":$inclineAuto,")
+        append("\"calib\":${calib?.toJson() ?: "null"},")
         append("\"mode\":\"$mode\"")
+        append("}")
+    }
+}
+
+/**
+ * A belt calibration in progress, for the calibration panel. See
+ * [BeltCalibration] for what is being measured and MainActivity.calTick for
+ * how.
+ */
+data class CalibrationLive(
+    /** The true speed being calibrated: what the dial says. km/h. */
+    val kph: Double,
+    /** What the board is being sent for it. km/h. */
+    val belt: Double,
+    /** What the saved table would send for [kph], to show what has changed. */
+    val tableBelt: Double,
+    /** The pod's average since the belt last changed speed, or 0. */
+    val podKph: Double,
+    /** Seconds of steady pod readings in [podKph]. */
+    val podSecs: Double,
+    /** Enough steady readings to act on. */
+    val ready: Boolean,
+    /** A pod is reading at all. Without one there is nothing to calibrate to. */
+    val pod: Boolean,
+    /** Show paces per mile rather than per kilometre. */
+    val miles: Boolean,
+    /** Points already saved: (kph, belt) pairs. */
+    val points: List<BeltCalibration.Point>,
+    /** The last thing worth telling the person — a save, or why it was refused. */
+    val note: String,
+) {
+    fun toJson(): String = buildString {
+        append("{")
+        append("\"kph\":${"%.2f".format(kph)},")
+        append("\"belt\":${"%.2f".format(belt)},")
+        append("\"tableBelt\":${"%.2f".format(tableBelt)},")
+        append("\"podKph\":${"%.2f".format(podKph)},")
+        append("\"podSecs\":${"%.0f".format(podSecs)},")
+        append("\"ready\":$ready,")
+        append("\"pod\":$pod,")
+        append("\"miles\":$miles,")
+        append("\"points\":${points.joinToString(",", "[", "]") {
+            "{\"kph\":${"%.2f".format(it.kph)},\"belt\":${"%.2f".format(it.belt)}}"
+        }},")
+        append("\"note\":${org.json.JSONObject.quote(note)}")
         append("}")
     }
 }

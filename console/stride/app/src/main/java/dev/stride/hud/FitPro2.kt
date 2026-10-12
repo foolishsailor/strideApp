@@ -43,6 +43,10 @@ object FitPro2 {
     /** Feature ids STRIDE uses. Names are iFit's. */
     object Id {
         const val SYSTEM_MODE = 102
+        /** The board's idle lock-out. Set, it refuses every start, keys and
+         *  host alike, with the safety key in. Only ever cleared — see
+         *  FitPro2Board.unlockIdle and FITPRO2_PROTOCOL.md. */
+        const val IDLE_SYSTEM_MODE_LOCK = 103
         const val KEY_COOKED = 109
         const val CURRENT_CALORIES = 202
         const val PULSE = 222
@@ -64,8 +68,25 @@ object FitPro2 {
      * that starts, pauses and ends a walk — the same three things it drives on
      * FitPro 1. Calibration, system mode, motor parameters and the rest are out
      * of reach by construction, not by care.
+     *
+     * Plus one exception, and only ever to clear it: the idle lock-out, which
+     * iFit's console clears at startup on a treadmill with a START key and
+     * which nothing clears once iFit is gone. See [write].
      */
-    val WRITABLE = setOf(Id.TARGET_KPH, Id.TARGET_GRADE, Id.WORKOUT_STATE)
+    val WRITABLE = setOf(Id.TARGET_KPH, Id.TARGET_GRADE, Id.WORKOUT_STATE, Id.IDLE_SYSTEM_MODE_LOCK)
+
+    /** KEY_COOKED codes. 1–6 from iFit's code; the volume pair seen on
+     *  hardware 12/10/2026 (ETNT39225-INT). */
+    object Key {
+        const val STOP = 1
+        const val START = 2
+        const val SPEED_UP = 3
+        const val SPEED_DOWN = 4
+        const val INCLINE_UP = 5
+        const val INCLINE_DOWN = 6
+        const val VOLUME_UP = 200
+        const val VOLUME_DOWN = 201
+    }
 
     /** SYSTEM_MODE values. 2 is the safety key out ("DMK"), seen on hardware. */
     object SystemMode {
@@ -103,6 +124,7 @@ object FitPro2 {
 
     fun write(id: Int, value: Float): ByteArray {
         require(id in WRITABLE) { "FitPro 2 feature $id is not writable from STRIDE" }
+        require(id != Id.IDLE_SYSTEM_MODE_LOCK || value == 0f) { "the idle lock-out is only ever cleared" }
         require(!value.isNaN() && !value.isInfinite()) { "not a number: $value" }
         val bits = java.lang.Float.floatToIntBits(value)
         return frame(Req.WRITE, byteArrayOf(

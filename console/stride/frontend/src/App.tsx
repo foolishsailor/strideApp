@@ -4,6 +4,7 @@ import { screenFor } from './lib/session';
 import { useMode } from './store/session';
 import { CoachRibbon } from './components/organisms';
 import { AppsOverlay } from './overlays/AppsOverlay';
+import { CalibrationOverlay } from './overlays/CalibrationOverlay';
 import { PausedOverlay } from './overlays/PausedOverlay';
 import { SafetyKeyOverlay } from './overlays/SafetyKeyOverlay';
 import { SleepOverlay } from './overlays/SleepOverlay';
@@ -31,6 +32,7 @@ export function App() {
       <CoachRibbon />
       {/* In stacking order: each covers everything listed before it. */}
       <AppsOverlay />
+      <CalibrationOverlay />
       <PausedOverlay />
       <SafetyKeyOverlay />
       <SleepOverlay />

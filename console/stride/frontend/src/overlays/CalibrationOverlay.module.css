@@ -1,0 +1,40 @@
+.scrim {
+  background: var(--role-scrim);
+  z-index: var(--layer-overlay);
+  /* Clear of the bezel: touches within ~15px of it register unreliably. */
+  padding: 24px 32px;
+}
+.how {
+  margin-top: 8px;
+  max-width: 900px;
+  text-align: center;
+}
+.readings {
+  margin-top: 26px;
+}
+.reading {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.reading > * + * {
+  margin-top: 6px;
+}
+.unit {
+  font-size: 17px;
+  color: var(--colour-ink-dim);
+  margin-left: 6px;
+}
+.controls {
+  margin-top: 18px;
+}
+.button {
+  height: 78px;
+}
+.note {
+  margin-top: 22px;
+  max-width: 1100px;
+  min-height: 1.4em;
+  text-align: center;
+}

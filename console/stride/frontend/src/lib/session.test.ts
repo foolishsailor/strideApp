@@ -2,8 +2,43 @@ import { describe, expect, it } from 'vitest';
 import {
   canStop, coachHoldMs, DEFAULT_LIMITS, greeting, inclineStops, modeLabel, nearestStop, normaliseMode,
   paceSecPerKm, parseLimits, pausedWhere, phasePreview, phaseProgress, primaryAction, primaryLabel, screenFor,
-  segmentSubtitle, speedStops, suggestion,
+  segmentSubtitle, speedStops, suggestion, paceSec, paceText, stepPace, beltOffset,
 } from './session';
+
+describe('belt calibration', () => {
+  it('reads pace the way a Stryd does', () => {
+    expect(paceText(10.729, true)).toBe('9:00 /mi');
+    expect(paceText(12, false)).toBe('5:00 /km');
+    expect(paceText(0, true)).toBe('–');
+  });
+
+  it('steps pace onto a five-second grid', () => {
+    const at = (secPerMi: number) => (3600 * 1.609344) / secPerMi;
+    expect(paceSec(stepPace(at(540), true, true), true)).toBeCloseTo(535, 6);
+    expect(paceSec(stepPace(at(540), true, false), true)).toBeCloseTo(545, 6);
+    // Off the grid lands on it first.
+    expect(paceSec(stepPace(at(543), true, true), true)).toBeCloseTo(540, 6);
+    expect(paceSec(stepPace(at(543), true, false), true)).toBeCloseTo(545, 6);
+  });
+
+  it('takes bigger steps at a stroll, so a running pace is reachable', () => {
+    // 2 km/h is about 48:17 /mi: the old 5 s step left it at 2.00 km/h.
+    const from = 2;
+    expect(paceSec(stepPace(from, true, true), true)).toBeCloseTo(48 * 60, 6);
+    expect(stepPace(from, true, true)).toBeGreaterThan(2.005);
+    // 15:30 → 15:00 → 14:55: the step shrinks on the way in.
+    const at = (s: number) => (3600 * 1.609344) / s;
+    expect(paceSec(stepPace(at(930), true, true), true)).toBeCloseTo(900, 6);
+    expect(paceSec(stepPace(at(900), true, true), true)).toBeCloseTo(895, 6);
+    expect(paceSec(stepPace(at(900), true, true, 3), true)).toBeCloseTo(885, 6);
+  });
+
+  it('signs the belt offset', () => {
+    expect(beltOffset(10, 10.56)).toBe('+5.6%');
+    expect(beltOffset(10, 9.8)).toBe('−2.0%');
+    expect(beltOffset(0, 1)).toBe('–');
+  });
+});
 
 describe('mode', () => {
   it('normalises Kotlin enum names and falls back to welcome', () => {

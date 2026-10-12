@@ -154,6 +154,79 @@ describe('summary', () => {
   });
 });
 
+describe('belt calibration', () => {
+  const CAL = {
+    kph: 10.73, belt: 11.33, tableBelt: 11.0, podKph: 10.16, podSecs: 14, ready: true,
+    pod: true, miles: true, points: [{ kph: 6, belt: 6.3 }], note: '',
+  };
+
+  /* Miles, from Settings → Display, the way the walk screen gets it. */
+  beforeEach(() => useSettings.setState({ units: 'mi' }));
+
+  it('shows the set pace beside the Stryd, and what the belt is sent', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: CAL }));
+    expect(screen.getByText('Belt calibration')).toBeTruthy();
+    expect(screen.getByText('9:00 /mi')).toBeTruthy();
+    expect(screen.getByText('9:30 /mi')).toBeTruthy();
+    expect(screen.getByText('6.67 mph')).toBeTruthy();
+    expect(screen.getByText('7.04')).toBeTruthy();   // belt sent, mph
+    expect(screen.getByText(/\+5\.6%/)).toBeTruthy();
+    expect(screen.getByText(/Saved: 16:06 \/mi \+5\.0%/)).toBeTruthy();
+  });
+
+  it('takes the Stryd reading, saves, and finishes', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: CAL }));
+    press('USE STRYD READING');
+    press('SAVE POINT');
+    press('FINISH');
+    expect(b.calUseStryd).toHaveBeenCalled();
+    expect(b.calSave).toHaveBeenCalled();
+    expect(b.calDone).toHaveBeenCalled();
+  });
+
+  it('steps the pace to the next round number', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: CAL }));
+    const faster = screen.getByText('FASTER PACE');
+    fireEvent.mouseDown(faster);
+    fireEvent.mouseUp(faster);
+    expect(b.setSpeed.mock.calls[0]![0]).toBeCloseTo((3600 * 1.609344) / 535, 3);
+    // A second press before the dial has moved steps on from the first.
+    fireEvent.mouseDown(faster);
+    fireEvent.mouseUp(faster);
+    expect(b.setSpeed.mock.calls[1]![0]).toBeCloseTo((3600 * 1.609344) / 530, 3);
+  });
+
+  it('stops like the walk screen does', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: CAL }));
+    // The panel's own, over the walk screen's.
+    const stops = screen.getAllByText('STOP');
+    fireEvent.click(stops[stops.length - 1]!);
+    expect(b.pause).toHaveBeenCalled();
+    expect(useUi.getState().confirmOpen).toBe(true);
+  });
+
+  it('follows kilometres when Settings says so', () => {
+    useSettings.setState({ units: 'km' });
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: CAL }));
+    expect(screen.getByText('5:36 /km')).toBeTruthy();
+    expect(screen.getByText('10.73 km/h')).toBeTruthy();
+  });
+
+  it('is not there without a calibration running', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', calib: null }));
+    expect(screen.queryByText('Belt calibration')).toBeNull();
+  });
+});
+
 describe('units', () => {
   it('shows the walk in miles when Settings says so, and still sends km/h', () => {
     const b = mockBridge({ settingsJson: () => JSON.stringify({ units: 'mi' }) });

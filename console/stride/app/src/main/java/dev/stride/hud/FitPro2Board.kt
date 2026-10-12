@@ -15,7 +15,12 @@ import android.util.Log
  * The board pushes values once subscribed, so this keeps the latest of each and
  * every [cycle] reports the whole picture, the way a FitPro 1 reply would.
  */
-class FitPro2Board(private val conn: FitProConnection) {
+class FitPro2Board(
+    private val conn: FitProConnection,
+    /** A treadmill button pressed: KEY_COOKED's code, once per press. Poll
+     *  thread. The board acts on none of them itself; see MainActivity.physicalKey. */
+    private val onKey: (Int) -> Unit = {},
+) {
 
     companion object {
         const val TAG = "Stride"
@@ -32,7 +37,7 @@ class FitPro2Board(private val conn: FitProConnection) {
             FitPro2.Id.MIN_GRADE, FitPro2.Id.MAX_GRADE,
             FitPro2.Id.DISTANCE, FitPro2.Id.RUNNING_TIME,
             FitPro2.Id.PULSE, FitPro2.Id.CURRENT_CALORIES,
-            FitPro2.Id.KEY_COOKED,
+            FitPro2.Id.KEY_COOKED, FitPro2.Id.IDLE_SYSTEM_MODE_LOCK,
         )
 
         /** How long to wait for a write to be acknowledged. iFit allows 15 s; a
@@ -124,6 +129,7 @@ class FitPro2Board(private val conn: FitProConnection) {
         // silence, which the poll loop answers by reconnecting; a refusal
         // would only be retried against a pipe that is not there.
         if (!conn.isOpen) return Result.Silent
+        unlockIdle()
         // Starting or resuming: hold the setpoint at the machine's minimum on
         // both sides of the RUNNING write. FitPro 2 keeps its last target
         // through a pause — nothing ever writes it to zero — so RUNNING alone
@@ -164,6 +170,38 @@ class FitPro2Board(private val conn: FitProConnection) {
     }
 
     fun has(id: Int) = id in features
+
+    private var unlockTriedMs = 0L
+
+    /**
+     * Clear the board's idle lock-out whenever it reports one.
+     *
+     * Set, the board refuses every start — its own START key and our
+     * WORKOUT_STATE write alike, with `writeValueNotAllowed` — while incline
+     * still works and SYSTEM_MODE reads an ordinary idle. It survives a power
+     * cycle. Seen on hardware 12/10/2026: the belt ran at lunchtime and
+     * refused all afternoon, with this reading 1.
+     *
+     * iFit's console clears it at startup on any treadmill with a physical
+     * START (see FITPRO_PROTOCOL.md, IdleModeLockout); with iFit gone nothing
+     * did. Clearing it moves nothing. Never set: [FitPro2.write] refuses any
+     * value but 0. Tried at most every couple of seconds while it reads set.
+     */
+    private fun unlockIdle() {
+        if (values[FitPro2.Id.IDLE_SYSTEM_MODE_LOCK] != 1f) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - unlockTriedMs < 2_000L) return
+        unlockTriedMs = now
+        if (!conn.send(FitPro2.write(FitPro2.Id.IDLE_SYSTEM_MODE_LOCK, 0f))) return
+        val refused = awaitWrite(FitPro2.Id.IDLE_SYSTEM_MODE_LOCK)
+        // The board's own event says whether it took: see the
+        // IDLE_SYSTEM_MODE_LOCK line in take(). Until then this tries again.
+        if (refused == null) {
+            Log.i(TAG, "fp2: idle lock-out — clear sent")
+        } else {
+            Log.w(TAG, "fp2: idle lock-out not cleared ($refused)")
+        }
+    }
 
     /**
      * Speed to zero, and back, inside a workout.
@@ -291,6 +329,7 @@ class FitPro2Board(private val conn: FitProConnection) {
             val v = FitPro2.f32(f.payload, 2)
             val before = values.put(id, v)
             if (id == FitPro2.Id.SYSTEM_MODE && before != v) Log.i(TAG, "fp2: SYSTEM_MODE -> ${v.toInt()}")
+            if (id == FitPro2.Id.IDLE_SYSTEM_MODE_LOCK && before != v) Log.i(TAG, "fp2: IDLE_SYSTEM_MODE_LOCK -> $v")
             if (id == FitPro2.Id.WORKOUT_STATE && before != v) {
                 // Only leaving a driven state restarts the stale clock. The
                 // board moves itself PAUSED → RESULTS after ten minutes, and
@@ -313,9 +352,15 @@ class FitPro2Board(private val conn: FitProConnection) {
                 lastCurrentKph = v
                 Log.i(TAG, "fp2: CURRENT_KPH ${"%.2f".format(v)}")
             }
+            // A press is its code and a release is 0, so a change to a code is
+            // one press — and the board's repeat of its last frame, every
+            // ~1.5 s, is not a second one.
             if (id == FitPro2.Id.KEY_COOKED && v.toInt() != lastKey) {
                 lastKey = v.toInt()
-                if (lastKey != 0) Log.i(TAG, "fp2: key $lastKey")
+                if (lastKey != 0) {
+                    Log.i(TAG, "fp2: key $lastKey")
+                    try { onKey(lastKey) } catch (e: Exception) { Log.w(TAG, "fp2: key $lastKey failed: ${e.message}") }
+                }
             }
         } else if (f.type == FitPro2.Resp.ERROR) {
             // Once per distinct error: the board repeats it every ~1.5 s.

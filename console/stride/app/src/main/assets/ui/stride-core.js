@@ -1053,7 +1053,8 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
 var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setIncline',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
-              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'wakeBoard'];
+              'setWalker', 'ackDmk', 'hushCoach', 'dim', 'wakeBoard',
+              'calibrate', 'calNudge', 'calUseStryd', 'calSave', 'calDone'];
 
 /** @return true if this page is running without the console behind it. */
 function stub() {
@@ -1097,6 +1098,18 @@ function stub() {
                    [1600,2100,-2],[2100,2500,-3],[2500,3030,0]] }
     ]);
   };
+  /* A belt calibration to look at in Settings → Treadmill: two points, a belt
+     a few percent slow, as a Stryd would find it. */
+  var pretendCal = [{ kph: 6.0, belt: 6.31 }, { kph: 10.0, belt: 10.56 }];
+  function calState() {
+    return JSON.stringify({ points: pretendCal, pod: true, miles: true });
+  }
+  s.calibrationJson = calState;
+  s.calibrationRemove = function (kph) {
+    pretendCal = pretendCal.filter(function (p) { return Math.abs(p.kph - kph) > 0.01; });
+    return calState();
+  };
+  s.calibrationClear = function () { pretendCal = []; return calState(); };
   /* APPS on a desktop: two pretend apps, and "opening" one puts the page in
      its over-another-app state, the way OverApp.kt does on the console. There
      is no app behind it, so the browser's own background shows through. */

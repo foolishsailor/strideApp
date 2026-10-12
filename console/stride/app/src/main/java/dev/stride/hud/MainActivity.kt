@@ -348,6 +348,27 @@ class MainActivity : Activity() {
          */
         const val TRIM_ARRIVED_KPH = 0.30
 
+        /* ---- belt calibration — see BeltCalibration and calTick ---------- */
+
+        /** After the belt changes speed, the pod is ignored for this long: the
+         *  belt is still getting there, and so is the stride on it. */
+        const val CAL_SETTLE_MS = 6_000L
+        /** The pod is averaged over this much of the most recent running. A
+         *  single reading moves with every footfall; this does not. */
+        const val CAL_WINDOW_MS = 20_000L
+        /** Seconds of steady readings before "Use Stryd reading" will act. */
+        const val CAL_READY_SECS = 10.0
+        /** The echo of what we sent, within the board's rounding. */
+        const val ECHO_KPH = 0.03
+
+        /** The treadmill's incline keys, a step the same as the rail's. */
+        const val INCLINE_KEY_STEP = 0.5
+
+        /** How often the board is read in standby. Slow, but not stopped:
+         *  see enterStandby. */
+        const val STANDBY_POLL_MS = 2_000L
+        const val KM_PER_MILE = 1.609344
+
         /**
          * Fallbacks only. The live values are in [Settings] — warm-up length,
          * cool-down length and warm-up speed are all set on the console now,
@@ -449,6 +470,33 @@ class MainActivity : Activity() {
     private var fp2StopAt = 0L
     @Volatile private var targetKph = 0.0
     @Volatile private var targetGrade = 0.0
+
+    /**
+     * How this belt really runs, measured against a foot pod. [targetKph] and
+     * everything else on the console is true speed; only what is written to
+     * the board goes through this, in [toBoard]. Replaced whole, never edited.
+     */
+    @Volatile private var calib = BeltCalibration(emptyList())
+    /** The speed the board was last sent, after [calib]. Its echo of this is
+     *  ours; anything else in that field came from the machine's own keys. */
+    @Volatile private var sentBeltKph = 0.0
+    /** True metres per odometer metre at the speed last sent — see [trueOdometer]. */
+    private var odoScale = 1.0
+    private var odoRawLast = -1.0
+    private var odoTrue = 0.0
+
+    /* ---- a calibration in progress — see calTick ---- */
+    @Volatile private var calOn = false
+    /** The true speed being calibrated, and what the board is sent for it. */
+    @Volatile private var calKph = 0.0
+    @Volatile private var calBelt = 0.0
+    @Volatile private var calNote = ""
+    /** When the belt last changed speed. The pod is not listened to until it has settled. */
+    @Volatile private var calChangedAt = 0L
+    /** Recent pod readings, (elapsedRealtime, km/h). Poll thread only. */
+    private val calPod = ArrayDeque<Pair<Long, Double>>()
+    @Volatile private var calPodKph = 0.0
+    @Volatile private var calPodSecs = 0.0
     @Volatile private var fanState = 0
     @Volatile private var pendingWrite: Map<FitPro.Field, Double>? = null
 
@@ -1186,7 +1234,9 @@ class MainActivity : Activity() {
             // so stepping down out of the bottom of the range means stop, and
             // stepping up out of zero jumps straight to the minimum.
             next = if (next < minKph) { if (delta > 0) minKph else 0.0 } else next
-            targetKph = next.coerceIn(0.0, maxKph)
+            // Not quantised to km/h: in miles the rail sends the km/h step
+            // that lands on the next 0.1 mph, which a km/h grid would undo.
+            targetKph = next.coerceIn(0.0, topKph())
             pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
         }
 
@@ -1204,9 +1254,96 @@ class MainActivity : Activity() {
         @JavascriptInterface fun setSpeed(kph: Double) {
             if (!Session.isMoving(session) || dmk) return
             rampTo = 0.0; rampReason = ""   // as with any manual change
-            targetKph = if (kph < minKph) 0.0 else kph.coerceIn(0.0, maxKph)
+            targetKph = if (kph < minKph) 0.0 else kph.coerceIn(0.0, topKph())
             pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
-            Log.i(TAG, "pace: took the suggestion, ${"%.1f".format(targetKph)} km/h")
+            Log.i(TAG, "pace: set to ${"%.2f".format(targetKph)} km/h")
+        }
+
+        /* ---- belt calibration --------------------------------------------
+         *
+         * Started from Settings → Treadmill. It is an ordinary walk with the
+         * calibration panel over it: the safety key, STOP and pause all work as
+         * they always do. See calTick for what is measured while it runs. */
+
+        /** Start calibrating: a walk if none is running, then the panel. */
+        @JavascriptInterface fun calibrate() {
+            if (dmk) return
+            if (!Session.isMoving(session) && session != Session.PAUSED) choose()
+            calOn = true
+            calKph = -1.0          // calTick picks up the dial on the next poll
+            calNote = ""
+            Log.i(TAG, "calibration: started")
+            repaint()
+        }
+
+        /** Belt a little faster or slower, with the dial left where it is. */
+        @JavascriptInterface fun calNudge(delta: Double) {
+            if (!calOn || calKph <= 0.0 || dmk) return
+            calSetBelt(calBelt + delta, "nudged")
+            repaint()
+        }
+
+        /** Set the belt so the pod's average would have read the dial. */
+        @JavascriptInterface fun calUseStryd() {
+            if (!calOn || calKph <= 0.0 || dmk) return
+            if (calPodSecs < CAL_READY_SECS || calPodKph <= 0.0) {
+                calNote = "Keep going: the Stryd needs ${CAL_READY_SECS.toInt()} steady seconds."
+            } else {
+                // The belt and the pod are in proportion over this small a
+                // change, so scaling what is sent by how far the pod is off
+                // lands on it.
+                calSetBelt(calBelt * calKph / calPodKph, "from the Stryd at ${"%.2f".format(calPodKph)}")
+                calNote = "Belt set from the Stryd. Let it settle, check it agrees, then save."
+            }
+            repaint()
+        }
+
+        /** Keep what is being sent for this speed as a calibration point. */
+        @JavascriptInterface fun calSave() {
+            if (!calOn || calKph <= 0.0) return
+            val point = BeltCalibration.Point(calKph, calBelt)
+            calib.with(point)
+                .onSuccess {
+                    calib = it
+                    cfg.saveBeltCalibration(it)
+                    calNote = "Saved. Try another speed, or finish."
+                    Log.i(TAG, "calibration: saved ${point.kph} -> ${point.belt} " +
+                            "(${it.points.size} point(s))")
+                }
+                .onFailure {
+                    calNote = it.message ?: "Could not save that point."
+                    Log.w(TAG, "calibration: refused ${point.kph} -> ${point.belt}: ${it.message}")
+                }
+            repaint()
+        }
+
+        /** Leave the panel. The walk carries on, on the saved table. */
+        @JavascriptInterface fun calDone() {
+            if (!calOn) return
+            calOn = false
+            calNote = ""
+            Log.i(TAG, "calibration: done")
+            if (Session.isMoving(session) && targetKph > 0.0 && rampTo <= 0.0) {
+                pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
+            }
+            repaint()
+        }
+
+        /** The saved table, for Settings: {points:[{kph, belt}], pod}. */
+        @JavascriptInterface fun calibrationJson(): String = calibrationState()
+
+        @JavascriptInterface fun calibrationRemove(kph: Double): String {
+            calib = calib.without(kph)
+            cfg.saveBeltCalibration(calib)
+            Log.i(TAG, "calibration: removed the point near $kph km/h")
+            return calibrationState()
+        }
+
+        @JavascriptInterface fun calibrationClear(): String {
+            calib = BeltCalibration(emptyList())
+            cfg.saveBeltCalibration(calib)
+            Log.i(TAG, "calibration: cleared")
+            return calibrationState()
         }
 
         /** Incline has no interlock — the board services it in any state. */
@@ -1489,13 +1626,15 @@ class MainActivity : Activity() {
         }
 
         /** Screen sleep. The panel is the only light in the room at 6am. */
+        /**
+         * Standby, the way iFit's console did it: the backlight off, not
+         * merely dim, with the panel and its touch layer still on, so a tap
+         * anywhere brings it back. Was 2%, which left a lit slab in the room.
+         * Waking restores the brightness chosen in Display, not Android's
+         * default.
+         */
         @JavascriptInterface fun dim(on: Boolean) {
-            runOnUiThread {
-                window.attributes = window.attributes.apply {
-                    screenBrightness = if (on) 0.02f else
-                        WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                }
-            }
+            if (on) enterStandby() else leaveStandby()
         }
 
         /**
@@ -1566,7 +1705,239 @@ class MainActivity : Activity() {
         val ms = kph / 3.6
         val cadence = Math.round(100 + 6 * kph).toInt()
         val watts = Math.round(75 * ms * (1.04 + 9.81 * grade.coerceAtLeast(0.0) / 100)).toInt()
-        return PodReading(cadence, watts, ms * 60 / cadence, kph * 0.98)
+        // A pod reads the belt, not the dial, so the stand-in follows what the
+        // board was sent: a belt 2% slow, which is something to calibrate.
+        val belt = if (sentBeltKph > 0.0) sentBeltKph else kph
+        return PodReading(cadence, watts, ms * 60 / cadence, belt * 0.98)
+    }
+
+    // --- standby -------------------------------------------------------------
+
+    /**
+     * As low as the console goes while a touch can still wake it.
+     *
+     * Entered from the page after Settings → Display → Sleep after, between
+     * walks only. Android's own sleep is off the table: it takes the touch
+     * layer with it, and then only the power button wakes the panel. So:
+     *  - the backlight off, the panel's biggest draw (the touch layer stays on);
+     *  - Bluetooth let go: strap, pod and headphones disconnected, the treadmill
+     *    no longer advertised;
+     *  - the board read every [STANDBY_POLL_MS] instead of five times a second,
+     *    and nothing drawn. Not stopped: that poll is what notices a belt
+     *    running with nobody on it (enforceStopped), and it stays.
+     * A Gen 7 board has no sleep state of its own to put it in.
+     *
+     * Waking undoes each, and the sensors are back in about five seconds.
+     */
+    @Volatile private var standby = false
+
+    private fun enterStandby() {
+        if (standby || Session.isMoving(session)) return
+        standby = true
+        runOnUiThread {
+            window.attributes = window.attributes.apply {
+                screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_OFF
+            }
+        }
+        strap.disconnect(); pod.disconnect()
+        phones.release(cfg.phonesAddr())
+        ftms.quiet(true)
+        Log.i(TAG, "standby: backlight off, Bluetooth released, board polled every ${STANDBY_POLL_MS / 1000} s")
+    }
+
+    private fun leaveStandby() {
+        runOnUiThread {
+            window.attributes = window.attributes.apply { screenBrightness = cfg.brightness() }
+        }
+        if (!standby) return
+        standby = false
+        ftms.quiet(false)
+        applyStrap(); applyPod(); applyPhones()
+        Log.i(TAG, "standby: woken")
+        repaint()
+    }
+
+    // --- the treadmill's own buttons ------------------------------------------
+
+    /**
+     * A button on the treadmill, as a Gen 7 board reports it.
+     *
+     * The board acts on none of its own keys: it tells the console, and iFit's
+     * app used to decide. With iFit gone they did nothing at all — volume,
+     * speed, incline, and STOP. Each now does what the same control on screen
+     * does, through the same bridge call, so it obeys the same rules (the
+     * safety key, the minimum speed, the calibration). Poll thread.
+     */
+    private fun physicalKey(code: Int) {
+        // The screen is dark and asleep in the page too; a tap wakes it.
+        if (standby) { Log.i(TAG, "standby: key $code ignored — tap the screen"); return }
+        when (code) {
+            FitPro2.Key.VOLUME_UP -> volume(+1)
+            FitPro2.Key.VOLUME_DOWN -> volume(-1)
+            // Halt first, ask second, as the STOP on screen does.
+            FitPro2.Key.STOP -> if (Session.isMoving(session)) {
+                bridge.pause()
+                runOnUiThread { web.evaluateJavascript("window.stopPressed && window.stopPressed()", null) }
+            }
+            FitPro2.Key.START -> when (session) {
+                Session.PAUSED -> bridge.resume()
+                Session.WELCOME, Session.SUMMARY -> bridge.choose()
+                else -> {}
+            }
+            FitPro2.Key.SPEED_UP -> bridge.speed(speedStep(+1))
+            FitPro2.Key.SPEED_DOWN -> bridge.speed(speedStep(-1))
+            FitPro2.Key.INCLINE_UP -> bridge.incline(INCLINE_KEY_STEP)
+            FitPro2.Key.INCLINE_DOWN -> bridge.incline(-INCLINE_KEY_STEP)
+        }
+    }
+
+    /** The km/h change that lands on the next 0.1 of the unit on screen, the
+     *  way the speed rail steps (speedDelta in the page). */
+    private fun speedStep(dir: Int): Double {
+        val per = if (cfg.metric()) 1.0 else KM_PER_MILE
+        val shown = targetKph / per
+        val next = if (dir > 0) Math.floor(shown * 10 + 1e-6) / 10 + 0.1
+                   else Math.ceil(shown * 10 - 1e-6) / 10 - 0.1
+        return next * per - targetKph
+    }
+
+    /** The console's media volume, which is the headphones while they are
+     *  connected, with Android's own volume bar so the change can be seen. */
+    private fun volume(dir: Int) {
+        val am = getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager ?: return
+        runOnUiThread {
+            am.adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC,
+                if (dir > 0) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER,
+                android.media.AudioManager.FLAG_SHOW_UI)
+            Log.i(TAG, "volume ${if (dir > 0) "up" else "down"}: " +
+                    "${am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)}/" +
+                    "${am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)}")
+        }
+    }
+
+    // --- belt calibration -----------------------------------------------------
+
+    /** The fastest true speed the board's top speed reaches. */
+    private fun topKph(): Double = calib.fromBelt(maxKph)
+
+    /**
+     * What to send the board for a true [kph]: the calibration being worked on
+     * if this is its speed, otherwise the saved table. Held to the board's own
+     * range and to the hundredths it takes.
+     */
+    private fun beltFor(kph: Double): Double {
+        if (kph <= 0.0) return 0.0
+        val b = if (calOn && calBelt > 0.0 && Math.abs(kph - calKph) < 1e-6) calBelt else calib.toBelt(kph)
+        return (Math.round(b * 100.0) / 100.0).coerceIn(minKph, maxKph)
+    }
+
+    /**
+     * A write on its way to the board, with its speed translated from true to
+     * what this belt needs. The one place that happens — every speed the
+     * console sends, from a + press to a stop, comes through here.
+     */
+    private fun toBoard(writes: Map<FitPro.Field, Double>?): Map<FitPro.Field, Double>? {
+        val kph = writes?.get(FitPro.Field.KPH) ?: return writes
+        val belt = beltFor(kph)
+        sentBeltKph = belt
+        if (kph > 0.0 && belt > 0.0) odoScale = kph / belt
+        return if (belt == kph) writes else writes + (FitPro.Field.KPH to belt)
+    }
+
+    /**
+     * The board's odometer, in true metres.
+     *
+     * The odometer counts the roller at the speed it was sent, so it is off by
+     * exactly what the belt is off by. Each metre it adds is scaled by the
+     * calibration at the speed that was running. A board that reseeds its
+     * counter reseeds this too, which is what everything downstream of it
+     * already expects.
+     */
+    private fun trueOdometer(raw: Double): Double {
+        val last = odoRawLast
+        odoRawLast = raw
+        odoTrue = if (last < 0.0 || raw < last) raw else odoTrue + (raw - last) * odoScale
+        return odoTrue
+    }
+
+    /** Send [belt] for the speed on the dial, and start listening to the pod afresh. */
+    private fun calSetBelt(belt: Double, why: String) {
+        val lo = maxOf(minKph, calKph * BeltCalibration.MIN_RATIO)
+        val hi = minOf(maxKph, calKph * BeltCalibration.MAX_RATIO)
+        calBelt = (Math.round(belt.coerceIn(lo, hi) * 100.0) / 100.0)
+        rampTo = 0.0; rampReason = ""   // a hand on the belt ends a ramp, as with + and −
+        calRestart()
+        calNote = ""
+        pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
+        Log.i(TAG, "calibration: ${"%.2f".format(calKph)} km/h now sends " +
+                "${"%.2f".format(calBelt)} ($why)")
+    }
+
+    /** Called from both threads, so it only moves the mark: calTick, which
+     *  owns [calPod], drops everything gathered before it. */
+    private fun calRestart() {
+        calChangedAt = SystemClock.elapsedRealtime()
+        calPodKph = 0.0
+        calPodSecs = 0.0
+    }
+
+    private fun calibrationState(): String = JSONObject()
+        .put("points", calib.json())
+        .put("pod", pod.connected)
+        .put("miles", !cfg.metric())
+        .toString()
+
+    /**
+     * One poll of a calibration: follow the dial, and average the pod.
+     *
+     * A new speed on the dial, by the rails or a pace button, starts from what
+     * the saved table already says for it, so a second visit to a speed
+     * refines rather than starts over. The pod is then averaged over the last
+     * [CAL_WINDOW_MS], skipping the first [CAL_SETTLE_MS] after any change.
+     *
+     * Returns what the panel shows, or null when no calibration is running.
+     */
+    private fun calTick(podKph: Double): CalibrationLive? {
+        if (!calOn) return null
+        if (session == Session.WELCOME || session == Session.SUMMARY) {
+            calOn = false
+            Log.i(TAG, "calibration: ended with the walk")
+            return null
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (Math.abs(targetKph - calKph) > 1e-6) {
+            calKph = targetKph
+            calBelt = 0.0          // so beltFor answers from the table
+            calBelt = beltFor(targetKph)
+            calRestart()
+        }
+        val since = calChangedAt
+        while (calPod.isNotEmpty() && calPod.first().first < since) calPod.removeFirst()
+        val steady = Session.isMoving(session) && calKph > 0.0 && rampTo <= 0.0 &&
+                now - since >= CAL_SETTLE_MS
+        if (!steady) {
+            // Not walking at a steady speed: what was gathered no longer
+            // describes one thing.
+            calPod.clear(); calPodKph = 0.0; calPodSecs = 0.0
+        } else {
+            // A missed pod reading is skipped, not a reason to start again.
+            if (podKph > 0.0) calPod.addLast(now to podKph)
+            while (calPod.isNotEmpty() && now - calPod.first().first > CAL_WINDOW_MS) calPod.removeFirst()
+            calPodKph = if (calPod.isEmpty()) 0.0 else calPod.sumOf { it.second } / calPod.size
+            calPodSecs = if (calPod.isEmpty()) 0.0 else (now - calPod.first().first) / 1000.0
+        }
+        return CalibrationLive(
+            kph = calKph,
+            belt = calBelt,
+            tableBelt = if (calKph > 0.0) calib.toBelt(calKph) else 0.0,
+            podKph = calPodKph,
+            podSecs = calPodSecs,
+            ready = calPodSecs >= CAL_READY_SECS,
+            pod = podKph > 0.0 || pod.connected,
+            miles = !cfg.metric(),
+            points = calib.points,
+            note = calNote,
+        )
     }
 
     // --- applying settings ----------------------------------------------------
@@ -2365,6 +2736,8 @@ class MainActivity : Activity() {
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
 
         cfg.seedFromBuildConfig()
+        calib = cfg.beltCalibration()
+        if (!calib.isEmpty) Log.i(TAG, "belt calibration: ${calib.points.size} point(s)")
         walker = cfg.defaultWalker()
         refreshWalkerHrMax()
         applyBrightness()
@@ -2794,6 +3167,15 @@ class MainActivity : Activity() {
         while (running) {
             pollBeat = SystemClock.elapsedRealtime()
             if (watchdogTripped) afterWatchdog()
+            // Standby: read the board every STANDBY_POLL_MS, not five times a
+            // second. Waited in short steps that keep the heartbeat fresh — the
+            // loop is slow, not stalled, and the watchdog must not think so.
+            var rested = 0L
+            while (standby && running && rested < STANDBY_POLL_MS - POLL_MS) {
+                Thread.sleep(500)
+                rested += 500
+                pollBeat = SystemClock.elapsedRealtime()
+            }
             // Debug builds only: stand in for a poll loop stuck in a network
             // call, so the watchdog can be tested on a real belt. See
             // registerDebugHooks.
@@ -2840,6 +3222,9 @@ class MainActivity : Activity() {
                 ?: queued ?: decelStep() ?: rampStep() ?: idleStep()
 
             if (writes != null) lastWriteMs = SystemClock.elapsedRealtime()
+            // True speed to what this belt needs — see BeltCalibration. A copy,
+            // so `writes === queued` below still recognises the queued write.
+            val sent = toBoard(writes)
 
             /* Both protocols come down to the same three outcomes — silence, a
              * refusal, or a set of FitPro 1 field values — so everything after
@@ -2849,9 +3234,9 @@ class MainActivity : Activity() {
             val board = fp2
             var reply: ByteArray? = null
             val outcome: FitPro2Board.Result = if (board != null) {
-                board.cycle(writes, minKph)
+                board.cycle(sent, minKph)
             } else {
-                reply = conn.exchange(FitPro.readWrite(deviceId, READS, writes ?: emptyMap()))
+                reply = conn.exchange(FitPro.readWrite(deviceId, READS, sent ?: emptyMap()))
                 when {
                     reply == null -> FitPro2Board.Result.Silent
                     // The board asking to be unlocked is not a dropped frame — it is a
@@ -2985,8 +3370,19 @@ class MainActivity : Activity() {
             // So the board only gets to speak once ours has had time to land.
             // Physical presses still come through: they are not writes of ours,
             // so nothing is holding the window open.
+            //
+            // The echo is in the board's speed, not true speed — see
+            // BeltCalibration. Our own echo is left alone: translated back it
+            // would be rounded, and while a calibration is being worked on it
+            // is deliberately not what the table says. Anything else is the
+            // machine's own keys, and is translated before it is adopted.
             if (writes == null && SystemClock.elapsedRealtime() - lastWriteMs > FOLLOW_SETTLE_MS) {
-                v[FitPro.Field.KPH]?.let { targetKph = quantise(it, KPH_STEP) }
+                v[FitPro.Field.KPH]?.let {
+                    if (Math.abs(it - sentBeltKph) > ECHO_KPH) {
+                        targetKph = quantise(calib.fromBelt(it), KPH_STEP)
+                        sentBeltKph = it
+                    }
+                }
                 v[FitPro.Field.GRADE]?.let { targetGrade = it }
             }
 
@@ -3112,9 +3508,12 @@ class MainActivity : Activity() {
         }
 
         val rawDistance = v[FitPro.Field.DISTANCE] ?: 0.0
+        // The walk is measured in true metres; the idle-belt safety net below
+        // stays on the raw counter, which only has to say whether it moved.
+        val distance = trueOdometer(rawDistance)
         val rawCalories = v[FitPro.Field.CALORIES] ?: 0.0
         if (armBaseline) {
-            baseDistance = rawDistance
+            baseDistance = distance
             baseCalories = rawCalories
             armBaseline = false
             Log.i(TAG, "session baseline: d=$baseDistance c=$baseCalories")
@@ -3166,9 +3565,12 @@ class MainActivity : Activity() {
         // a belt that cannot reach the commanded pace still shows up — see
         // Snapshot.slipping — and so this stays diagnosable if the board ever
         // starts filling ActualKph in.
-        val derived = beltSpeed(rawDistance)
+        val derived = beltSpeed(distance)
         val beltKph = when {
-            actual > 0.0 -> actual          // if the board ever starts answering
+            // The board's reading is in the board's speed; the dial is true
+            // speed. Compared untranslated, a calibrated belt would read as
+            // slipping by exactly its calibration. See BeltCalibration.
+            actual > 0.0 -> calib.fromBelt(actual)   // FitPro 2 answers; FitPro 1 reads 0
             // Not "zero because no workout is running". This field answers
             // "what is the belt doing", and a belt turning in manual mode is
             // turning whether or not STRIDE calls it a session. idleBeltSpeed
@@ -3184,7 +3586,7 @@ class MainActivity : Activity() {
         val pulse = pulseNow(v[FitPro.Field.PULSE]?.toInt() ?: 0)
 
         if (Session.isMoving(session)) {
-            sessionDistance = (rawDistance - baseDistance).coerceAtLeast(0.0)
+            sessionDistance = (distance - baseDistance).coerceAtLeast(0.0)
             sessionCalories = (rawCalories - baseCalories).coerceAtLeast(0.0)
             if (speed > maxSpeed) maxSpeed = speed
             if (incline > maxIncline) maxIncline = incline
@@ -3227,6 +3629,7 @@ class MainActivity : Activity() {
         }
         val step = currentStep()
         val foot = podNow(speed, incline)
+        val calLive = calTick(foot.kph)
 
         return Snapshot(
             speed = speed,
@@ -3304,6 +3707,7 @@ class MainActivity : Activity() {
             } else 0.0,
             inclineAuto = inclineAuto,
             boardLocked = boardLocked,
+            calib = calLive,
         )
     }
 
@@ -3529,6 +3933,8 @@ class MainActivity : Activity() {
 
     /** Hand a state snapshot to the page. */
     private fun push(s: Snapshot) {
+        // Nothing to draw on a dark panel; leaveStandby repaints on the way out.
+        if (standby) return
         val json = s.toJson()
         runOnUiThread {
             web.evaluateJavascript("window.render($json)", null)
@@ -3583,8 +3989,18 @@ class MainActivity : Activity() {
             elapsed = elapsedSec(),
             phaseLeft = phaseLeftSec(),
             ramping = if (rampTo > 0.0) rampReason else "",
+            // The panel opens and closes on a tap, not on the next poll. The
+            // numbers in it are the last poll's; the note is now.
+            calib = if (calOn) (base.calib?.copy(note = calNote) ?: calPending()) else null,
         ))
     }
+
+    /** The panel's first frame, before a poll has measured anything. */
+    private fun calPending() = CalibrationLive(
+        kph = targetKph, belt = beltFor(targetKph), tableBelt = calib.toBelt(targetKph),
+        podKph = 0.0, podSecs = 0.0, ready = false, pod = pod.connected,
+        miles = !cfg.metric(), points = calib.points, note = calNote,
+    )
 
     private fun resolveDeviceId(): Boolean {
         val probe = listOf(FitPro.Field.ACTUAL_KPH)
@@ -3807,7 +4223,7 @@ class MainActivity : Activity() {
         lastReacquireMs = SystemClock.elapsedRealtime()
         sim?.let { s ->
             conn.openSim(s)
-            val board = FitPro2Board(conn)
+            val board = FitPro2Board(conn, ::physicalKey)
             if (!board.setup()) return false
             fp2 = board
             Log.i(TAG, "simulated board is answering again")
@@ -3828,7 +4244,7 @@ class MainActivity : Activity() {
         if (err != null) { Log.w(TAG, "board silent — reopen failed: $err"); return false }
         if (conn.isFitPro2) {
             // A fresh subscription; there is no lock to undo on FitPro 2.
-            val board = FitPro2Board(conn)
+            val board = FitPro2Board(conn, ::physicalKey)
             if (!board.setup()) { Log.w(TAG, "board silent — reopened, but FitPro 2 setup failed"); return false }
             fp2 = board
             Log.i(TAG, "FitPro 2 board is answering again")
@@ -3879,7 +4295,7 @@ class MainActivity : Activity() {
      * is a FitPro 1 field set. The limits arrive with the subscription.
      */
     private fun startFitPro2(): Boolean {
-        val board = FitPro2Board(conn)
+        val board = FitPro2Board(conn, ::physicalKey)
         if (!board.setup()) return false
         fp2 = board
         when (val r = board.cycle(null, minKph)) {
