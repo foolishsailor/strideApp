@@ -16,6 +16,8 @@ standing on anything.
     python tools/sim.py guided pyramid 6        # a guided walk, 6 minutes
     python tools/sim.py scenario guided-all 4   # all four shapes, 4 minutes each
     python tools/sim.py watch                   # print the state every 2 s
+    python tools/sim.py walker Sam              # walk as Sam (added if missing), not a guest
+    python tools/sim.py workout                 # the last workout recorded for TrailMate, as JSON
     python tools/sim.py off                     # back to the real board (restarts STRIDE)
 
 Set STRIDE_DEVICE=<ip>:<port> (or pass --device) if more than one device is attached.
@@ -124,6 +126,8 @@ def main():
     sub.add_parser("key").add_argument("state", choices=("out", "in"))
     sub.add_parser("pulse").add_argument("state", choices=("on", "off"))
     sub.add_parser("pod").add_argument("state", choices=("on", "off"))
+    sub.add_parser("walker").add_argument("name")
+    sub.add_parser("workout")
     g = sub.add_parser("guided"); g.add_argument("shape", choices=SHAPES); g.add_argument("minutes", type=int, nargs="?", default=10)
     s = sub.add_parser("scenario"); s.add_argument("name", choices=SCENARIOS); s.add_argument("arg", nargs="?")
     a = p.parse_args()
@@ -165,6 +169,15 @@ def main():
         con.ctl("pod", "--ez", "on", "true" if a.state == "on" else "false")
     elif a.cmd == "pulse":
         con.ctl("pulse", "--ez", "on", "true" if a.state == "on" else "false")
+    elif a.cmd == "walker":
+        con.ctl("walker", "--es", "name", a.name)
+    elif a.cmd == "workout":
+        # Straight out of the app's private storage. run-as works on a debug
+        # build only, which is the only kind that records with the simulator.
+        out = con.shell("run-as", PKG, "cat", "files/trailmate/last.json")
+        if not out.strip().startswith("{"):
+            sys.exit("no workout recorded yet (walk as a profile for a minute and 100 m, then end)")
+        print(out.strip())
     elif a.cmd == "guided":
         con.ctl("guided", "--es", "id", a.shape, "--ei", "min", str(a.minutes))
     elif a.cmd == "scenario":
