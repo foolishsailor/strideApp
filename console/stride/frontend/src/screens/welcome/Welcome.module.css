@@ -79,20 +79,31 @@
 }
 /* Workouts: the week on the left, scrolling; the chosen one's steps on the
    right. A fixed box between the top bar and BACK / BEGIN. */
+/* All the room the screen has: from under the top bar (56px) to above
+   BACK / BEGIN (the bottom 100px, plus a gap), and its width less the
+   bezel margins. Sized to the viewport rather than fixed, because consoles
+   differ: the X22i's panel lays out at 1920x1080, not 1280x800. */
 .workouts {
   display: flex;
-  width: 1120px;
-  height: 580px;
-  margin-top: 10px;
+  width: calc(100vw - 160px);
+  height: calc(100vh - 56px - 170px);
+  margin-top: -40px;
 }
-/* The whole week fits: a compact row a day (see DaySchedule). It still
-   scrolls rather than clips if a day ever carries three workouts. */
+/* The whole week fits: seven compact rows (see DaySchedule) sharing the
+   height evenly. It still scrolls rather than clips if a day ever carries
+   more workouts than its share holds. */
 .week {
   flex: none;
-  width: 440px;
+  display: flex;
+  flex-direction: column;
+  width: 44%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+.weekDay {
+  flex: 1 0 0;
+  min-height: 72px;
 }
 .weekDay + .weekDay {
   margin-top: 10px;

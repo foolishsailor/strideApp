@@ -88,19 +88,26 @@
 
 /* ---- compact: a row of a week ------------------------------------------- */
 .compact {
-  padding: 7px 14px 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 18px;
 }
 .top {
+  width: 100%; /* the card may centre its lines; this one spans it */
   display: flex;
   align-items: baseline;
   justify-content: space-between;
 }
 .compact .meta {
-  margin: 0 0 0 12px;
+  margin: 0 0 0 auto; /* to the right, whatever sits before it */
+  padding-left: 12px;
   white-space: nowrap;
 }
 .compact .name {
-  margin-top: 2px;
+  margin-top: 4px;
+  font-size: var(--font-title);
   max-height: 1.25em; /* one line */
   white-space: nowrap;
   text-overflow: ellipsis;
