@@ -1,19 +1,14 @@
 package dev.stride.hud
 
+import android.content.ContentValues
 import android.content.Context
-import android.content.SharedPreferences
+import android.database.sqlite.SQLiteDatabase
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
  * Everything about *this* installation, rather than about treadmills.
- *
- * The console shipped with a household baked into it. Not as configuration
- * anyone had chosen to inline, but as the ordinary residue of building
- * something for one house: four names in an HTML array, kilometres
- * everywhere, and behaviour gated on one
- * person's name, so a second person in the same house silently got a
- * different product.
  *
  * Three rules this file exists to hold:
  *
@@ -26,47 +21,84 @@ import org.json.JSONObject
  *   Storing a max incline someone typed would be storing a way to ask the deck
  *   for something it cannot do.
  *
- * * **Per-person things belong to the person.** A runner's age, history and
- *   TrailMate link are theirs, not the console's, which is the whole fix for
- *   the name comparison.
+ * * **Per-person things belong to the person.** A runner's age, history,
+ *   TrailMate link and [PERSONAL] settings are theirs, not the console's.
  *
- * Stored in SharedPreferences because it is a handful of scalars and one small
- * list, read at start-up and on every settings save. A database would be a
- * database to maintain.
+ * Stored in [Db]: a `people` table, and a `settings` table whose `scope` is
+ * [Db.CONSOLE] for the treadmill's own or a person's id for theirs. Everything
+ * is held in memory as well, because the poll loop reads units and the heart
+ * rate source five times a second; every change is written to the database
+ * before it is taken into memory.
  */
 class Settings(context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE)
+    private val db = Db.get(context)
 
-    init { migrate() }
+    /** scope → key → value. Replaced whole on every write, read without a lock. */
+    @Volatile private var values: Map<String, Map<String, String>> = emptyMap()
+    @Volatile private var everyone: List<Person> = emptyList()
+
+    init {
+        Migration.fromPrefs(context, db)
+        load()
+    }
 
     /**
-     * Carry an older console's preferences forward. The default person used
-     * to be saved as `default_walker`, and the removed coach and Home
-     * Assistant link left keys behind (the broker password among them); the
-     * first is moved, the rest are dropped. Once done, nothing
-     * here finds anything to do.
+     * The id of whoever is running, or blank for a guest or nobody yet.
+     *
+     * The [PERSONAL] settings are read and written for this person. Somebody
+     * who has never changed one gets the console's own value, which is also
+     * where a new person starts.
      */
-    private fun migrate() {
-        val e = prefs.edit()
-        var dirty = false
-        if (!prefs.contains(DEFAULT_RUNNER) && prefs.contains("default_walker")) {
-            e.putString(DEFAULT_RUNNER, prefs.getString("default_walker", ASK))
-            dirty = true
+    @Volatile var active: String = ""
+
+    private fun load() {
+        val rd = db.readableDatabase
+        val v = HashMap<String, HashMap<String, String>>()
+        rd.rawQuery("SELECT scope, key, value FROM settings", null).use { c ->
+            while (c.moveToNext()) v.getOrPut(c.getString(0)) { HashMap() }[c.getString(1)] = c.getString(2)
         }
-        for (old in listOf("default_walker", "coach_on", "coach_talk", "coach_voice",
-                           "coach_remote", "coach_milestones", "seeded", "ha_enabled",
-                           "mqtt_host", "mqtt_port", "mqtt_user", "mqtt_pass", "mqtt_tls",
-                           "mqtt_prefix")) {
-            if (prefs.contains(old)) { e.remove(old); dirty = true }
+        values = v
+        val p = ArrayList<Person>()
+        rd.rawQuery("SELECT id, name, age FROM people ORDER BY pos, rowid", null).use { c ->
+            while (c.moveToNext()) p += Person(c.getString(0), c.getString(1), c.getInt(2))
         }
-        if (dirty) e.apply()
+        everyone = p
+    }
+
+    /** The scope a setting is read from: the runner's own value if they have one. */
+    private fun get(key: String): String? {
+        if (key in PERSONAL && active.isNotEmpty()) values[active]?.get(key)?.let { return it }
+        return values[Db.CONSOLE]?.get(key)
+    }
+
+    /** The scope a setting is written to: the runner's own, or the console's. */
+    private fun scopeFor(key: String): String =
+        if (key in PERSONAL && active.isNotEmpty()) active else Db.CONSOLE
+
+    private fun str(key: String, def: String) = get(key) ?: def
+    private fun int(key: String, def: Int) = get(key)?.toDoubleOrNull()?.toInt() ?: def
+    private fun dbl(key: String, def: Double) = get(key)?.toDoubleOrNull() ?: def
+    private fun bool(key: String, def: Boolean) = get(key)?.let { it == "true" || it == "1" } ?: def
+
+    /** Write several settings at once, then take them into memory. */
+    private fun write(scope: String, kv: Map<String, String>) {
+        db.tx { d ->
+            kv.forEach { (k, v) ->
+                d.insertWithOnConflict("settings", null, ContentValues().apply {
+                    put("scope", scope); put("key", k); put("value", v)
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+        }
+        val next = values.toMutableMap()
+        next[scope] = (values[scope] ?: emptyMap()) + kv
+        values = next
     }
 
     companion object {
+        private const val TAG = "StrideSettings"
+
         // --- people ---
-        const val PEOPLE = "people"
         const val DEFAULT_RUNNER = "default_runner"
         const val ALLOW_GUEST = "allow_guest"
 
@@ -124,6 +156,22 @@ class Settings(context: Context) {
             "normal" to Pair(1.0, 3000L),
             "quick" to Pair(1.0, 1500L),
         )
+
+        /**
+         * Settings that belong to the runner rather than the console: how they
+         * like to start and stop, the units they think in, and their own strap,
+         * pod and headphones. Brightness, sleep, the clock and the belt are the
+         * room's and the machine's, and stay shared.
+         */
+        val PERSONAL = setOf(
+            UNITS, WARMUP_MIN, COOLDOWN_MIN, WARMUP_KPH, INCLINE_RATE, OPEN_LAP_MIN,
+            HR_SOURCE, HR_ADDR, HR_NAME, POD_ADDR, POD_NAME, PHONES_ADDR, PHONES_NAME,
+        )
+
+        /** Every key [set] accepts. Anything else from the page is ignored. */
+        val KNOWN = PERSONAL + setOf(
+            DEFAULT_RUNNER, ALLOW_GUEST, TRAILMATE_URL, SLEEP_MIN, CLOCK_24, BRIGHTNESS, KEEP_AWAKE,
+        )
     }
 
     // --- people ---------------------------------------------------------------
@@ -139,10 +187,6 @@ class Settings(context: Context) {
          * default. It buys one thing: heart-rate zones, via the usual
          * 220-minus-age, which is crude (±10-12 bpm between two people of the
          * same age). Nobody has to tell a treadmill their age.
-         *
-         * Per person, not per console: there is a person registry here because
-         * more than one person runs on this machine, and one shared age would
-         * be wrong for all but one of them.
          */
         val age: Int = 0,
     ) {
@@ -161,15 +205,9 @@ class Settings(context: Context) {
     }
 
     /**
-     * A stable identity, fixed when somebody is added and never derived again.
-     *
-     * The id used to *be* the name, which meant a rename silently orphaned
-     * every reading taken under the old spelling: "Kez" becoming "Sam" started
-     * a second person's history.
-     *
-     * The name is now a label. The id is the thing, and it is deliberately
-     * still the slug *at creation*, so existing ids, with real history and
-     * TrailMate links behind them, keep working untouched.
+     * A stable identity, fixed when somebody is added and never derived again,
+     * so a rename keeps their history, settings and TrailMate link. The slug
+     * of the name at creation.
      */
     private fun freshId(name: String, taken: Set<String>): String {
         val base = name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
@@ -183,155 +221,120 @@ class Settings(context: Context) {
     fun addPerson(name: String): Person? {
         val clean = name.trim().take(20)
         if (clean.isBlank()) return null
-        val list = people().toMutableList()
+        val list = people()
         if (list.any { it.name.equals(clean, ignoreCase = true) }) return null
-        val p = Person(
-            id = freshId(clean, list.map { it.id }.toSet()),
-            name = clean,
-        )
-        list += p
-        savePeople(list)
+        val p = Person(id = freshId(clean, list.map { it.id }.toSet()), name = clean)
+        savePeople(list + p)
         return p
     }
 
     /**
-     * Empty by default, and deliberately so.
-     *
-     * A console that ships with four strangers' names on the welcome screen is
-     * worse than one that asks. When the list is empty the UI offers a single
-     * guest run and a way to add somebody.
+     * Empty by default, and deliberately so: when the list is empty the UI
+     * offers a single guest run and a way to add somebody.
      */
-    fun people(): List<Person> {
-        val raw = prefs.getString(PEOPLE, null) ?: return emptyList()
-        return try {
-            val arr = JSONArray(raw)
-            (0 until arr.length()).map { i ->
-                val o = arr.getJSONObject(i)
-                val name = o.getString("name")
-                Person(
-                    // Older entries predate stable ids; fall back to the slug
-                    // they were already known by.
-                    id = o.optString("id").ifBlank {
-                        name.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_')
-                    },
-                    name = name,
-                    // Absent for everyone who existed before zones did, which
-                    // is the same as declining to say — see Person.age.
-                    age = o.optInt("age", 0),
-                )
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
+    fun people(): List<Person> = everyone
 
+    /**
+     * The whole list, in order. Anyone no longer in it is removed with their
+     * own settings, in the same transaction.
+     */
     fun savePeople(list: List<Person>) {
-        prefs.edit().putString(
-            PEOPLE, JSONArray().apply { list.forEach { put(it.json()) } }.toString()
-        ).apply()
+        val gone = everyone.map { it.id } - list.map { it.id }.toSet()
         // A default that no longer names anybody would silently start every
         // run as a guest. Drop it and let the welcome screen ask instead.
-        if (list.none { it.name == defaultRunner() }) {
-            prefs.edit().putString(DEFAULT_RUNNER, ASK).apply()
+        val dropDefault = list.none { it.name == defaultRunner() }
+        db.tx { d ->
+            d.delete("people", null, null)
+            list.forEachIndexed { i, p ->
+                d.insert("people", null, ContentValues().apply {
+                    put("id", p.id); put("name", p.name); put("age", p.age); put("pos", i)
+                })
+            }
+            gone.forEach { d.delete("settings", "scope = ?", arrayOf(it)) }
+            if (dropDefault) d.insertWithOnConflict("settings", null, ContentValues().apply {
+                put("scope", Db.CONSOLE); put("key", DEFAULT_RUNNER); put("value", ASK)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
         }
+        load()
     }
 
-    fun person(name: String): Person? = people().firstOrNull { it.name == name }
-    fun personById(id: String): Person? = people().firstOrNull { it.id == id }
+    fun person(name: String): Person? = everyone.firstOrNull { it.name == name }
+    fun personById(id: String): Person? = everyone.firstOrNull { it.id == id }
 
-    fun defaultRunner(): String = prefs.getString(DEFAULT_RUNNER, ASK) ?: ASK
-    fun allowGuest(): Boolean = prefs.getBoolean(ALLOW_GUEST, true)
+    fun defaultRunner(): String = values[Db.CONSOLE]?.get(DEFAULT_RUNNER) ?: ASK
+    fun allowGuest(): Boolean = bool(ALLOW_GUEST, true)
 
     // --- units ----------------------------------------------------------------
 
-    fun units(): String = prefs.getString(UNITS, "km") ?: "km"
+    fun units(): String = str(UNITS, "km")
     fun metric(): Boolean = units() == "km"
 
     // --- deck -----------------------------------------------------------------
 
-    fun warmupMs(): Long = prefs.getInt(WARMUP_MIN, 2) * 60_000L
-    fun cooldownMs(): Long = prefs.getInt(COOLDOWN_MIN, 2) * 60_000L
-    fun warmupKph(): Double = prefs.getFloat(WARMUP_KPH, 2.0f).toDouble()
-    fun openLapMin(): Int = prefs.getInt(OPEN_LAP_MIN, 20)
+    fun warmupMin(): Int = int(WARMUP_MIN, 2)
+    fun cooldownMin(): Int = int(COOLDOWN_MIN, 2)
+    fun warmupMs(): Long = warmupMin() * 60_000L
+    fun cooldownMs(): Long = cooldownMin() * 60_000L
+    fun warmupKph(): Double = dbl(WARMUP_KPH, 2.0)
+    fun openLapMin(): Int = int(OPEN_LAP_MIN, 20)
+    fun inclineRate(): String = str(INCLINE_RATE, "normal")
 
-    fun inclineStep(): Double =
-        INCLINE_RATES[prefs.getString(INCLINE_RATE, "normal")]?.first ?: 1.0
+    fun inclineStep(): Double = INCLINE_RATES[inclineRate()]?.first ?: 1.0
 
-    fun inclineEveryMs(): Long =
-        INCLINE_RATES[prefs.getString(INCLINE_RATE, "normal")]?.second ?: 3000L
+    fun inclineEveryMs(): Long = INCLINE_RATES[inclineRate()]?.second ?: 3000L
 
     /**
      * How far this belt is from the speed it is asked for, measured with a foot
      * pod. A property of the machine, not of a person, and it outlives
      * [resetSettings] the way people do: it was measured, not chosen.
      */
-    fun beltCalibration(): BeltCalibration = BeltCalibration.parse(prefs.getString(BELT_CAL, null))
+    fun beltCalibration(): BeltCalibration =
+        BeltCalibration.parse(values[Db.CONSOLE]?.get(BELT_CAL))
 
     fun saveBeltCalibration(cal: BeltCalibration) {
-        prefs.edit().putString(BELT_CAL, cal.json().toString()).apply()
+        write(Db.CONSOLE, mapOf(BELT_CAL to cal.json().toString()))
     }
 
-    // --- heart rate -----------------------------------------------------------
+    // --- heart rate, foot pod, headphones -------------------------------------
 
-    fun hrSource(): String = prefs.getString(HR_SOURCE, "auto") ?: "auto"
-    fun hrAddr(): String = prefs.getString(HR_ADDR, "") ?: ""
-    fun hrName(): String = prefs.getString(HR_NAME, "") ?: ""
+    fun hrSource(): String = str(HR_SOURCE, "auto")
+    fun hrAddr(): String = str(HR_ADDR, "")
+    fun hrName(): String = str(HR_NAME, "")
 
-    fun saveStrap(addr: String, name: String) {
-        prefs.edit().putString(HR_ADDR, addr).putString(HR_NAME, name).apply()
-    }
+    // Forgetting writes blanks rather than removing them: removed, a runner's
+    // own device would give way to the console's, and "forget" would not.
+    fun saveStrap(addr: String, name: String) =
+        write(scopeFor(HR_ADDR), mapOf(HR_ADDR to addr, HR_NAME to name))
+    fun forgetStrap() = saveStrap("", "")
 
-    fun forgetStrap() {
-        prefs.edit().remove(HR_ADDR).remove(HR_NAME).apply()
-    }
+    fun podAddr(): String = str(POD_ADDR, "")
+    fun podName(): String = str(POD_NAME, "")
+    fun savePod(addr: String, name: String) =
+        write(scopeFor(POD_ADDR), mapOf(POD_ADDR to addr, POD_NAME to name))
+    fun forgetPod() = savePod("", "")
 
-    // --- foot pod -------------------------------------------------------------
-
-    fun podAddr(): String = prefs.getString(POD_ADDR, "") ?: ""
-    fun podName(): String = prefs.getString(POD_NAME, "") ?: ""
-
-    fun savePod(addr: String, name: String) {
-        prefs.edit().putString(POD_ADDR, addr).putString(POD_NAME, name).apply()
-    }
-
-    fun forgetPod() {
-        prefs.edit().remove(POD_ADDR).remove(POD_NAME).apply()
-    }
-
-    // --- headphones -----------------------------------------------------------
-
-    fun phonesAddr(): String = prefs.getString(PHONES_ADDR, "") ?: ""
-    fun phonesName(): String = prefs.getString(PHONES_NAME, "") ?: ""
-
-    fun savePhones(addr: String, name: String) {
-        prefs.edit().putString(PHONES_ADDR, addr).putString(PHONES_NAME, name).apply()
-    }
-
-    fun forgetPhones() {
-        prefs.edit().remove(PHONES_ADDR).remove(PHONES_NAME).apply()
-    }
+    fun phonesAddr(): String = str(PHONES_ADDR, "")
+    fun phonesName(): String = str(PHONES_NAME, "")
+    fun savePhones(addr: String, name: String) =
+        write(scopeFor(PHONES_ADDR), mapOf(PHONES_ADDR to addr, PHONES_NAME to name))
+    fun forgetPhones() = savePhones("", "")
 
     // --- trailmate ------------------------------------------------------------
 
     /**
-     * Where TrailMate's API is. Production unless somebody says otherwise —
-     * a setting rather than a constant so a console can be pointed at a dev
-     * server (or `tools/trailmate_mock.py`) without a rebuild.
-     *
-     * Only the address lives here. The per-person tokens are secrets and are
-     * kept apart from these preferences on purpose — see [TrailMate] — so
-     * [json] cannot hand one to the settings page.
+     * Where TrailMate's API is. Production unless somebody says otherwise.
+     * Only the address lives here; the tokens are in [TrailMate]'s own table,
+     * encrypted, so [json] cannot hand one to the settings page.
      */
-    fun trailmateUrl(): String =
-        (prefs.getString(TRAILMATE_URL, "") ?: "").trim().ifBlank { TRAILMATE_DEFAULT_URL }
+    fun trailmateUrl(): String = str(TRAILMATE_URL, "").trim().ifBlank { TRAILMATE_DEFAULT_URL }
 
     // --- display --------------------------------------------------------------
 
-    fun sleepMs(): Long = prefs.getInt(SLEEP_MIN, 5) * 60_000L
-    fun clock24(): Boolean = prefs.getBoolean(CLOCK_24, true)
-    fun keepAwake(): Boolean = prefs.getBoolean(KEEP_AWAKE, true)
+    fun sleepMs(): Long = int(SLEEP_MIN, 5) * 60_000L
+    fun clock24(): Boolean = bool(CLOCK_24, true)
+    fun keepAwake(): Boolean = bool(KEEP_AWAKE, true)
 
-    fun brightness(): Float = when (prefs.getString(BRIGHTNESS, "normal")) {
+    fun brightness(): Float = when (str(BRIGHTNESS, "normal")) {
         "dim" -> 0.35f
         "bright" -> 1.0f
         else -> 0.7f
@@ -345,13 +348,15 @@ class Settings(context: Context) {
      */
     fun json(): JSONObject = JSONObject()
         .put("people", JSONArray().apply { people().forEach { put(it.json()) } })
+        // Whose settings the personal values below are; blank for a guest.
+        .put("active", personById(active)?.name ?: "")
         .put(DEFAULT_RUNNER, defaultRunner())
         .put(ALLOW_GUEST, allowGuest())
         .put(UNITS, units())
-        .put(WARMUP_MIN, prefs.getInt(WARMUP_MIN, 2))
-        .put(COOLDOWN_MIN, prefs.getInt(COOLDOWN_MIN, 2))
-        .put(WARMUP_KPH, prefs.getFloat(WARMUP_KPH, 2.0f).toDouble())
-        .put(INCLINE_RATE, prefs.getString(INCLINE_RATE, "normal"))
+        .put(WARMUP_MIN, warmupMin())
+        .put(COOLDOWN_MIN, cooldownMin())
+        .put(WARMUP_KPH, warmupKph())
+        .put(INCLINE_RATE, inclineRate())
         .put(OPEN_LAP_MIN, openLapMin())
         .put(HR_SOURCE, hrSource())
         .put(HR_ADDR, hrAddr())
@@ -360,45 +365,47 @@ class Settings(context: Context) {
         .put(POD_NAME, podName())
         .put(PHONES_ADDR, phonesAddr())
         .put(PHONES_NAME, phonesName())
-        // The address, never a token: those are not in these preferences at
-        // all (see TrailMate). Anything that can read the settings page can
-        // read this object, which on a debug build is anyone with DevTools.
         .put(TRAILMATE_URL, trailmateUrl())
-        .put(SLEEP_MIN, prefs.getInt(SLEEP_MIN, 5))
+        .put(SLEEP_MIN, int(SLEEP_MIN, 5))
         .put(CLOCK_24, clock24())
-        .put(BRIGHTNESS, prefs.getString(BRIGHTNESS, "normal"))
+        .put(BRIGHTNESS, str(BRIGHTNESS, "normal"))
         .put(KEEP_AWAKE, keepAwake())
 
     /**
-     * Save one value, typed by what the key expects rather than by what
-     * JavaScript happened to send. A WebView bridge hands everything over as a
-     * string, and `getInt` on a key written as a String throws at read time —
-     * a long way from the settings screen that caused it.
+     * Save one value from the settings page. Stored as text and typed where it
+     * is read, so nothing the page sends can make a later read throw.
      */
     fun set(key: String, value: String) {
-        val e = prefs.edit()
-        when (key) {
-            ALLOW_GUEST, CLOCK_24, KEEP_AWAKE ->
-                e.putBoolean(key, value == "true" || value == "1")
-
-            WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN ->
-                e.putInt(key, value.toIntOrNull() ?: 0)
-
-            WARMUP_KPH ->
-                e.putFloat(key, value.toFloatOrNull() ?: 2.0f)
-
-            else -> e.putString(key, value)
+        if (key !in KNOWN) {
+            Log.w(TAG, "ignoring unknown setting '$key'")
+            return
         }
-        e.apply()
+        val clean = when (key) {
+            ALLOW_GUEST, CLOCK_24, KEEP_AWAKE -> (value == "true" || value == "1").toString()
+            WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN -> (value.toIntOrNull() ?: 0).toString()
+            WARMUP_KPH -> (value.toDoubleOrNull() ?: 2.0).toString()
+            else -> value
+        }
+        write(scopeFor(key), mapOf(key to clean))
     }
 
-    /** Settings only. People, totals, history and the belt calibration are not touched. */
+    /** The runner's own settings go back to the console's. */
+    fun resetMine() {
+        val id = active
+        if (id.isEmpty()) return
+        db.tx { it.delete("settings", "scope = ?", arrayOf(id)) }
+        values = values - id
+    }
+
+    /**
+     * The console's settings. People, everybody's own settings, totals,
+     * history and the belt calibration are kept.
+     */
     fun resetSettings() {
-        val keep = prefs.getString(PEOPLE, null)
-        val belt = prefs.getString(BELT_CAL, null)
-        prefs.edit().clear()
-            .putString(PEOPLE, keep)
-            .putString(BELT_CAL, belt)
-            .apply()
+        db.tx {
+            it.delete("settings", "scope = ? AND key NOT IN (?, ?)",
+                arrayOf(Db.CONSOLE, BELT_CAL, DEFAULT_RUNNER))
+        }
+        load()
     }
 }

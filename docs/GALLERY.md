@@ -21,10 +21,10 @@ suggestion and the belt doesn't act on it.
 
 On the treadmill's own screen. No config files, no rebuild.
 
-### Who runs
+### People
 Everyone gets their own totals, history and TrailMate link.
 
-![Who runs](screenshots/settings-who-walks.png)
+![People](screenshots/settings-who-walks.png)
 
 ### Heart rate
 Bluetooth chest straps, using the standard heart rate service — the scan

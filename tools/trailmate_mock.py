@@ -13,7 +13,7 @@ broken one exactly as TrailMate would. Uploads that pass are saved to
     python tools/trailmate_mock.py --outage 503         # every upload answers 503
     python tools/trailmate_mock.py --revoked            # every token answers 401
 
-Point the console at it in Settings → Who runs → TrailMate server:
+Point the console at it in Settings → People → TrailMate server:
 `http://10.0.2.2:8037/api` from the emulator (the host's loopback).
 
 Not TrailMate: no accounts, and the "QR" is a placeholder pattern, not a

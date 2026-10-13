@@ -394,7 +394,7 @@ and your workout history with it.
 
 Everything is on the treadmill's own screen. There are no config files.
 
-- **Settings → Who runs.** Add yourself. Nobody is pre-configured.
+- **Settings → People.** Add yourself. Nobody is pre-configured.
 - **Settings → Treadmill.** Units, warm-up, cool-down, guided-run speed limit.
 
 ✅ Clip the safety key, choose a workout, and check the belt starts and the

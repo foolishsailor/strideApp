@@ -55,6 +55,8 @@
     '.sx-rail{position:relative;z-index:2;flex:none;width:302px;height:100%;',
     '  border-right:1px solid var(--sx-line);padding:26px 0 0;display:flex;flex-direction:column}',
     '.sx-title{padding:0 30px 22px;font-size:34px;font-weight:var(--sx-w-light);letter-spacing:var(--sx-tracking)}',
+    '.sx-whose{display:block;margin-top:6px;font-size:16px;font-weight:var(--sx-w-body);',
+    '  color:var(--sx-ink-dim);letter-spacing:0}',
     '.sx-navs{flex:1;overflow:hidden}',
     '.sx-nav{display:flex;align-items:center;width:100%;height:66px;padding:0 30px;',
     '  background:none;border:none;color:var(--sx-ink-dim);font-size:19px;font-weight:var(--sx-w-body);',
@@ -117,6 +119,7 @@
     '  background:rgba(var(--sx-bg-rgb),.7);border:var(--sx-edge) solid var(--sx-line);color:var(--sx-ink);',
     '  font-size:18px;font-weight:var(--sx-w-body);font-family:inherit;user-select:text}',
     '.sx-fld.sx-short{min-width:132px}',
+    '.sx-fld.sx-url{width:860px;max-width:62vw}',
     '.sx-fld:focus{border-color:var(--sx-accent)}',
 
     '.sx-pill{height:56px;padding:0 26px;border-radius:var(--sx-radius);background:rgba(var(--sx-surface-rgb),.5);',
@@ -500,31 +503,43 @@
     deck: 'M3 17h18M6 17l3-9h6l3 9M9 8V5h6v3',
     screen: 'M3 4h18v12H3zM8 20h8M12 16v4',
     routes: 'M3 18l6-3 6 3 6-3V6l-6 3-6-3-6 3zM9 15V6M15 18V9',
-    about: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01'
+    about: 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 10v7M12 7h.01',
+    trailmate: 'M3 20l6-10 4 6 3-4 5 8zM15 6a2 2 0 100-4 2 2 0 000 4z',
+    connections: 'M9 15l6-6M7 11l-2 2a4 4 0 006 6l2-2M17 13l2-2a4 4 0 00-6-6l-2 2',
+    run: 'M13 4a2 2 0 100 4 2 2 0 000-4zM6 21l3-6 3 2v5M9 15l1-6 4 2 3 1M10 9l-3 2'
   };
 
-  var SECTIONS = [
-    ['people', 'Who runs',      paneWho],
-    ['devices', 'Devices',       paneDevices],
-    ['deck',   'Treadmill',      paneDeck],
-    ['routes', 'My routes',      paneRoutes],
-    ['screen', 'Display',        paneScreen],
-    ['about',  'About',          paneAbout]
-  ];
+  /* Two screens: the runner's own settings, opened once they have picked
+     themselves, and the treadmill's, from the cog on the home screen. */
+  var MODES = {
+    me: [
+      ['run',     'Running',   paneRun],
+      ['devices', 'Devices',   paneDevices],
+      ['trailmate', 'TrailMate', paneTrailMate]
+    ],
+    treadmill: [
+      ['people',  'People',    paneWho],
+      ['deck',    'Treadmill', paneDeck],
+      ['connections', 'Connections', paneConnections],
+      ['routes',  'Routes',    paneRoutes],
+      ['screen',  'Display',   paneScreen],
+      ['about',   'About',     paneAbout]
+    ]
+  };
+  var mode = 'treadmill';
+  var SECTIONS = MODES[mode];
 
   function head(pane, title, sub) {
     pane.appendChild(el('div', 'sx-h', title));
-    pane.appendChild(el('div', 'sx-sub', sub));
+    if (sub) pane.appendChild(el('div', 'sx-sub', sub));
     var sc = el('div', 'sx-scroll');
     pane.appendChild(sc);
     return sc;
   }
 
-  // --- who runs ---
+  // --- people ---
   function paneWho(pane) {
-    var sc = head(pane, 'Who runs',
-      'Everyone who uses this treadmill. Each person keeps their own distance and ' +
-      'history, and chooses whether any of it leaves the console.');
+    var sc = head(pane, 'People');
 
     var g = group('Household');
     var list = el('div', 'sx-people');
@@ -561,7 +576,6 @@
      * dialog is sized for a phone and lands wherever it likes.
      */
     function addPerson() {
-      tmShowing = null;
       detail.innerHTML = '';
       detail.appendChild(el('div', 'sx-gh', 'Add someone'));
 
@@ -588,9 +602,7 @@
       wrap.appendChild(input);
       wrap.appendChild(press(el('button', 'sx-pill sx-go', 'ADD'), commit));
 
-      detail.appendChild(row('Their name',
-        'Everyone who runs gets their own totals. Recording is set per person ' +
-        'once they are here.', wrap));
+      detail.appendChild(row('Name', '', wrap));
 
       // Straight into the keyboard — the only reason to be on this screen is
       // to type a name.
@@ -602,20 +614,8 @@
     function editPerson(p) {
       detail.innerHTML = '';
       detail.appendChild(el('div', 'sx-gh', p.name));
-      detail.appendChild(row('Age',
-        'Only used for heart-rate zones on the summary. Leaving it unset costs ' +
-        'nothing else, and the estimate behind it is rough anyway.',
-        ageStepper(p)));
-      // Redrawn from the tick while it is on screen: a link in progress
-      // changes under it, from somebody's phone.
-      if (has('trailmateStatus')) {
-        tmBox = el('div');
-        detail.appendChild(tmBox);
-        tmShowing = p;
-        drawTm(true);
-      }
-      detail.appendChild(row('Start as ' + p.name,
-        'Assume this person when the belt starts without anyone tapping a name.',
+      detail.appendChild(row('Age', 'For heart-rate zones.', ageStepper(p)));
+      detail.appendChild(row('Start as ' + p.name, '',
         press(el('button', 'sx-pill', 'MAKE DEFAULT'), function () {
           save('default_runner', p.name); drawPeople(); drawDefault();
         })));
@@ -623,7 +623,6 @@
         'Their recorded runs are not deleted.',
         press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           try { S = JSON.parse(bridge().removePerson(p.name)); } catch (e) {}
-          tmShowing = null;
           detail.innerHTML = ''; drawPeople(); drawDefault();
         })));
     }
@@ -634,8 +633,7 @@
     var g2 = group('When nobody chooses');
     var defRow = el('div');
     g2.appendChild(defRow);
-    g2.appendChild(row('Guest runs',
-      'A one-off run counted on the console but never recorded against a person.',
+    g2.appendChild(row('Guest runs', 'Not recorded against anyone.',
       toggle('allow_guest', S.allow_guest !== false)));
     sc.appendChild(g2);
 
@@ -643,16 +641,54 @@
       defRow.innerHTML = '';
       var opts = [['', 'Ask every time']];
       (S.people || []).forEach(function (p) { opts.push([p.name, p.name]); });
-      defRow.appendChild(row('Start as', 'Who the welcome screen assumes.',
+      defRow.appendChild(row('Start as', '',
         segment('default_runner', opts, S.default_runner || '', function () { drawPeople(); })));
     }
 
-    /* ---- TrailMate, per person ------------------------------------------
-       Connecting is a code on this screen and a tap on the runner's phone:
-       Kotlin asks TrailMate for a code and a QR, and polls until it is
-       approved, denied or runs out. This only ever shows what trailmateStatus
-       says — never a token, which this page is not given. */
-    var tmShowing = null, tmBox = null, tmKey = '';
+    drawPeople();
+    drawDefault();
+  }
+
+  /* What Kotlin says about TrailMate, or null on a build without it. */
+  function tmStatus() {
+    if (!has('trailmateStatus')) return null;
+    try { return JSON.parse(bridge().trailmateStatus()); } catch (e) { return null; }
+  }
+
+  function tmPerson(st, id) {
+    return ((st && st.people) || []).filter(function (x) { return x.id === id; })[0] || {};
+  }
+
+  // --- connections: services the whole treadmill talks to ---
+  function paneConnections(pane) {
+    var sc = head(pane, 'Connections');
+    var g = group('TrailMate');
+    var url = field('trailmate_url', S.trailmate_url);
+    url.classList.add('sx-url');
+    g.appendChild(row('Server', 'Leave blank for foolishrunner.com.', url));
+    sc.appendChild(g);
+  }
+
+  // --- trailmate: the runner's own link ---
+  /* Connecting is a code on this screen and a tap on the runner's phone:
+     Kotlin asks TrailMate for a code and a QR, and polls until it is
+     approved, denied or runs out. This only ever shows what trailmateStatus
+     says — never a token, which this page is not given. */
+  function paneTrailMate(pane) {
+    var sc = head(pane, 'TrailMate');
+    var p = (S.people || []).filter(function (x) { return x.name === S.active; })[0];
+    if (!p) {
+      var g0 = group('');
+      g0.appendChild(row('Guests are not sent to TrailMate', '', el('div')));
+      sc.appendChild(g0);
+      return;
+    }
+
+    var box = el('div');
+    var g = group('');
+    g.appendChild(box);
+    sc.appendChild(g);
+    var shownKey = '';
 
     function mmss(s) {
       s = Math.max(0, Math.round(s || 0));
@@ -679,34 +715,30 @@
 
     function call(fn, arg) {
       try { if (arg === undefined) bridge()[fn](); else bridge()[fn](arg); } catch (e) {}
-      drawTm(true);
+      draw(true);
     }
 
-    function drawTm(force) {
-      if (!tmShowing || !tmBox) return;
+    function draw(force) {
       var st = tmStatus();
-      if (!st) { tmBox.innerHTML = ''; return; }
-      var p = tmShowing;
+      if (!st) { box.innerHTML = ''; return; }
       var me = tmPerson(st, p.id);
       var lk = st.link && st.link.personId === p.id ? st.link : null;
       var failed = (st.failed || []).filter(function (f) { return f.personId === p.id; });
-      var key = JSON.stringify([me, lk && [lk.state, lk.userCode, lk.message],
+      var key = JSON.stringify([me, lk && [lk.state, lk.userCode, lk.message], st.lastError,
         failed.map(function (f) { return f.workoutId; })]);
       // Only the countdown moves between ticks. Rebuilding the whole box —
       // the QR with it — every 1.2 s would flicker for nothing.
-      if (key === tmKey && !force) {
-        var left = tmBox.querySelector('.sx-tm-left');
+      if (key === shownKey && !force) {
+        var left = box.querySelector('.sx-tm-left');
         if (left && lk) left.textContent = mmss(lk.left) + ' left';
         return;
       }
-      var wasLinked = tmKey && JSON.parse(tmKey)[0].linked;
-      tmKey = key;
-      tmBox.innerHTML = '';
-      if (!!wasLinked !== !!me.linked) drawPeople();
+      shownKey = key;
+      box.innerHTML = '';
 
       if (lk && (lk.state === 'starting' || lk.state === 'waiting')) {
         if (lk.state === 'starting') {
-          tmBox.appendChild(row('TrailMate',
+          box.appendChild(row('Connect',
             '<span class="sx-state"><i class="sx-dot sx-busy"></i>Asking TrailMate for a code…</span>',
             press(el('button', 'sx-pill', 'CANCEL'), function () { call('trailmateCancel'); })));
           return;
@@ -728,26 +760,21 @@
           '</b> and enter'));
         txt.appendChild(el('div', 'sx-code', esc(lk.userCode)));
         var line = el('div', 'sx-state',
-          '<i class="sx-dot sx-busy"></i>Waiting for ' + esc(p.name) +
-          ' to allow it in TrailMate&nbsp;·&nbsp;<span class="sx-tm-left"></span>');
+          '<i class="sx-dot sx-busy"></i>Waiting for you to allow it in TrailMate' +
+          '&nbsp;·&nbsp;<span class="sx-tm-left"></span>');
         line.querySelector('.sx-tm-left').textContent = mmss(lk.left) + ' left';
         txt.appendChild(line);
         card.appendChild(txt);
         card.appendChild(press(el('button', 'sx-pill', 'CANCEL'), function () { call('trailmateCancel'); }));
-        tmBox.appendChild(row('Connect TrailMate',
-          'Signing in happens on the phone. Nothing is typed here.', el('div')));
-        tmBox.appendChild(card);
-        // It lands below the person's other rows, which is off the bottom of
-        // the panel — and a code nobody can see is no use to anyone.
-        try { card.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+        box.appendChild(card);
         return;
       }
 
       if (lk && lk.state !== 'connected') {
         var said = lk.state === 'denied' ? 'Declined in TrailMate.'
-          : lk.state === 'expired' ? 'The code ran out before it was used.'
+          : lk.state === 'expired' ? 'The code ran out.'
           : esc(lk.message || 'Something went wrong.');
-        tmBox.appendChild(row('TrailMate',
+        box.appendChild(row('Connect',
           '<span class="sx-state"><i class="sx-dot sx-bad"></i>' + said + '</span>',
           pills([
             press(el('button', 'sx-pill sx-go', 'TRY AGAIN'), function () { call('trailmateConnect', p.id); }),
@@ -756,30 +783,29 @@
         return;
       }
 
-      var waiting = me.queued ? ' ' + me.queued + (me.queued === 1 ? ' run is' : ' runs are') +
-        ' waiting to send.' : '';
       if (me.linked && me.reconnect) {
-        tmBox.appendChild(row('TrailMate',
-          '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span><br>' +
-          'TrailMate stopped accepting this console\'s link — it was disconnected on the website, ' +
-          'or the account changed. Connect again and the runs waiting here will follow.' + waiting,
+        box.appendChild(row('Account',
+          '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span>',
           pills([
             press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { call('trailmateConnect', p.id); }),
             press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })
           ])));
       } else if (me.linked) {
-        tmBox.appendChild(row('TrailMate',
+        box.appendChild(row('Account',
           '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
-          (me.account ? ' as ' + esc(me.account) : '') + '</span><br>' +
-          'Each run goes to TrailMate when it ends, and on to Garmin Connect if that is ' +
-          'connected there.' + waiting,
+          (me.account ? ' as ' + esc(me.account) : '') + '</span>',
           press(el('button', 'sx-pill sx-warn', 'DISCONNECT'), function () { call('trailmateDisconnect', p.id); })));
       } else {
-        tmBox.appendChild(row('TrailMate',
-          'Send ' + esc(p.name) + '\'s runs to TrailMate, and from there to Garmin Connect. ' +
-          'Connecting shows a code to scan with a phone. Until then their runs stay on the console.',
+        box.appendChild(row('Account', 'Not connected. Your runs stay on the treadmill.',
           press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { call('trailmateConnect', p.id); })));
       }
+
+      var n = me.queued || 0;
+      var why = n && me.linked && !me.reconnect && st.lastError ? '<br>' + esc(st.lastError) : '';
+      box.appendChild(row('Runs to send',
+        '<span class="sx-state"><i class="sx-dot ' + (n ? (why ? 'sx-bad' : 'sx-busy') : 'sx-ok') +
+        '"></i>' + (n ? n + ' waiting' : 'None waiting') + '</span>' + why,
+        el('div')));
 
       // Runs TrailMate turned down. Parked so they do not hold up the ones
       // behind them; shown so they are not silently lost.
@@ -789,98 +815,12 @@
           ' · ' + howFar(f.distanceM || 0) + '</div><div class="sx-d">' +
           esc(f.reason || 'refused') + (f.status ? ' (' + f.status + ')' : '') + '</div></div>';
         r.appendChild(press(el('button', 'sx-pill', 'RETRY'), function () { call('trailmateRetry', f.workoutId); }));
-        tmBox.appendChild(r);
+        box.appendChild(r);
       });
     }
 
-    var g3 = null, queueRow = null, tmPeopleBox = null, tmPeopleKey = '';
-    if (has('trailmateStatus')) {
-      g3 = group('TrailMate');
-      // Everyone and whether they are connected, here where TrailMate is
-      // named — the per-person row inside a card is two taps from anywhere
-      // and was not found. CONNECT opens that person's card and starts the
-      // link, so the code and QR still appear in the one place they are drawn.
-      tmPeopleBox = el('div');
-      g3.appendChild(tmPeopleBox);
-      queueRow = el('div');
-      g3.appendChild(queueRow);
-      g3.appendChild(row('TrailMate server',
-        'Where runs are sent. Leave it alone unless you are testing against a TrailMate of ' +
-        'your own; clearing it goes back to foolishrunner.com.',
-        field('trailmate_url', S.trailmate_url)));
-      sc.appendChild(g3);
-    }
-
-    function drawTmPeople() {
-      if (!tmPeopleBox) return;
-      var st = tmStatus() || {};
-      var people = S.people || [];
-      var key = JSON.stringify(people.map(function (p) {
-        var t = tmPerson(st, p.id);
-        return [p.id, p.name, !!t.linked, !!t.reconnect, t.account || ''];
-      }));
-      if (key === tmPeopleKey) return;
-      tmPeopleKey = key;
-      tmPeopleBox.innerHTML = '';
-      if (!people.length) {
-        tmPeopleBox.appendChild(row('Connect TrailMate',
-          'Add someone above first — each person connects their own TrailMate account. ' +
-          'Guests are never sent.', el('div')));
-        return;
-      }
-      people.forEach(function (p) {
-        var t = tmPerson(st, p.id);
-        var said, btn;
-        if (t.linked && t.reconnect) {
-          said = '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect needed</span>';
-          btn = press(el('button', 'sx-pill sx-go', 'CONNECT AGAIN'), function () { connectFor(p); });
-        } else if (t.linked) {
-          said = '<span class="sx-state"><i class="sx-dot sx-ok"></i>Connected' +
-            (t.account ? ' as ' + esc(t.account) : '') + '</span>';
-          btn = press(el('button', 'sx-pill', 'MANAGE'), function () { editPerson(p); });
-        } else {
-          said = 'Not connected — their runs stay on the console.';
-          btn = press(el('button', 'sx-pill sx-go', 'CONNECT'), function () { connectFor(p); });
-        }
-        tmPeopleBox.appendChild(row(esc(p.name), said, btn));
-      });
-    }
-
-    /* Open the person's card and start the link there: the code and QR are drawn by drawTm. */
-    function connectFor(p) {
-      editPerson(p);
-      call('trailmateConnect', p.id);
-    }
-
-    function drawQueue() {
-      if (!queueRow) return;
-      var st = tmStatus() || {};
-      var n = (st.queued || []).length;
-      var said = n ? n + (n === 1 ? ' run' : ' runs') + ' waiting to send' : 'Nothing waiting to send';
-      var why = '';
-      if (n && st.lastError) why = esc(st.lastError) + (st.retryIn ? ' · trying again in ' + mmss(st.retryIn) : '');
-      else if (n) why = 'Waiting for the runner to connect (or reconnect) TrailMate.';
-      queueRow.innerHTML = '';
-      queueRow.appendChild(row('Runs to send',
-        '<span class="sx-state"><i class="sx-dot ' + (n ? (st.lastError ? 'sx-bad' : 'sx-busy') : 'sx-ok') +
-        '"></i>' + said + '</span>' + (why ? '<br>' + why : ''), el('div')));
-    }
-
-    drawPeople();
-    drawDefault();
-    drawQueue();
-    drawTmPeople();
-    pane.sxTick = function () { drawTm(); drawQueue(); drawTmPeople(); };
-  }
-
-  /* What Kotlin says about TrailMate, or null on a build without it. */
-  function tmStatus() {
-    if (!has('trailmateStatus')) return null;
-    try { return JSON.parse(bridge().trailmateStatus()); } catch (e) { return null; }
-  }
-
-  function tmPerson(st, id) {
-    return ((st && st.people) || []).filter(function (x) { return x.id === id; })[0] || {};
+    draw(true);
+    pane.sxTick = function () { draw(); };
   }
 
   // --- devices: heart-rate strap, foot pod, headphones ---
@@ -893,9 +833,7 @@
   ];
 
   function paneDevices(pane) {
-    var sc = head(pane, 'Devices',
-      'Heart-rate straps, foot pods such as Stryd, and headphones. ' +
-      'The console connects to each itself; nothing else needs to be paired.');
+    var sc = head(pane, 'Devices');
 
     var g1 = group('Your devices');
     var pairedBox = el('div');
@@ -915,15 +853,13 @@
       });
     });
     g2.appendChild(row('Scan for devices',
-      'Wear the strap, give the pod a few steps, and put headphones in pairing ' +
-      'mode. A pod your watch holds over Bluetooth may have no room for the console.', scanBtn));
+      'Wear the strap, move the pod, put headphones in pairing mode.', scanBtn));
     var foundBox = el('div');
     g2.appendChild(foundBox);
     sc.appendChild(g2);
 
     var g3 = group('Heart rate');
-    g3.appendChild(row('Source',
-      'Automatic prefers a paired strap and falls back to the board. If your machine has no grips, the board reads zero and only a strap will work.',
+    g3.appendChild(row('Source', 'Automatic uses the strap if there is one, otherwise the grips.',
       segment('hr_source', [['auto', 'Automatic'], ['strap', 'Strap only'], ['grips', 'Board only']],
         S.hr_source || 'auto')));
     sc.appendChild(g3);
@@ -1001,38 +937,53 @@
     pane.sxTick = drawPaired;   // live readings while this section is open
   }
 
-  // --- treadmill ---
-  function paneDeck(pane) {
-    var sc = head(pane, 'Treadmill',
-      'How the console drives the deck. The board\'s own limits always win — these ' +
-      'are preferences within them, never overrides of them.');
+  // --- a runner's own: units, starting and stopping, guided runs ---
+  function paneRun(pane) {
+    var sc = head(pane, 'Running');
+
+    var gu = group('Units');
+    gu.appendChild(row('Distance and speed', '',
+      segment('units', [['km', 'Kilometres'], ['mi', 'Miles']], S.units || 'km')));
+    sc.appendChild(gu);
 
     var g2 = group('Starting and stopping');
-    g2.appendChild(row('Warm-up', 'Skippable. Zero starts every run at your chosen pace.',
+    g2.appendChild(row('Warm-up', '',
       stepper('warmup_min', S.warmup_min || 0, 0, 10, 1, 'min')));
     g2.appendChild(row('Cool-down', '',
       stepper('cooldown_min', S.cooldown_min || 0, 0, 10, 1, 'min')));
-    g2.appendChild(row('Warm-up speed', 'Also the speed a cool-down eases back to.',
+    g2.appendChild(row('Warm-up speed', 'Also where a cool-down eases back to.',
       stepper('warmup_kph', S.warmup_kph || 2, 1, 6, 0.5, 'km/h', 1)));
     sc.appendChild(g2);
 
     var g3 = group('Guided runs');
-    g3.appendChild(row('Incline changes',
-      'How fast the deck may move during a plan. Gentler is kinder underfoot, and no ' +
-      'plan is ever allowed to move it all at once.',
+    g3.appendChild(row('Incline changes', '',
       segment('incline_rate', [['gentle', 'Gentle'], ['normal', 'Normal'], ['quick', 'Quick']],
         S.incline_rate || 'normal')));
-    g3.appendChild(row('Open circuit lap',
-      'How long one lap is before the ground repeats. Nothing ends an open circuit but STOP.',
+    g3.appendChild(row('Open circuit lap', '',
       stepper('open_lap_min', S.open_lap_min || 20, 5, 45, 5, 'min')));
     sc.appendChild(g3);
+
+    if (has('resetMySettings')) {
+      var g4 = group('');
+      g4.appendChild(row('Reset my settings', 'Back to the treadmill defaults, devices included.',
+        press(el('button', 'sx-pill sx-warn', 'RESET'), function () {
+          try { S = JSON.parse(bridge().resetMySettings()); } catch (e) {}
+          rebuild();
+        })));
+      sc.appendChild(g4);
+    }
+  }
+
+  // --- the machine: calibration and limits ---
+  function paneDeck(pane) {
+    var sc = head(pane, 'Treadmill');
 
     if (has('calibrationJson')) sc.appendChild(beltCalibration());
 
     var g4 = group('Reported by the board');
     var lim = { minGrade: 0, maxGrade: 0, minKph: 0, maxKph: 0 };
     try { lim = JSON.parse(bridge().boardLimits()); } catch (e) {}
-    g4.appendChild(row('Incline range', 'Read from the machine. Plans are clamped to this.',
+    g4.appendChild(row('Incline range', '',
       el('div', 'sx-ro', '<b>' + lim.minGrade.toFixed(1) + '</b> to <b>+' +
         lim.maxGrade.toFixed(1) + '</b> %')));
     g4.appendChild(row('Speed range', '',
@@ -1062,10 +1013,8 @@
       try { bridge().calibrate(); } catch (e) {}
       close();
     });
-    g.appendChild(row('Calibrate with your Stryd',
-      'Starts the belt. Hold a pace, move the belt until the Stryd agrees, and save. ' +
-      'Several paces across your range make it most accurate: speeds between and beyond ' +
-      'them are worked out from the points. Distance is corrected too.', start));
+    g.appendChild(row('Calibrate with a Stryd',
+      'Hold a pace, adjust the belt until the Stryd agrees, save. Repeat at a few paces.', start));
     var box = el('div');
     g.appendChild(box);
 
@@ -1076,7 +1025,7 @@
       box.innerHTML = '';
       if (!st.pod) {
         box.appendChild(el('div', 'sx-empty',
-          'No foot pod connected. Pair your Stryd in Devices first.'));
+          'No foot pod connected. Pair one in your own settings first.'));
       }
       if (!pts.length) {
         box.appendChild(el('div', 'sx-empty',
@@ -1114,34 +1063,18 @@
 
   // --- display ---
   function paneScreen(pane) {
-    var sc = head(pane, 'Display',
-      'The console is a screen in a room, on all day. These are about living with it ' +
-      'rather than running on it.');
-
-    /* Units live here rather than under Treadmill, where they sat until
-       somebody asked on Reddit for an MPH setting that had existed for
-       months. It is a question about what the screen says, and this is the
-       screen page. The board is metric underneath either way: nothing about
-       this reaches the serial link. */
-    var gu = group('Units');
-    gu.appendChild(row('Distance and speed',
-      'Everything on every screen. The board stays metric underneath.',
-      segment('units', [['km', 'Kilometres'], ['mi', 'Miles']], S.units || 'km')));
-    sc.appendChild(gu);
+    var sc = head(pane, 'Display');
 
     var g = group('');
-    g.appendChild(row('Sleep after',
-      'Standby: the screen goes dark until you touch it. Never mid-run.',
+    g.appendChild(row('Sleep after', 'Never mid-run.',
       stepper('sleep_min', S.sleep_min || 5, 1, 60, 1, 'min')));
     g.appendChild(row('Clock', '',
       segment('clock_24', [['true', '24 hour'], ['false', '12 hour']],
         String(S.clock_24 !== false))));
-    g.appendChild(row('Brightness',
-      'Dimmer is easier to live with in a dark room and reads fine at arm\'s length.',
+    g.appendChild(row('Brightness', '',
       segment('brightness', [['dim', 'Dim'], ['normal', 'Normal'], ['bright', 'Bright']],
         S.brightness || 'normal')));
-    g.appendChild(row('Keep the screen on while running',
-      'Off lets it sleep even mid-run, which saves the panel on long sessions.',
+    g.appendChild(row('Keep the screen on while running', '',
       toggle('keep_awake', S.keep_awake !== false)));
     sc.appendChild(g);
   }
@@ -1152,10 +1085,7 @@
      place to edit a name is a second place for the two to disagree. What this
      screen is for is answering "did it arrive" without a laptop. */
   function paneRoutes(pane) {
-    var sc = head(pane, 'My routes',
-      'Runs you have already done outdoors, converted into ground this ' +
-      'treadmill can run. They arrive from the STRIDE Health app on your ' +
-      'phone and are kept on the console, so they work with the network down.');
+    var sc = head(pane, 'Routes');
 
     /* Live, because routes arrive while you are looking at this.
        `rebuild()` runs once per `open()` and builds all nine panes together, so
@@ -1187,9 +1117,7 @@
 
     if (!routes.length) {
       var g0 = group('');
-      g0.appendChild(row('No routes yet',
-        'Routes are outdoor runs turned into ground this treadmill can run. They ' +
-        'will come from TrailMate.',
+      g0.appendChild(row('No routes yet', 'Outdoor runs sent from TrailMate appear here.',
         el('div', 'sx-ro', '—')));
       sc.appendChild(g0);
       return;
@@ -1234,19 +1162,18 @@
   }
 
   function paneAbout(pane) {
-    var sc = head(pane, 'About', 'What this is talking to, and what it is.');
+    var sc = head(pane, 'About');
     var a = {};
     try { a = JSON.parse(bridge().about()); } catch (e) {}
     var g = group('');
     g.appendChild(row('STRIDE', '', el('div', 'sx-ro', a.version + ' · build ' + a.build)));
-    g.appendChild(row('Treadmill board', 'Detected over USB serial at start-up.',
+    g.appendChild(row('Treadmill board', '',
       el('div', 'sx-ro', a.board || '—')));
     g.appendChild(row('Console', '', el('div', 'sx-ro', 'Android ' + a.android)));
     sc.appendChild(g);
 
-    var g2 = group('Starting over');
-    g2.appendChild(row('Reset every setting',
-      'People, totals and history are kept. Only settings go back to defaults.',
+    var g2 = group('');
+    g2.appendChild(row('Reset treadmill settings', 'People and their own settings are kept.',
       press(el('button', 'sx-pill sx-warn', 'RESET'), function () {
         try { S = JSON.parse(bridge().resetSettings()); } catch (e) {}
         rebuild();
@@ -1259,6 +1186,11 @@
 
   function rebuild() {
     load();
+    // A guest's own settings are the treadmill's defaults for everyone.
+    root.querySelector('.sx-title').innerHTML = mode === 'me'
+      ? 'My settings<span class="sx-whose">' + (S.active ? esc(S.active) : 'Guest') + '</span>'
+      : 'Treadmill<span class="sx-whose">Settings</span>';
+    drawNavs();
     var panel = root.querySelector('.sx-panel');
     panel.innerHTML = '';
     SECTIONS.forEach(function (s) {
@@ -1312,8 +1244,21 @@
     root = el('div', 'sx-root');
 
     var rail = el('div', 'sx-rail');
-    rail.appendChild(el('div', 'sx-title', 'Settings'));
-    var navs = el('div', 'sx-navs');
+    rail.appendChild(el('div', 'sx-title'));
+    rail.appendChild(el('div', 'sx-navs'));
+
+    var foot = el('div', 'sx-foot');
+    foot.appendChild(press(el('button', 'sx-close', 'CLOSE'), close));
+    rail.appendChild(foot);
+
+    root.appendChild(rail);
+    root.appendChild(el('div', 'sx-panel'));
+    mount.appendChild(root);
+  }
+
+  function drawNavs() {
+    var navs = root.querySelector('.sx-navs');
+    navs.innerHTML = '';
     SECTIONS.forEach(function (s) {
       var b = el('button', 'sx-nav' + (s[0] === currentSection ? ' sx-on' : ''));
       b.setAttribute('data-go', s[0]);
@@ -1330,18 +1275,13 @@
       });
       navs.appendChild(b);
     });
-    rail.appendChild(navs);
-
-    var foot = el('div', 'sx-foot');
-    foot.appendChild(press(el('button', 'sx-close', 'CLOSE'), close));
-    rail.appendChild(foot);
-
-    root.appendChild(rail);
-    root.appendChild(el('div', 'sx-panel'));
-    mount.appendChild(root);
   }
 
-  function open() {
+  /* 'me' for the runner's own settings, 'treadmill' for the machine's. */
+  function open(which) {
+    mode = which === 'me' ? 'me' : 'treadmill';
+    SECTIONS = MODES[mode];
+    currentSection = SECTIONS[0][0];
     build();
     rebuild();
     shadowHost.style.display = 'block';

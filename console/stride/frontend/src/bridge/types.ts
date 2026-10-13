@@ -192,7 +192,8 @@ export interface StrideCore {
 }
 
 export interface StrideSettings {
-  open(): void;
+  /** "me": the runner's own settings; "treadmill" (the default): the machine's. */
+  open(which?: 'me' | 'treadmill'): void;
   close(): void;
 }
 

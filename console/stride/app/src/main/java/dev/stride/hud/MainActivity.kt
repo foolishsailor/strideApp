@@ -1336,8 +1336,19 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface fun setRunner(name: String) {
+            val strapWas = cfg.hrAddr()
+            val podWas = cfg.podAddr()
+            val phonesWas = cfg.phonesAddr()
             runner = name
+            cfg.active = cfg.person(name)?.id ?: ""
             refreshRunnerHrMax()
+            // Their own strap, pod and headphones, not the last runner's.
+            if (cfg.hrAddr() != strapWas) applyStrap()
+            if (cfg.podAddr() != podWas) applyPod()
+            if (cfg.phonesAddr() != phonesWas) {
+                if (phonesWas.isNotBlank()) phones.release(phonesWas)
+                applyPhones()
+            }
             Log.i(TAG, "runner: $name")
         }
 
@@ -1458,7 +1469,7 @@ class MainActivity : Activity() {
 
         // --- trailmate ---
         /*
-         * Connecting a runner to TrailMate, per person, from Who runs. The
+         * Connecting a runner to TrailMate, per person, from People. The
          * page starts a link and then polls trailmateStatus for the code, the
          * QR and how it is going; see TrailMate for the flow. Nothing here
          * hands the page a token — status says "linked", not with what.
@@ -1497,6 +1508,14 @@ class MainActivity : Activity() {
             cfg.resetSettings()
             applySetting("")
             Log.i(TAG, "settings: reset to defaults")
+            return cfg.json().toString()
+        }
+
+        @JavascriptInterface fun resetMySettings(): String {
+            cfg.resetMine()
+            applySetting("")
+            applyPhones()
+            Log.i(TAG, "settings: reset $runner's own")
             return cfg.json().toString()
         }
 
@@ -1912,7 +1931,9 @@ class MainActivity : Activity() {
     private val history by lazy { History(this) }
 
     /** Who is connected to TrailMate, and the runs on their way there. */
-    private val trailmate by lazy { TrailMate(this, cfg) }
+    private val trailmate by lazy {
+        TrailMate(this, cfg).also { it.onState = { id, state -> history.markTrailMate(id, state) } }
+    }
 
     /**
      * The second-by-second trace of the run under way, for TrailMate — see
@@ -2218,6 +2239,7 @@ class MainActivity : Activity() {
             avgPulse = avgPulseNow(),
             maxPulse = maxPulse,
             plan = planName,
+            workoutId = recorder.currentId,
         ))
         if (earned.isNotEmpty()) Log.i(TAG, "achievements: ${earned.joinToString("; ")}")
         // And the trace, closed and handed on. Building the workout happens
@@ -2507,6 +2529,7 @@ class MainActivity : Activity() {
         calib = cfg.beltCalibration()
         if (!calib.isEmpty) Log.i(TAG, "belt calibration: ${calib.points.size} point(s)")
         runner = cfg.defaultRunner()
+        cfg.active = cfg.person(runner)?.id ?: ""
         refreshRunnerHrMax()
         applyBrightness()
         applyStrap()
@@ -2516,6 +2539,9 @@ class MainActivity : Activity() {
         // run the console did not live to finish is turned into a workout.
         trailmate.start()
         recorder.recover()
+        // Loaded now rather than at the first finished run, so an older
+        // console's history.json is moved into the database at start-up.
+        history.recent("", 0)
 
         web = WebView(this).apply {
             settings.javaScriptEnabled = true
