@@ -114,6 +114,8 @@ class TrailMate(context: Context, private val cfg: Settings) {
         val row = links[personId] ?: return null
         val t = Vault.open(row.sealed) ?: run {
             Log.w(TAG, "$personId: token could not be decrypted — reconnect needed")
+            // Shown as such, rather than "Connected" with runs that never go.
+            if (!row.reconnect) setReconnect(personId)
             return null
         }
         tokens[personId] = t
