@@ -114,7 +114,7 @@ describe('welcome', () => {
     expect(screen.getByText('Star routes in TrailMate to run them here.')).toBeTruthy();
   });
 
-  it('lists the week’s workouts and previews one before BEGIN runs it', () => {
+  it('lists the week’s workouts, previews the first, and BEGIN runs it', () => {
     const b = mockBridge({ schedules: schedules(person()) });
     render(<App />);
     press('Sam');
@@ -122,7 +122,8 @@ describe('welcome', () => {
     expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getAllByText('Rest day').length).toBe(5); // seven days, two with something
     expect(screen.getByText('Not for the treadmill')).toBeTruthy();
-    press('4 × 3 min @ threshold');
+    // Nothing tapped: the first runnable workout is already in the preview.
+    expect(useWelcome.getState().workout).toBe('w1');
     expect(screen.getByText('1 of 4')).toBeTruthy();
     expect(screen.getByText('4:25–4:35 /km')).toBeTruthy();
     expect(screen.getByText('1% incline')).toBeTruthy();

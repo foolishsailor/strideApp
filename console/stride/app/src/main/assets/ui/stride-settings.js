@@ -621,7 +621,7 @@
         'Their recorded runs are not deleted.',
         press(el('button', 'sx-pill sx-warn', 'REMOVE'), function () {
           try { S = JSON.parse(bridge().removePerson(p.name)); } catch (e) {}
-          detail.innerHTML = ''; drawPeople(); drawDefault();
+          detail.innerHTML = ''; drawPeople(); drawDefault(); showFirst();
         })));
     }
 
@@ -645,6 +645,14 @@
 
     drawPeople();
     drawDefault();
+    showFirst();
+
+    /* A list with a detail under it never leaves the detail empty: the first
+       person is open on arrival, and again when the one open is removed. */
+    function showFirst() {
+      var first = (S.people || [])[0];
+      if (first) editPerson(first);
+    }
   }
 
   /* ---- TrailMate profile (spec 038, S-008) -------------------------------

@@ -1,4 +1,5 @@
 import { useNow } from '../../hooks/useClock';
+import { useAutoSelect } from '../../hooks/useAutoSelect';
 import { useScheduleFeed } from '../../hooks/useScheduleFeed';
 import { localDate, RECONNECT_TEXT, scheduleDays, scheduleView } from '../../lib/schedule';
 import { useSchedule } from '../../store/trailmate';
@@ -33,13 +34,19 @@ export function WorkoutPicker() {
   const schedule = useSchedule(runner);
   const today = localDate(useNow());
   const view = scheduleView(schedule);
+  const days = schedule ? scheduleDays(schedule.workouts, today, DAYS) : [];
+  // The preview is never empty: the week's first runnable workout is chosen,
+  // one not done yet before one that is.
+  const runnable = days.flatMap((d) => d.workouts).filter((w) => w.runnable);
+  const order = [...runnable.filter((w) => !w.done), ...runnable.filter((w) => w.done)].map((w) => w.id);
+  useAutoSelect(order, workout, pickWorkout);
   if (!schedule || view !== 'schedule') return <Unavailable reconnect={view === 'reconnect'} />;
 
   const chosen = schedule.workouts.find((w) => w.id === workout && w.runnable);
   return (
     <div className={styles.workouts}>
       <div className={styles.week}>
-        {scheduleDays(schedule.workouts, today, DAYS).map((day) => (
+        {days.map((day) => (
           <div key={day.date} className={styles.weekDay}>
             <DaySchedule day={day} today={today} selectedId={workout} inList compact onPick={(w) => pickWorkout(w.id)} />
           </div>
