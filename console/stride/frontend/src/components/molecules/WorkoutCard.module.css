@@ -85,3 +85,23 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- compact: a row of a week ------------------------------------------- */
+.compact {
+  padding: 7px 14px 8px;
+}
+.top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.compact .meta {
+  margin: 0 0 0 12px;
+  white-space: nowrap;
+}
+.compact .name {
+  margin-top: 2px;
+  max-height: 1.25em; /* one line */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

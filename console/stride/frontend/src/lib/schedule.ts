@@ -220,6 +220,11 @@ export function dayCaption(iso: string, today?: string): string {
   return dateOfIso(iso).toLocaleDateString('en-GB', named ? { day: 'numeric', month: 'long' } : { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+/** The date alone, short, under a day's name in a compact list: "13 Oct". */
+export function dayShortCaption(iso: string): string {
+  return dateOfIso(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
 export interface ScheduleDay {
   date: string;
   workouts: PlannedWorkout[];

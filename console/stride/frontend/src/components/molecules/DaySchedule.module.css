@@ -29,3 +29,30 @@
   font-style: italic;
   color: var(--colour-ink-faint);
 }
+
+/* ---- compact: a row of a week ------------------------------------------ */
+.compact {
+  display: flex;
+  align-items: flex-start;
+}
+.compact .header {
+  flex: none;
+  display: block;
+  width: 96px;
+  margin: 6px 0 0;
+}
+.compact .label,
+.compact .caption {
+  display: block;
+  margin-left: 0;
+}
+.compact .workouts {
+  flex: 1;
+  min-width: 0;
+}
+.compact .item + .item {
+  margin-top: 4px;
+}
+.compact .rest {
+  padding: 8px 0;
+}

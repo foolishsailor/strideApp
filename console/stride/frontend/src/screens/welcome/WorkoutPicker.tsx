@@ -41,7 +41,7 @@ export function WorkoutPicker() {
       <div className={styles.week}>
         {scheduleDays(schedule.workouts, today, DAYS).map((day) => (
           <div key={day.date} className={styles.weekDay}>
-            <DaySchedule day={day} today={today} selectedId={workout} inList onPick={(w) => pickWorkout(w.id)} />
+            <DaySchedule day={day} today={today} selectedId={workout} inList compact onPick={(w) => pickWorkout(w.id)} />
           </div>
         ))}
       </div>

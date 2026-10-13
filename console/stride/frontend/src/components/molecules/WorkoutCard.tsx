@@ -13,23 +13,35 @@ import styles from './WorkoutCard.module.css';
  *
  *  `detailed` is the bigger card beside the run choices: it also carries the
  *  description and the steps, a repeat folded into one line. */
-export function WorkoutCard({ workout, selected, inList, detailed, onTap }: {
+export function WorkoutCard({ workout, selected, inList, detailed, compact, onTap }: {
   workout: PlannedWorkout;
   selected?: boolean;
   /** In a list that scrolls (see PressableCard). */
   inList?: boolean;
   detailed?: boolean;
+  /** Slimmer, for a row of a week: the type and the time on one line, the name under. */
+  compact?: boolean;
   onTap?: (w: PlannedWorkout) => void;
 }) {
   const u = useUnits();
   const meta = !workout.runnable ? 'Not for the treadmill' : workout.done ? doneText(workout.done, u) : plannedText(workout, u);
-  const className = cx(styles.card, detailed && styles.detailed, workoutToneClass(workout.type), !workout.runnable && styles.off);
+  const className = cx(styles.card, detailed && styles.detailed, compact && styles.compact,
+    workoutToneClass(workout.type), !workout.runnable && styles.off);
   const lines = detailed && workout.runnable ? stepLines(workout.steps, u) : [];
-  const body = (
+  const metaEl = meta && <span className={cx(styles.meta, workout.done && workout.runnable && styles.done)}>{meta}</span>;
+  const body = compact ? (
+    <>
+      <span className={styles.top}>
+        <WorkoutTypeLabel workout={workout} />
+        {metaEl}
+      </span>
+      <span className={styles.name}>{workout.name}</span>
+    </>
+  ) : (
     <>
       <WorkoutTypeLabel workout={workout} />
       <span className={styles.name}>{workout.name}</span>
-      {meta && <span className={cx(styles.meta, workout.done && workout.runnable && styles.done)}>{meta}</span>}
+      {metaEl}
       {detailed && workout.description && <span className={styles.description}>{workout.description}</span>}
       {lines.length > 0 && (
         <span className={styles.steps}>

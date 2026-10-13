@@ -82,19 +82,20 @@
 .workouts {
   display: flex;
   width: 1120px;
-  height: 560px;
-  margin-top: 20px;
+  height: 580px;
+  margin-top: 10px;
 }
+/* The whole week fits: a compact row a day (see DaySchedule). It still
+   scrolls rather than clips if a day ever carries three workouts. */
 .week {
   flex: none;
-  width: 380px;
-  padding-right: 18px;
+  width: 440px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 .weekDay + .weekDay {
-  margin-top: 16px;
+  margin-top: 10px;
 }
 .preview {
   flex: 1;
