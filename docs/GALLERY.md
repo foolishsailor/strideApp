@@ -2,20 +2,21 @@
 
 1280×800, straight off the console. Mocked-up numbers, made-up names.
 
-## A casual run
+## A manual run
 
 A 400 m oval, lap count in the middle, in the TrailMate app's design: deep
 teal, mountain green and copper, square corners, no glow.
 
-![A casual run](screenshots/oval-trailmate.png)
+![A manual run](screenshots/oval-trailmate.png)
 
-## A guided run
+## A planned run
 
 The oval is replaced by the ground ahead — the profile, where you are on it,
-and the next segment. STRIDE moves the incline; "lift to 6.4 km/h" is only a
-suggestion and the belt doesn't act on it.
+and the next segment. On a route STRIDE moves the incline; on a TrailMate
+workout it also sets the belt speed, by pace or by heart rate. (Screenshot from
+before workouts came from TrailMate.)
 
-![A guided run](screenshots/ui-trailmate.png)
+![A planned run](screenshots/ui-trailmate.png)
 
 ## Settings
 

@@ -273,18 +273,35 @@
     return s;
   }
 
-  function stepper(key, value, min, max, inc, unit, dp) {
+  /* A − value + control.
+
+     opts, all optional:
+       per     the stored value is this many times the shown one (km/h shown as
+               mph: per = 1.609344). min, max and inc are in shown units.
+       unset   { label, start }: 0 is a real answer ("not set", "off") shown as
+               label; stepping below min clears to it, and the first tap up from
+               it lands on start rather than min, so nobody presses + forty times.
+       commit  fn(stored) instead of saving [key] to the settings store. */
+  function stepper(key, value, min, max, inc, unit, dp, opts) {
+    opts = opts || {};
+    var per = opts.per || 1;
     var s = el('div', 'sx-step');
     var v = el('div', 'sx-v');
+    var shown = value / per;
+    var isUnset = function () { return opts.unset && !(shown >= min); };
     var draw = function () {
-      v.innerHTML = value.toFixed(dp || 0) + '<small>' + unit + '</small>';
+      v.innerHTML = isUnset() ? '<small>' + opts.unset.label + '</small>'
+        : shown.toFixed(dp || 0) + '<small>' + unit + '</small>';
     };
     var bump = function (d) {
-      value = Math.min(max, Math.max(min, value + d * inc));
+      if (isUnset()) shown = d > 0 ? opts.unset.start : 0;
+      else if (opts.unset && shown + d * inc < min) shown = 0;
+      else shown = Math.min(max, Math.max(min, shown + d * inc));
       // Floating point: 0.1 + 0.2 has no business reaching a settings store.
-      value = Math.round(value * 100) / 100;
+      shown = Math.round(shown * 100) / 100;
       draw();
-      save(key, value);
+      var stored = Math.round(shown * per * 100) / 100;
+      if (opts.commit) opts.commit(stored); else save(key, stored);
     };
     s.appendChild(press(el('button', '', '&minus;'), function () { bump(-1); }));
     s.appendChild(v);
@@ -295,35 +312,16 @@
 
   /* Somebody's age, which saves through setPersonAge rather than the global
      store the ordinary stepper writes to — it belongs to a person, not to the
-     console.
-
-     "Not set" is a real value and the one it ships in: stepping below the
-     bottom clears it rather than sticking at a floor, because declining to
-     give a treadmill your age has to stay a supported answer. The first tap
-     up lands mid-range rather than at 13, so nobody has to press + forty
-     times to reach themselves. */
+     console. "Not set" is a real value and the one it ships in: declining to
+     give a treadmill your age has to stay a supported answer. */
   function ageStepper(p) {
-    var s = el('div', 'sx-step');
-    var v = el('div', 'sx-v');
-    var value = p.age || 0;
-    var draw = function () {
-      v.innerHTML = value >= 13
-        ? value + '<small>years</small>' : '<small>not set</small>';
-    };
-    var bump = function (d) {
-      if (value < 13) value = d > 0 ? 40 : 0;
-      else value = value + d;
-      if (value > 100) value = 100;
-      if (value < 13) value = 0;
-      draw();
-      try { S = JSON.parse(bridge().setPersonAge(p.name, value)); } catch (e) {}
-      p.age = value;
-    };
-    s.appendChild(press(el('button', '', '&minus;'), function () { bump(-1); }));
-    s.appendChild(v);
-    s.appendChild(press(el('button', '', '+'), function () { bump(1); }));
-    draw();
-    return s;
+    return stepper(null, p.age || 0, 13, 100, 1, 'years', 0, {
+      unset: { label: 'not set', start: 40 },
+      commit: function (age) {
+        try { S = JSON.parse(bridge().setPersonAge(p.name, age)); } catch (e) {}
+        p.age = age;
+      }
+    });
   }
 
   /* What a stored password looks like from here, should a password field ever
@@ -515,13 +513,13 @@
     me: [
       ['run',     'Running',   paneRun],
       ['devices', 'Devices',   paneDevices],
-      ['trailmate', 'TrailMate', paneTrailMate]
+      ['trailmate', 'TrailMate', paneTrailMate],
+      ['routes',  'Routes',    paneRoutes]
     ],
     treadmill: [
       ['people',  'People',    paneWho],
       ['deck',    'Treadmill', paneDeck],
       ['connections', 'Connections', paneConnections],
-      ['routes',  'Routes',    paneRoutes],
       ['screen',  'Display',   paneScreen],
       ['about',   'About',     paneAbout]
     ]
@@ -647,6 +645,122 @@
 
     drawPeople();
     drawDefault();
+  }
+
+  /* ---- TrailMate profile (spec 038, S-008) -------------------------------
+     Everything TrailMate has sent about the runner, read-only, so it can be
+     seen standing on the treadmill: what the link may read, when it last
+     synced, their zones, and their next week of workouts. Their routes have a
+     page of their own. */
+
+  /* What each permission means, in one place. */
+  var SCOPE_WORDS = {
+    'workouts:upload': 'Upload your treadmill runs',
+    'schedule:read': 'See your planned workouts',
+    'routes:read': 'See your starred routes and race courses'
+  };
+
+  /* One person's entry from Stride.schedules(), or null. */
+  function tmSchedule(name) {
+    if (!has('schedules') || !name) return null;
+    try { return JSON.parse(bridge().schedules())[name] || null; } catch (e) { return null; }
+  }
+
+  function ago(ms) {
+    if (!ms) return 'never';
+    var min = Math.round((Date.now() - ms) / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return min + ' min ago';
+    var h = Math.round(min / 60);
+    return h < 48 ? h + ' h ago' : Math.round(h / 24) + ' days ago';
+  }
+
+  function dayName(iso) {
+    var d = new Date(iso + 'T00:00:00');
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var n = Math.round((d - today) / 86400000);
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Tomorrow';
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  }
+
+  /* A step's target in the runner's units. */
+  function targetText(t, miles) {
+    if (!t) return '';
+    if (t.type === 'pace' && t.minMs != null)
+      return paceText(t.maxMs * 3.6, miles) + ' – ' + paceText(t.minMs * 3.6, miles);
+    if (t.type === 'hr' && t.minBpm != null) return t.minBpm + '–' + t.maxBpm + ' bpm';
+    if (t.type === 'cadence') return t.minSpm + '–' + t.maxSpm + ' spm';
+    if ((t.type === 'pace' || t.type === 'hr') && t.zone) return (t.type === 'hr' ? 'HR' : 'Pace') + ' zone ' + t.zone;
+    return '';
+  }
+
+  function endText(e, miles) {
+    if (!e) return '';
+    if (e.type === 'time') return Math.round(e.value / 60) + ' min';
+    if (e.type === 'distance') return miles ? (e.value / 1609.344).toFixed(2) + ' mi' : (e.value >= 1000 ? (e.value / 1000).toFixed(2) + ' km' : Math.round(e.value) + ' m');
+    return 'until NEXT';
+  }
+
+  function tmProfile(box, mine) {
+    var miles = S.units === 'mi';
+    if (!mine || mine.state === 'unlinked') {
+      box.appendChild(row('Nothing from TrailMate yet', 'Connect above to see your workouts here.', el('div')));
+      return;
+    }
+
+    var gs = group('From TrailMate');
+    var scopes = (mine.scopes || []).map(function (k) { return SCOPE_WORDS[k] || k; });
+    var said = mine.state === 'scope' || mine.state === 'reconnect'
+      ? '<span class="sx-state"><i class="sx-dot sx-bad"></i>Reconnect TrailMate to see your workouts</span>'
+      : mine.state === 'error' ? '<span class="sx-state"><i class="sx-dot sx-bad"></i>Last sync failed</span>'
+      : '<span class="sx-state"><i class="sx-dot sx-ok"></i>Synced ' + ago(mine.fetchedAt) + '</span>';
+    gs.appendChild(row('Sync', said + (scopes.length ? '<br>' + scopes.map(esc).join(' · ') : ''),
+      has('refreshSchedules') ? press(el('button', 'sx-pill', 'REFRESH'), function () {
+        try { bridge().refreshSchedules(); } catch (e) {}
+      }) : el('div')));
+    box.appendChild(gs);
+
+    var z = mine.zones || {};
+    var gz = group('Heart-rate zones');
+    if ((z.hr || []).length) {
+      z.hr.forEach(function (b) {
+        gz.appendChild(row('Zone ' + b.zone, '', el('div', 'sx-ro', '<b>' + b.minBpm + '</b> – <b>' +
+          (b.maxBpm == null ? '' : b.maxBpm) + '</b> bpm')));
+      });
+      gz.appendChild(row('Maximum and resting', '', el('div', 'sx-ro',
+        '<b>' + (z.maxHr || '–') + '</b> / <b>' + (z.restingHr || '–') + '</b> bpm')));
+    } else {
+      gz.appendChild(el('div', 'sx-empty', 'No heart-rate zones. Set them on your TrailMate profile.'));
+    }
+    box.appendChild(gz);
+
+    var gp = group('Pace zones');
+    if ((z.pace || []).length) {
+      z.pace.forEach(function (b) {
+        gp.appendChild(row('Zone ' + b.zone, '', el('div', 'sx-ro',
+          '<b>' + paceText(b.maxMs * 3.6, miles) + '</b> – <b>' + paceText(b.minMs * 3.6, miles) + '</b>')));
+      });
+    } else {
+      gp.appendChild(el('div', 'sx-empty', 'No pace zones. Set them on your TrailMate profile.'));
+    }
+    box.appendChild(gp);
+
+    var gw = group('The next 7 days');
+    var list = mine.workouts || [];
+    if (!list.length) gw.appendChild(el('div', 'sx-empty', 'Nothing planned.'));
+    list.forEach(function (w) {
+      var steps = (w.steps || []).map(function (st) {
+        return esc(st.label) + (st.repeat ? ' ' + st.repeat.index + '/' + st.repeat.of : '') +
+          ' · ' + endText(st.end, miles) + (targetText(st.target, miles) ? ' · ' + targetText(st.target, miles) : '') +
+          (st.inclinePct != null ? ' · ' + st.inclinePct + '%' : '');
+      });
+      var status = w.completed ? 'Done' : w.runnable === false ? 'Not for the treadmill' : '';
+      gw.appendChild(row(esc(dayName(w.date)) + ' · ' + esc(w.name),
+        [w.type ? '<b>' + esc(w.type.replace('_', ' ').toUpperCase()) + '</b>' : '', status]
+          .filter(Boolean).join(' · ') + (steps.length ? '<br>' + steps.join('<br>') : ''), el('div')));
+    });
+    box.appendChild(gw);
   }
 
   /* What Kotlin says about TrailMate, or null on a build without it. */
@@ -820,7 +934,19 @@
     }
 
     draw(true);
-    pane.sxTick = function () { draw(); };
+    var profile = el('div');
+    sc.appendChild(profile);
+    var profileKey = '';
+    function drawProfile() {
+      var mine = tmSchedule(S.active);
+      var key = JSON.stringify(mine);
+      if (key === profileKey) return;
+      profileKey = key;
+      profile.innerHTML = '';
+      tmProfile(profile, mine);
+    }
+    drawProfile();
+    pane.sxTick = function () { draw(); drawProfile(); };
   }
 
   // --- devices: heart-rate strap, foot pod, headphones ---
@@ -951,16 +1077,22 @@
       stepper('warmup_min', S.warmup_min || 0, 0, 10, 1, 'min')));
     g2.appendChild(row('Cool-down', '',
       stepper('cooldown_min', S.cooldown_min || 0, 0, 10, 1, 'min')));
+    var mph = S.units === 'mi';
     g2.appendChild(row('Warm-up speed', 'Also where a cool-down eases back to.',
-      stepper('warmup_kph', S.warmup_kph || 2, 1, 6, 0.5, 'km/h', 1)));
+      stepper('warmup_kph', S.warmup_kph || 2, mph ? 0.7 : 1, mph ? 3.7 : 6, mph ? 0.1 : 0.5,
+        mph ? 'mph' : 'km/h', 1, { per: mph ? 1.609344 : 1 })));
     sc.appendChild(g2);
 
-    var g3 = group('Guided runs');
+    var g3 = group('Workouts and routes');
     g3.appendChild(row('Incline changes', '',
       segment('incline_rate', [['gentle', 'Gentle'], ['normal', 'Normal'], ['quick', 'Quick']],
         S.incline_rate || 'normal')));
-    g3.appendChild(row('Open circuit lap', '',
-      stepper('open_lap_min', S.open_lap_min || 20, 5, 45, 5, 'min')));
+    var miles = mph;
+    g3.appendChild(row('Workout speed limit',
+      'The fastest a workout may set the belt. You can still go faster yourself.',
+      stepper('workout_speed_limit', S.workout_speed_limit || 0,
+        miles ? 4 : 6, miles ? 12.5 : 20, 0.5, miles ? 'mph' : 'km/h', 1,
+        { per: miles ? 1.609344 : 1, unset: { label: 'off', start: miles ? 7 : 11 } })));
     sc.appendChild(g3);
 
     if (has('resetMySettings')) {
@@ -1117,23 +1249,22 @@
 
     if (!routes.length) {
       var g0 = group('');
-      g0.appendChild(row('No routes yet', 'Outdoor runs sent from TrailMate appear here.',
+      g0.appendChild(row('No routes yet',
+        'Star routes in TrailMate to run them here. Upcoming race courses appear by themselves.',
         el('div', 'sx-ro', '—')));
       sc.appendChild(g0);
       return;
     }
 
     var g = group(routes.length + (routes.length === 1 ? ' route' : ' routes'));
+    var miles = S.units === 'mi';
     routes.forEach(function (r) {
-      var km = ((r.distance_m || 0) / 1000).toFixed(2);
+      var far = miles ? ((r.distance_m || 0) / 1609.344).toFixed(2) + ' mi'
+                      : ((r.distance_m || 0) / 1000).toFixed(2) + ' km';
       var climb = Math.round(r.climb_m || 0);
-      var changes = (r.segments || []).length;
-      var desc = km + ' km · ' + climb + ' m of climb · ' + changes +
-                 ' incline changes';
-      if (r.difficulty && r.difficulty !== 1) {
-        desc += ' · at ' + Math.round(r.difficulty * 100) + '%';
-      }
-      g.appendChild(row(r.name || 'Route', desc,
+      var desc = (r.kind === 'race' ? 'Race course' + (r.date ? ', ' + esc(dayName(r.date)) : '') + ' · ' : '') +
+                 far + ' · ' + climb + ' m of climb · ' + (r.segments || []).length + ' incline changes';
+      g.appendChild(row(esc(r.name || 'Route'), desc,
         el('div', 'sx-ro', spark(r))));
     });
     sc.appendChild(g);

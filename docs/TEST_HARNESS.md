@@ -1,6 +1,6 @@
 # Test harness: a treadmill in software
 
-Watch STRIDE's metrics, hill drawing, guided runs and FTMS output without
+Watch STRIDE's metrics, hill drawing, workouts and FTMS output without
 standing on anything, and without a belt that can move.
 
 **Debug builds only.** A release build has no simulator and ignores every
@@ -13,7 +13,7 @@ simulator on, STRIDE talks to it instead of the USB board. The USB board is
 **never opened**, so the real belt and deck cannot move whatever the harness
 does. It speaks real [FitPro 2](../protocol/FITPRO2_PROTOCOL.md) frames, so
 everything above the USB pipe runs as it would on the treadmill: the FitPro 2
-translation, the safety logic, the watchdog, metrics, the hill, guided runs
+translation, the safety logic, the watchdog, metrics, the hill, workouts
 and FTMS.
 
 It behaves the way the X22i was measured to:
@@ -49,21 +49,22 @@ attached.
 | `on` / `off` | Switch the simulator on or off, and restart STRIDE |
 | `status` / `watch` | The session and the board, once / every 2 s |
 | `start` | A free run, warm-up first (as the welcome button does) |
-| `guided <steady\|rolling\|pyramid\|climb> [minutes]` | One of the four guided shapes, default 10 min |
+| `planned <id>` | One of the runner's TrailMate workouts, from the last sync (spec 038) |
+| `hr <zone>` / `hr 0 --min N --max N` | Manual → Heart rate: hold a zone of the runner's, or a bpm range |
+| `next` | End the workout's current step (as NEXT on screen) |
 | `speed ±n` / `setspeed n` | The on-screen speed buttons / take a pace or pick a speed stop |
 | `incline ±n` / `setincline n` | The on-screen incline buttons / a stop picked from the incline rail |
 | `press <speed_up\|speed_down\|incline_up\|incline_down\|start\|stop>` | The console's own buttons: the board changes, the HUD follows |
 | `key out` / `key in`, `ackkey` | Pull or replace the safety key; acknowledge the banner |
 | `pause` / `resume` / `end` / `home` | As on screen |
-| `pulse on\|off` | A made-up heart rate that follows speed and grade |
+| `pulse on\|off` | A made-up heart rate that follows speed and grade, with a real heart's lag (SimHeart.kt); heart-rate control steers by it as by a strap |
 | `pod on\|off` | A made-up foot pod: cadence, power, stride and pod speed that follow the belt |
 | `scenario basic` | Every control once, about two minutes |
-| `scenario guided-all [minutes]` | The four shapes back to back, default 4 min each |
 
 Every command answers with the session and the board, for example:
 
 ```
-ACTIVE target=4.5 km/h grade=3.0 % plan=Pyramid | state=3 mode=3 belt=4.50 (reports 4.50) target=4.50 grade=2.4→3.0 dist=212 m time=171 s kcal=9.8 released=false subs=15
+ACTIVE target=4.5 km/h grade=3.0 % plan=Hill repeats step=3/9 hr=131 holding | state=3 mode=3 belt=4.50 (reports 4.50) target=4.50 grade=2.4→3.0 dist=212 m time=171 s kcal=9.8 released=false subs=15
 ```
 
 The poll loop's stall hook is here too, for the watchdog:

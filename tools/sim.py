@@ -4,7 +4,7 @@ Drive STRIDE's simulated treadmill from the PC. Debug builds only.
 
 With the simulator on, STRIDE talks to a board in software (SimBoard.kt) that
 behaves like the Gen 7 X22i, and never opens the real one, so nothing here can
-move a belt. Use it to watch metrics, hill drawings and guided runs without
+move a belt. Use it to watch metrics, hill drawings and workouts without
 standing on anything.
 
     python tools/sim.py on                      # switch the simulator on (restarts STRIDE)
@@ -13,8 +13,9 @@ standing on anything.
     python tools/sim.py incline -1              # the on-screen incline buttons
     python tools/sim.py press incline_up        # the console's own buttons
     python tools/sim.py key out                 # pull the safety key (and `key in`)
-    python tools/sim.py guided pyramid 6        # a guided run, 6 minutes
-    python tools/sim.py scenario guided-all 4   # all four shapes, 4 minutes each
+    python tools/sim.py planned <workout id>    # one of the runner's TrailMate workouts (spec 038)
+    python tools/sim.py hr 2                    # Manual -> Heart rate, hold zone 2
+    python tools/sim.py next                    # end the workout's current step
     python tools/sim.py watch                   # print the state every 2 s
     python tools/sim.py runner Sam              # run as Sam (added if missing), not a guest
     python tools/sim.py workout                 # the last workout recorded for TrailMate, as JSON
@@ -31,7 +32,6 @@ import sys
 import time
 
 PKG = "dev.stride.hud"
-SHAPES = ("steady", "rolling", "pyramid", "climb")
 BUTTONS = ("speed_up", "speed_down", "incline_up", "incline_down", "start", "stop")
 
 
@@ -95,20 +95,7 @@ def scenario_basic(con, _arg):
     con.ctl("home")
 
 
-def scenario_guided_all(con, arg):
-    """The four guided shapes back to back, at a steady running pace."""
-    minutes = int(arg or 4)
-    for shape in SHAPES:
-        print(f"--- {shape}, {minutes} min ---")
-        con.ctl("guided", "--es", "id", shape, "--ei", "min", str(minutes))
-        time.sleep(4)
-        con.ctl("setspeed", "--ef", "kph", "4.5")
-        wait(con, minutes * 60 + 20, 15)
-        con.ctl("end"); time.sleep(8)
-        con.ctl("home"); time.sleep(3)
-
-
-SCENARIOS = {"basic": scenario_basic, "guided-all": scenario_guided_all}
+SCENARIOS = {"basic": scenario_basic}
 
 
 def main():
@@ -134,7 +121,6 @@ def main():
     h.add_argument("--min", type=int, default=0)
     h.add_argument("--max", type=int, default=0)
     sub.add_parser("next", help="end the workout's current step")
-    g = sub.add_parser("guided"); g.add_argument("shape", choices=SHAPES); g.add_argument("minutes", type=int, nargs="?", default=10)
     s = sub.add_parser("scenario"); s.add_argument("name", choices=SCENARIOS); s.add_argument("arg", nargs="?")
     a = p.parse_args()
 
@@ -188,8 +174,6 @@ def main():
         con.ctl("planned", "--es", "id", a.id)
     elif a.cmd == "hr":
         con.ctl("hr", "--ei", "zone", str(a.zone), "--ei", "min", str(a.min), "--ei", "max", str(a.max))
-    elif a.cmd == "guided":
-        con.ctl("guided", "--es", "id", a.shape, "--ei", "min", str(a.minutes))
     elif a.cmd == "scenario":
         SCENARIOS[a.name](con, a.arg)
     else:

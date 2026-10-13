@@ -366,22 +366,12 @@ class MainActivity : Activity() {
          * How fast a guided run is allowed to move the deck.
          *
          * One percent at a time, no more often than every three seconds, so the
-         * biggest jump in any template — flat to nine percent — takes about half
+         * biggest jump a plan asks for — flat to nine percent — takes about half
          * a minute to arrive rather than landing under someone mid-stride.
          */
         const val INCLINE_STEP = 1.0
         const val INCLINE_EVERY_MS = 3000L
 
-        /**
-         * How long one lap of an open-ended route is.
-         *
-         * "Open" means run until you have had enough, and the ground repeats
-         * rather than being invented — so a template becomes a circuit and you
-         * go round it. Twenty minutes is long enough to have a shape and short
-         * enough that you actually come round again; at thirty most runs would
-         * never see the same hill twice, which is the same as not looping.
-         */
-        const val OPEN_LOOP_MIN = 20
 
         val TELEMETRY = listOf(
             FitPro.Field.ACTUAL_KPH,
@@ -578,7 +568,7 @@ class MainActivity : Activity() {
     /** Empty on a casual run. Set once at START and never rewritten mid-run. */
     @Volatile private var planName = ""
     /**
-     * The route being run, if this is a route rather than a template.
+     * The route being run, if this is a route rather than a workout.
      *
      * Held alongside `planSteps` rather than replacing it: the HUD's sparkline
      * and segment counter read the steps, so a route fills both — the steps for
@@ -590,15 +580,7 @@ class MainActivity : Activity() {
     @Volatile private var planSteps: List<Plan.Step> = emptyList()
     @Volatile private var stepIndex = -1
 
-    /**
-     * An open-ended route: run until you decide to stop, and the ground goes
-     * round again rather than being invented. The template becomes a circuit
-     * one [OPEN_LOOP_MIN] lap long, and nothing ever ends the run except the
-     * person on it.
-     */
-    @Volatile private var planLoops = false
-    @Volatile private var planLap = 1
-    /** Plan time, wrapped into the current lap. Equals elapsed when not looping. */
+    /** Where the run is on the plan's drawn profile: metres on a route, seconds on a workout. */
     @Volatile private var planElapsed = 0.0
 
     /** A TrailMate workout or Manual → Heart rate run under way (spec 038). See WorkoutRunner. */
@@ -875,49 +857,6 @@ class MainActivity : Activity() {
         }
 
         /**
-         * Start a guided run.
-         *
-         * Goes straight to ACTIVE rather than through the two-minute WARMUP
-         * phase: every template opens with its own flat settle segment, and
-         * having both would mean warming up twice. The plan's stated duration is
-         * therefore the whole run, closing segment included, which is what a
-         * duration selector implies.
-         */
-        /**
-         * @param minutes  the run's length, or **0 for an open-ended route** —
-         *                 a [OPEN_LOOP_MIN] circuit run until STOP, with the
-         *                 hills coming round again rather than running out.
-         */
-        @JavascriptInterface fun chooseGuided(templateId: String, minutes: Int) {
-            if (dmk) return
-            val template = Plan.byId(templateId) ?: run {
-                Log.w(TAG, "no such template: $templateId")
-                return
-            }
-            planLoops = minutes <= 0
-            planLap = 1
-            planElapsed = 0.0
-            // Clamped against what this board actually reports, not what the
-            // template hoped for.
-            planSteps = Plan.resolve(template,
-                if (planLoops) cfg.openLapMin() else minutes, minGrade, maxGrade)
-            planName = template.name
-            stepIndex = -1
-            inclineAuto = true
-            lastInclineMoveAt = 0L
-
-            beginPlannedRun(cfg.warmupKph())
-            Log.i(TAG, "guided run: ${template.name}, " +
-                    (if (planLoops) "open (${cfg.openLapMin()} min circuit)" else "$minutes min") +
-                    ", ${planSteps.size} segments, grade clamped to $minGrade..$maxGrade")
-            // The ground is fixed for the whole run — one lap of it, if this is
-            // a circuit — so it goes over once rather than riding along with
-            // every frame.
-            pushPlan()
-            repaint()
-        }
-
-        /**
          * The runner's routes, for the picker: their starred TrailMate routes
          * and race courses, as last synced. Answers with or without a network,
          * which is the whole reason [Routes] stores them.
@@ -975,8 +914,8 @@ class MainActivity : Activity() {
         /**
          * Start a run on a recorded route.
          *
-         * No `minutes`, unlike [chooseGuided], and that is deliberate rather
-         * than an omission: a route has its own length. Cutting it to fit a
+         * No `minutes`, and that is deliberate rather than an omission: a
+         * route has its own length. Cutting it to fit a
          * time slot means never reaching the summit, which is the reason for
          * running it again.
          *
@@ -994,8 +933,6 @@ class MainActivity : Activity() {
             val r = if (loop) found.outAndBack() else found
 
             route = r
-            planLoops = false
-            planLap = 1
             planElapsed = 0.0
             // Steps carry the same ground so the HUD can draw it, expressed in
             // metres. Nothing reads them as seconds while a route is active —
@@ -1993,10 +1930,10 @@ class MainActivity : Activity() {
             !recorder.recording && snap.whoId.isNotEmpty()) {
             val w = workoutRunner
             val plan = when {
-                w != null -> RunRecorder.PlanInfo(planName, planSteps, isRoute = false, loops = false,
+                w != null -> RunRecorder.PlanInfo(planName, planSteps, isRoute = false,
                     plannedWorkoutId = w.workout.plannedId, marked = true)
                 planName.isNotEmpty() && planSteps.isNotEmpty() ->
-                    RunRecorder.PlanInfo(planName, planSteps, route != null, planLoops)
+                    RunRecorder.PlanInfo(planName, planSteps, isRoute = route != null)
                 else -> null
             }
             recorder.begin(snap.whoId, plan, boardName())
@@ -2184,7 +2121,7 @@ class MainActivity : Activity() {
      *
      * `enforceStopped` exists because one dropped frame left the belt running.
      * This is the same failure for the other axis, and it went unnoticed
-     * longer: every hand-authored template ends flat, so nothing was ever left
+     * longer: every hand-authored incline plan ended flat, so nothing was ever left
      * standing on a slope. A route can end anywhere — and a run stopped early
      * ends wherever the ground happened to be, which on the first one tried was
      * a −3% descent.
@@ -2322,13 +2259,9 @@ class MainActivity : Activity() {
         fanOffNags = 0
     }
 
-    /** The segment after [idx], wrapping on a circuit and null at the end. */
-    private fun nextStep(idx: Int): Plan.Step? {
-        val steps = planSteps
-        if (steps.isEmpty() || idx < 0) return null
-        if (idx + 1 < steps.size) return steps[idx + 1]
-        return if (planLoops) steps.firstOrNull() else null
-    }
+    /** The segment after [idx], or null at the end. */
+    private fun followingStep(idx: Int): Plan.Step? =
+        if (idx < 0) null else planSteps.getOrNull(idx + 1)
 
     private fun clearPlan() {
         workoutRunner = null
@@ -2338,8 +2271,6 @@ class MainActivity : Activity() {
         planSteps = emptyList()
         stepIndex = -1
         inclineAuto = false
-        planLoops = false
-        planLap = 1
         planElapsed = 0.0
     }
 
@@ -2358,10 +2289,10 @@ class MainActivity : Activity() {
      * was chosen, not two minutes shorter.
      */
     /**
-     * Run a route: the same job as [planTick], driven by **distance travelled**
-     * rather than by the clock.
+     * Run a route: advance the segment by **distance travelled** rather than by
+     * the clock, and nudge the deck towards it.
      *
-     * This is the one substantive difference between a route and a template,
+     * This is the one substantive difference between a route and a timed plan,
      * and it is not a detail. A route was recorded outdoors, where the hill
      * arrived at a certain point on the ground. Replay it on a timer while
      * running slower indoors than out and the hill arrives late, the run ends
@@ -2381,8 +2312,7 @@ class MainActivity : Activity() {
         if (metres >= r.distanceM) {
             if (!stopping) {
                 Log.i(TAG, "route: ${r.name} complete at ${"%.0f".format(metres)} m")
-                // The route is *not* cleared here, for the same reason a
-                // template is not — see planTick. Clearing it dropped the guided
+                // The route is *not* cleared here: clearing it dropped the guided
                 // view, and what the console fell back to was the casual lap
                 // counter, which is where a finished route used to spend its
                 // last few seconds. It goes on the way out of the summary.
@@ -2399,52 +2329,6 @@ class MainActivity : Activity() {
                     "${"%.0f".format(metres)} m — ${"%.1f".format(r.segments[idx].incline)}%")
         }
         driveIncline(r.inclineAt(metres))
-    }
-
-    private fun planTick(elapsed: Double) {
-        val steps = planSteps
-        if (steps.isEmpty()) return
-        val lap = steps.last().endSec
-
-        if (planLoops) {
-            // Round again. The hills are the same hills — that is the point of
-            // a circuit — so nothing is regenerated and nothing ends the run
-            // but STOP.
-            if (lap > 0) {
-                val was = planLap
-                planLap = (elapsed / lap).toInt() + 1
-                planElapsed = elapsed % lap
-                if (planLap != was) Log.i(TAG, "guided: lap $planLap of the circuit")
-            }
-        } else {
-            planElapsed = elapsed
-            // The whole plan is done: stop here rather than running the belt on.
-            if (elapsed >= lap) {
-                if (!stopping) {
-                    Log.i(TAG, "guided: plan complete — winding the belt down")
-                    // The plan is deliberately *not* cleared here. Clearing it
-                    // drops the guided view and the console falls back to the
-                    // casual oval; it is also what the summary reads its name
-                    // off, so a guided run would be recapped as a manual one.
-                    // It is cleared on the way out of the summary instead.
-                    requestFinish()
-                }
-                return
-            }
-        }
-
-        val idx = steps.indexOfFirst { planElapsed < it.endSec }.coerceAtLeast(0)
-        if (idx != stepIndex) {
-            val step = steps[idx]
-            stepIndex = idx
-            // A new segment hands the deck back, whatever happened in the last one.
-            inclineAuto = true
-            Log.i(TAG, "guided: segment ${idx + 1}/${steps.size} — ${step.label}, " +
-                    "${"%.1f".format(step.incline)}%")
-        }
-
-        val step = steps.getOrNull(stepIndex) ?: return
-        driveIncline(step.incline)
     }
 
     /**
@@ -2485,7 +2369,7 @@ class MainActivity : Activity() {
     }
 
     /**
-     * The belt starts for a planned run — a route, a template or a workout —
+     * The belt starts for a planned run — a route or a workout —
      * straight into ACTIVE: each brings its own opening, so the console's
      * timed warm-up would be a second one. [rampKph] is where the belt eases
      * up to first; 0 leaves it to the plan.
@@ -2883,7 +2767,6 @@ class MainActivity : Activity() {
         Log.i(TAG, "sim ctl: $cmd")
         when (cmd) {
             "start" -> bridge.choose()
-            "guided" -> bridge.chooseGuided(i.getStringExtra("id") ?: "rolling", i.getIntExtra("min", 10))
             "planned" -> bridge.chooseWorkout(i.getStringExtra("id") ?: "")
             "hr" -> bridge.chooseHeartRate(i.getIntExtra("zone", 0), i.getIntExtra("min", 0), i.getIntExtra("max", 0))
             "next" -> bridge.nextStep()
@@ -3425,7 +3308,6 @@ class MainActivity : Activity() {
             when {
                 workoutRunner != null -> workoutTick()
                 route != null -> routeTick(sessionDistance)
-                else -> planTick(elapsedNow)
             }
         }
         val step = currentStep()
@@ -3477,7 +3359,7 @@ class MainActivity : Activity() {
             segmentLabel = step?.label ?: "",
             // Against plan time, not session time — on a circuit those differ
             // by however many laps have gone by.
-            // Seconds on a template, **metres** on a route — the steps of a
+            // Seconds on a workout, **metres** on a route — the steps of a
             // route carry distance in the same fields, which is what let the
             // HUD render a 275 m opening stretch as "4:35 left". The UI is
             // told which it is rather than being left to guess.
@@ -3489,18 +3371,16 @@ class MainActivity : Activity() {
             segmentLeftIsDistance = route != null,
             // On a circuit the "next" segment after the last one is the first
             // one again, because the ground comes round rather than running out.
-            nextLabel = nextStep(stepIndex)?.label ?: "",
-            nextIncline = nextStep(stepIndex)?.incline ?: 0.0,
+            nextLabel = followingStep(stepIndex)?.label ?: "",
+            nextIncline = followingStep(stepIndex)?.incline ?: 0.0,
             planTotalSec = planSteps.lastOrNull()?.endSec ?: 0.0,
             // A route's steps are in metres, so its ascent is real and
-            // measurable. A template's are in seconds and its climb depends on
+            // measurable. A workout's are in seconds and its climb depends on
             // how fast it is run, so it does not claim one.
             planClimbM = route?.climbM ?: 0.0,
             planPeakIncline = planSteps.maxOfOrNull { it.incline } ?: 0.0,
             trailmate = if (session == Session.SUMMARY) trailmate.summaryState() else "",
             planElapsed = planElapsed,
-            planLap = planLap,
-            planLoops = planLoops,
             inclineAuto = inclineAuto,
             boardLocked = boardLocked,
             calib = calLive,
@@ -3520,8 +3400,7 @@ class MainActivity : Activity() {
         }
         return org.json.JSONObject()
             .put("name", planName)
-            .put("loops", planLoops)
-            // Route steps are metres, template steps are seconds. They share
+            // Route steps are metres, workout steps are seconds. They share
             // the field names (`startSec`/`endSec`) for historical reasons, so
             // the drawing cannot tell them apart without being told — and it
             // has to, because only one of the two can be integrated into an

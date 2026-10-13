@@ -395,7 +395,8 @@ and your workout history with it.
 Everything is on the treadmill's own screen. There are no config files.
 
 - **Settings → People.** Add yourself. Nobody is pre-configured.
-- **Settings → Treadmill.** Units, warm-up, cool-down, guided-run speed limit.
+- **My settings** (tap yourself, then MY SETTINGS). Units, warm-up, cool-down,
+  workout speed limit, your devices, and your TrailMate link.
 
 ✅ Clip the safety key, choose a workout, and check the belt starts and the
 distance climbs.

@@ -158,7 +158,7 @@ data class Snapshot(
     /** Total plan length in seconds — one lap on a circuit. */
     val planTotalSec: Double = 0.0,
     /** Total ascent of the plan in metres, when it is known — a route carries
-     *  its own, measured from the run it came from. Zero for templates, whose
+     *  its own, measured from the run it came from. Zero for workouts, whose
      *  climb depends on how fast you take them. */
     val planClimbM: Double = 0.0,
     /** The steepest gradient anywhere in the plan. */
@@ -170,12 +170,8 @@ data class Snapshot(
      * somebody who has not connected TrailMate. See TrailMate.summaryState.
      */
     val trailmate: String = "",
-    /** Plan time wrapped into the current lap. Equals elapsed unless looping. */
+    /** Where the run is on the plan's drawn profile: metres on a route, seconds on a workout. */
     val planElapsed: Double = 0.0,
-    /** Which lap of an open-ended circuit; 1 for an ordinary run. */
-    val planLap: Int = 1,
-    /** True when the route is a circuit with no end but STOP. */
-    val planLoops: Boolean = false,
     /** False once a manual incline press has taken the deck back for this segment. */
     val inclineAuto: Boolean = false,
     /** False while the board is refusing frames. The numbers here are then the
@@ -297,8 +293,6 @@ data class Snapshot(
         append("\"planPeakIncline\":${"%.1f".format(planPeakIncline)},")
         append("\"trailmate\":\"${esc(trailmate)}\",")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
-        append("\"planLap\":$planLap,")
-        append("\"planLoops\":$planLoops,")
         append("\"inclineAuto\":$inclineAuto,")
         append("\"calib\":${calib?.toJson() ?: "null"},")
         append("\"workoutStep\":${workoutStep?.toJson() ?: "null"},")

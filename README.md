@@ -51,7 +51,7 @@ and it now pairs with Zwift over Bluetooth FTMS.
 
 | | |
 |---|---|
-| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs guided runs, and draws them in the TrailMate app's design. |
+| **`console/`** | The Android app that replaces iFit on the treadmill's own screen. Talks to the motor board over USB, drives the incline, runs your TrailMate workouts and routes (steering the belt by pace or heart rate), and draws them in the TrailMate app's design. |
 | **`protocol/`** | The [FitPro serial protocol](protocol/FITPRO_PROTOCOL.md), decoded and written down, and its Gen 7 successor [FitPro 2](protocol/FITPRO2_PROTOCOL.md). If you're working on a different machine, start here. |
 
 Routes, outdoor runs turned into a gradient profile the deck replays, are
@@ -160,13 +160,13 @@ You don't need a treadmill to work on STRIDE:
    in a browser. It runs on fake data.
 2. **The whole app:** run it in an Android emulator against a **simulated
    treadmill** that behaves like a Gen 7 board. `tools/sim.py` drives it:
-   speed, incline, the safety key, and the four guided runs.
+   speed, incline, the safety key, workouts and heart-rate control.
 3. **The real thing:** a console over `adb`, belt empty first.
 
 ```sh
 cd console/stride && ./run.sh      # build, install, launch (JDK 17 + Android SDK)
 py tools/sim.py on                 # debug builds: switch to the simulated treadmill
-py tools/sim.py guided pyramid 4   # and run a pyramid on it
+py tools/sim.py hr 0 --min 120 --max 140   # and hold a heart rate on it
 ```
 
 **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** covers setup on Windows, macOS

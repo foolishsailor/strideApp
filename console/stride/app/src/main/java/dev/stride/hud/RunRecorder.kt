@@ -81,8 +81,6 @@ class RunRecorder(
         val steps: List<Plan.Step>,
         /** A route's steps are metres, not seconds — see MainActivity.routeTick. */
         val isRoute: Boolean,
-        /** An open circuit: the steps come round again until STOP. */
-        val loops: Boolean,
         /** TrailMate's id for the planned workout this run is, or "" (spec 038). */
         val plannedWorkoutId: String = "",
         /**
@@ -139,7 +137,7 @@ class RunRecorder(
             .put("board", board)
             .put("version", BuildConfig.VERSION_NAME)
             .put("plan", plan?.let { p ->
-                JSONObject().put("name", p.name).put("route", p.isRoute).put("loops", p.loops)
+                JSONObject().put("name", p.name).put("route", p.isRoute)
                     .put("planned", p.plannedWorkoutId).put("marked", p.marked)
                     .put("steps", JSONArray().apply {
                         p.steps.forEach {
@@ -468,7 +466,6 @@ class RunRecorder(
         if (p.optBoolean("marked")) return markedPlan(p.optString("name"), marks, elapsed)
         val steps = p.optJSONArray("steps") ?: return JSONObject.NULL
         val isRoute = p.optBoolean("route")
-        val loops = p.optBoolean("loops")
 
         fun movingToT(m: Double): Double {
             var shift = 0L
@@ -478,31 +475,20 @@ class RunRecorder(
         fun metresToT(m: Double): Double =
             (samples.firstOrNull { it.d >= m }?.t ?: (elapsed + 1)).toDouble()
 
-        val lap = if (steps.length() > 0) steps.getJSONArray(steps.length() - 1).getDouble(1) else 0.0
         val out = JSONArray()
-        var lapNo = 0
         var lastEnd = 0L
-        while (lapNo < 1000) {
-            var reached = false
-            for (i in 0 until steps.length()) {
-                val s = steps.getJSONArray(i)
-                val offset = if (loops) lapNo * lap else 0.0
-                val a = s.getDouble(0) + offset
-                val b = s.getDouble(1) + offset
-                val startS = Math.round(if (isRoute) metresToT(a) else movingToT(a))
-                    .coerceIn(lastEnd, elapsed)
-                val endS = Math.round(if (isRoute) metresToT(b) else movingToT(b))
-                    .coerceIn(startS, elapsed)
-                if (endS <= startS) continue
-                reached = true
-                lastEnd = endS
-                out.put(JSONObject()
-                    .put("startS", startS).put("endS", endS)
-                    .put("label", s.optString(2))
-                    .put("incline", s.optDouble(3, 0.0)))
-            }
-            if (!loops || !reached || lap <= 0.0 || lastEnd >= elapsed) break
-            lapNo++
+        for (i in 0 until steps.length()) {
+            val s = steps.getJSONArray(i)
+            val startS = Math.round(if (isRoute) metresToT(s.getDouble(0)) else movingToT(s.getDouble(0)))
+                .coerceIn(lastEnd, elapsed)
+            val endS = Math.round(if (isRoute) metresToT(s.getDouble(1)) else movingToT(s.getDouble(1)))
+                .coerceIn(startS, elapsed)
+            if (endS <= startS) continue
+            lastEnd = endS
+            out.put(JSONObject()
+                .put("startS", startS).put("endS", endS)
+                .put("label", s.optString(2))
+                .put("incline", s.optDouble(3, 0.0)))
         }
         return JSONObject().put("name", p.optString("name")).put("segments", out)
     }
