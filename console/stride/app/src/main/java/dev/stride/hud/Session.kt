@@ -191,6 +191,8 @@ data class Snapshot(
     val boardLocked: Boolean = false,
     /** A belt calibration in progress, or null. See [CalibrationLive]. */
     val calib: CalibrationLive? = null,
+    /** A TrailMate workout or heart-rate run under way, or null. See [WorkoutView]. */
+    val workoutStep: WorkoutView? = null,
 ) {
     val mode: String get() = Session.name(session)
 
@@ -299,6 +301,7 @@ data class Snapshot(
         append("\"planLoops\":$planLoops,")
         append("\"inclineAuto\":$inclineAuto,")
         append("\"calib\":${calib?.toJson() ?: "null"},")
+        append("\"workoutStep\":${workoutStep?.toJson() ?: "null"},")
         append("\"mode\":\"$mode\"")
         append("}")
     }

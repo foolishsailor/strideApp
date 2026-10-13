@@ -128,6 +128,12 @@ def main():
     sub.add_parser("pod").add_argument("state", choices=("on", "off"))
     sub.add_parser("runner").add_argument("name")
     sub.add_parser("workout")
+    sub.add_parser("planned", help="run one of the runner's TrailMate workouts (spec 038)").add_argument("id")
+    h = sub.add_parser("hr", help="Manual -> Heart rate: hold a zone, or a bpm range")
+    h.add_argument("zone", type=int, help="1-5, or 0 with --min/--max")
+    h.add_argument("--min", type=int, default=0)
+    h.add_argument("--max", type=int, default=0)
+    sub.add_parser("next", help="end the workout's current step")
     g = sub.add_parser("guided"); g.add_argument("shape", choices=SHAPES); g.add_argument("minutes", type=int, nargs="?", default=10)
     s = sub.add_parser("scenario"); s.add_argument("name", choices=SCENARIOS); s.add_argument("arg", nargs="?")
     a = p.parse_args()
@@ -178,6 +184,10 @@ def main():
         if not out.strip().startswith("{"):
             sys.exit("no workout recorded yet (run as a profile for a minute and 100 m, then end)")
         print(out.strip())
+    elif a.cmd == "planned":
+        con.ctl("planned", "--es", "id", a.id)
+    elif a.cmd == "hr":
+        con.ctl("hr", "--ei", "zone", str(a.zone), "--ei", "min", str(a.min), "--ei", "max", str(a.max))
     elif a.cmd == "guided":
         con.ctl("guided", "--es", "id", a.shape, "--ei", "min", str(a.minutes))
     elif a.cmd == "scenario":

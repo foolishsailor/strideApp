@@ -114,6 +114,8 @@ class Settings(context: Context) {
         const val WARMUP_KPH = "warmup_kph"
         const val INCLINE_RATE = "incline_rate"   // "gentle" | "normal" | "quick"
         const val OPEN_LAP_MIN = "open_lap_min"
+        /** The fastest a workout may drive the belt, km/h; 0 for no limit (spec 038). */
+        const val WORKOUT_SPEED_LIMIT = "workout_speed_limit"
         /** The belt's measured speed table, as JSON. See [BeltCalibration].
          *  Written only through [saveBeltCalibration], never by [set]. */
         const val BELT_CAL = "belt_cal"
@@ -164,7 +166,7 @@ class Settings(context: Context) {
          * room's and the machine's, and stay shared.
          */
         val PERSONAL = setOf(
-            UNITS, WARMUP_MIN, COOLDOWN_MIN, WARMUP_KPH, INCLINE_RATE, OPEN_LAP_MIN,
+            UNITS, WARMUP_MIN, COOLDOWN_MIN, WARMUP_KPH, INCLINE_RATE, OPEN_LAP_MIN, WORKOUT_SPEED_LIMIT,
             HR_SOURCE, HR_ADDR, HR_NAME, POD_ADDR, POD_NAME, PHONES_ADDR, PHONES_NAME,
         )
 
@@ -283,6 +285,8 @@ class Settings(context: Context) {
     fun warmupKph(): Double = dbl(WARMUP_KPH, 2.0)
     fun openLapMin(): Int = int(OPEN_LAP_MIN, 20)
     fun inclineRate(): String = str(INCLINE_RATE, "normal")
+    /** km/h, or 0 when the runner has set no limit. */
+    fun workoutSpeedLimit(): Double = dbl(WORKOUT_SPEED_LIMIT, 0.0)
 
     fun inclineStep(): Double = INCLINE_RATES[inclineRate()]?.first ?: 1.0
 
@@ -363,6 +367,7 @@ class Settings(context: Context) {
         .put(WARMUP_KPH, warmupKph())
         .put(INCLINE_RATE, inclineRate())
         .put(OPEN_LAP_MIN, openLapMin())
+        .put(WORKOUT_SPEED_LIMIT, workoutSpeedLimit())
         .put(HR_SOURCE, hrSource())
         .put(HR_ADDR, hrAddr())
         .put(HR_NAME, hrName())
@@ -389,6 +394,7 @@ class Settings(context: Context) {
             ALLOW_GUEST, CLOCK_24, KEEP_AWAKE -> (value == "true" || value == "1").toString()
             WARMUP_MIN, COOLDOWN_MIN, OPEN_LAP_MIN, SLEEP_MIN -> (value.toIntOrNull() ?: 0).toString()
             WARMUP_KPH -> (value.toDoubleOrNull() ?: 2.0).toString()
+            WORKOUT_SPEED_LIMIT -> (value.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0).toString()
             else -> value
         }
         write(scopeFor(key), mapOf(key to clean))

@@ -66,6 +66,8 @@ class SimBoard {
     /** Let go of by the host: the belt stops, the state does not say so. */
     private var released = false
     @Volatile var pulseOn = false
+    /** The pretend runner's heart, with the lag a real one has — see SimHeart. */
+    private val heart = SimHeart()
     /** A pretend foot pod: see MainActivity.podNow. Off until asked for. */
     @Volatile var podOn = false
 
@@ -273,6 +275,7 @@ class SimBoard {
         val grade = (v[FitPro2.Id.CURRENT_GRADE] ?: 0f) / 100.0
         val vo2 = 3.5 + 0.1 * mMin + 1.8 * mMin * maxOf(0.0, grade)
         if (beltKph > 0f) kcal += vo2 * WEIGHT_KG / 1000.0 * 5.0 / 60.0 * dt
+        heart.step(beltKph.toDouble(), grade * 100, dt.toDouble())
 
         // Counters go out once a second, the way slow fields do.
         val second = now / 1000
@@ -281,10 +284,12 @@ class SimBoard {
             set(FitPro2.Id.DISTANCE, distanceM.toFloat())
             set(FitPro2.Id.RUNNING_TIME, Math.floor(runningS).toFloat())
             set(FitPro2.Id.CURRENT_CALORIES, kcal.toFloat())
-            val pulse = if (pulseOn && beltKph > 0f) (68 + 7 * beltKph + 1.6f * (grade * 100).toFloat()) else 0f
-            set(FitPro2.Id.PULSE, Math.round(pulse).toFloat())
+            set(FitPro2.Id.PULSE, heartBpm().toFloat())
         }
     }
+
+    /** What the pretend runner's heart reads, or 0 with the pulse off or the belt still. */
+    fun heartBpm(): Int = if (pulseOn && beltKph > 0f) Math.round(heart.bpm).toInt() else 0
 
     private fun stepTarget(id: Int, by: Float, lo: Float, hi: Float) =
         set(id, ((v[id] ?: 0f) + by).coerceIn(lo, hi))

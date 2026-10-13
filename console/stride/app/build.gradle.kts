@@ -98,3 +98,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 
+
+// Test-only: nothing here reaches the APK, which carries no libraries at all.
+// org.json is the real one, because Android's copy is a stub off the device.
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
+}
