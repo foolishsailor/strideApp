@@ -462,6 +462,8 @@ class MainActivity : Activity() {
     @Volatile private var calChangedAt = 0L
     /** Recent pod readings, (elapsedRealtime, km/h). Poll thread only. */
     private val calPod = ArrayDeque<Pair<Long, Double>>()
+    /** The pod's steady speed during an ordinary run, for "Sync to pod". */
+    private val podWindow = PodWindow(CAL_SETTLE_MS, CAL_WINDOW_MS)
     @Volatile private var calPodKph = 0.0
     @Volatile private var calPodSecs = 0.0
     @Volatile private var fanState = 0
@@ -726,11 +728,12 @@ class MainActivity : Activity() {
     @Volatile private var activeSince = 0L
     @Volatile private var accumulatedMs = 0L
 
-    /** The board's counters are lifetime-ish, so a session is a delta from
-     *  wherever they happened to be when START was pressed. */
+    /** The board's counters at the last poll. A session adds up each step
+     *  they take, never "now minus start": the board restarts them when a
+     *  paused workout resumes (see [RunTotals]). */
     @Volatile private var armBaseline = false
-    @Volatile private var baseDistance = 0.0
-    @Volatile private var baseCalories = 0.0
+    @Volatile private var lastOdometer = 0.0
+    @Volatile private var lastRawCalories = 0.0
     @Volatile private var sessionDistance = 0.0
     @Volatile private var sessionCalories = 0.0
 
@@ -1189,6 +1192,59 @@ class MainActivity : Activity() {
          * they always do. See calTick for what is measured while it runs. */
 
         /** Start calibrating: a run if none is running, then the panel. */
+        /**
+         * The speed menu's AUTO / MANUAL. MANUAL is what touching the speed
+         * already does; AUTO hands it back to the step before the next one.
+         */
+        @JavascriptInterface fun setSpeedAuto(auto: Boolean) {
+            val r = workoutRunner ?: return
+            if (auto) {
+                r.speedBackToAuto(workoutProgress())
+                Log.i(TAG, "speed: back to the workout")
+            } else {
+                r.speedTakenOver()
+                Log.i(TAG, "speed: the runner's until the next step")
+            }
+            repaint()
+        }
+
+        /**
+         * The speed menu's SYNC TO POD: the pod is the truth at this pace. Save
+         * a calibration point for the speed on the dial, scaled by how far the
+         * pod is off, and send the corrected speed now. The same arithmetic as
+         * the calibration panel's "use the Stryd" and save, in one press.
+         * Answers {ok, note} for the menu.
+         */
+        @JavascriptInterface fun syncToPod(): String {
+            val out = org.json.JSONObject()
+            val pod = podWindow.kph
+            if (dmk || !Session.isMoving(session) || targetKph <= 0.0 || rampTo > 0.0) {
+                return out.put("ok", false).put("note", "Run at a steady speed first.").toString()
+            }
+            if (podWindow.secs < CAL_READY_SECS || pod <= 0.0) {
+                return out.put("ok", false)
+                    .put("note", "Keep going: the pod needs ${CAL_READY_SECS.toInt()} steady seconds.").toString()
+            }
+            val sent = calib.toBelt(targetKph)
+            val point = BeltCalibration.Point(targetKph, sent * targetKph / pod)
+            calib.with(point)
+                .onSuccess {
+                    calib = it
+                    cfg.saveBeltCalibration(it)
+                    pendingWrite = mapOf(FitPro.Field.KPH to targetKph)
+                    podWindow.restart()
+                    Log.i(TAG, "pod sync: pod ${"%.2f".format(pod)} at ${"%.2f".format(targetKph)} km/h; " +
+                            "belt ${"%.2f".format(sent)} -> ${"%.2f".format(point.belt)}")
+                    out.put("ok", true).put("note", "Belt matched to the pod.")
+                }
+                .onFailure {
+                    Log.w(TAG, "pod sync refused: ${it.message}")
+                    out.put("ok", false).put("note", it.message ?: "Could not match the pod here.")
+                }
+            repaint()
+            return out.toString()
+        }
+
         @JavascriptInterface fun calibrate() {
             if (dmk) return
             if (!Session.isMoving(session) && session != Session.PAUSED) choose()
@@ -3214,11 +3270,18 @@ class MainActivity : Activity() {
         val distance = trueOdometer(rawDistance)
         val rawCalories = v[FitPro.Field.CALORIES] ?: 0.0
         if (armBaseline) {
-            baseDistance = distance
-            baseCalories = rawCalories
+            lastOdometer = distance
+            lastRawCalories = rawCalories
             armBaseline = false
-            Log.i(TAG, "session baseline: d=$baseDistance c=$baseCalories")
+            Log.i(TAG, "session baseline: d=$distance c=$rawCalories")
         }
+        // Taken every poll, paused or not, so a counter the board restarts on
+        // resume is a step backwards here (ignored), not a loss of the run.
+        val odometerStep = RunTotals.counterStep(distance, lastOdometer, RunTotals.MAX_ODOMETER_STEP_M)
+        val calorieStep = RunTotals.counterStep(rawCalories, lastRawCalories, RunTotals.MAX_CALORIE_STEP)
+        if (distance < lastOdometer) Log.i(TAG, "board odometer restarted (${"%.0f".format(lastOdometer)} -> ${"%.0f".format(distance)} m); the run keeps its distance")
+        lastOdometer = distance
+        lastRawCalories = rawCalories
 
         val actual = v[FitPro.Field.ACTUAL_KPH] ?: 0.0
         lastActualKph = actual
@@ -3284,8 +3347,8 @@ class MainActivity : Activity() {
         val pulse = pulseNow(v[FitPro.Field.PULSE]?.toInt() ?: 0)
 
         if (Session.isMoving(session)) {
-            sessionDistance = (distance - baseDistance).coerceAtLeast(0.0)
-            sessionCalories = (rawCalories - baseCalories).coerceAtLeast(0.0)
+            sessionDistance += odometerStep
+            sessionCalories += calorieStep
             if (speed > maxSpeed) maxSpeed = speed
             if (incline > maxIncline) maxIncline = incline
             speedSum += speed
@@ -3331,6 +3394,8 @@ class MainActivity : Activity() {
         val step = currentStep()
         val foot = podNow(speed, incline)
         val calLive = calTick(foot.kph)
+        podWindow.add(SystemClock.elapsedRealtime(), targetKph, foot.kph,
+            Session.isMoving(session) && targetKph > 0.0 && rampTo <= 0.0)
 
         return Snapshot(
             speed = speed,
@@ -3402,6 +3467,7 @@ class MainActivity : Activity() {
             inclineAuto = inclineAuto,
             boardLocked = boardLocked,
             calib = calLive,
+            podSyncKph = if (podWindow.secs >= CAL_READY_SECS) podWindow.kph else 0.0,
             workoutStep = if (workoutRunner != null) workoutView else null,
         )
     }

@@ -6,10 +6,10 @@ import styles from './Button.module.css';
 
 export type ButtonTone = 'default' | 'primary' | 'stop';
 /** Size is the button's role on the panel, each sized for a finger mid-stride. */
-export type ButtonSize = 'control' | 'overlay' | 'wide' | 'chip' | 'menu' | 'corner' | 'rail' | 'dock';
+export type ButtonSize = 'control' | 'overlay' | 'wide' | 'chip' | 'menu' | 'corner' | 'rail' | 'dock' | 'reading';
 
 /** The run screen's controls are text only: no fill, edge or shadow. */
-const BARE: readonly ButtonSize[] = ['rail', 'dock'];
+const BARE: readonly ButtonSize[] = ['rail', 'dock', 'reading'];
 
 interface Common {
   tone?: ButtonTone;

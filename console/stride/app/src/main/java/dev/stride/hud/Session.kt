@@ -187,6 +187,9 @@ data class Snapshot(
     val boardLocked: Boolean = false,
     /** A belt calibration in progress, or null. See [CalibrationLive]. */
     val calib: CalibrationLive? = null,
+    /** The pod's steady km/h at this speed, ready for "Sync to pod" in the
+     *  speed menu; 0 until it has [MainActivity.CAL_READY_SECS] of readings. */
+    val podSyncKph: Double = 0.0,
     /** A TrailMate workout or heart-rate run under way, or null. See [WorkoutView]. */
     val workoutStep: WorkoutView? = null,
 ) {
@@ -294,6 +297,7 @@ data class Snapshot(
         append("\"trailmate\":\"${esc(trailmate)}\",")
         append("\"planElapsed\":${"%.0f".format(planElapsed)},")
         append("\"inclineAuto\":$inclineAuto,")
+        append("\"podSyncKph\":${"%.2f".format(podSyncKph)},")
         append("\"calib\":${calib?.toJson() ?: "null"},")
         append("\"workoutStep\":${workoutStep?.toJson() ?: "null"},")
         append("\"mode\":\"$mode\"")

@@ -288,6 +288,30 @@ describe('workout', () => {
     expect(b.end).toHaveBeenCalled();
   });
 
+  it('shows whose the speed is, and hands it back from the speed menu', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, speedAuto: false } }));
+    expect(screen.getByLabelText('Speed: manual')).toBeTruthy();
+    press('Speed: manual');
+    press('AUTO');
+    expect(b.setSpeedAuto).toHaveBeenCalledWith(true);
+    act(() => window.render({ mode: 'running', workoutStep: STEP }));
+    expect(screen.getByLabelText('Speed: auto')).toBeTruthy();
+  });
+
+  it('matches the belt to the pod from the speed menu, on any run', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', speed: 10, podSyncKph: 10.4 }));
+    expect(screen.queryByLabelText(/Speed: /)).toBeNull(); // no step sets the speed
+    press('Speed');
+    expect(screen.queryByText('AUTO')).toBeNull();
+    press('SYNC TO POD');
+    expect(b.syncToPod).toHaveBeenCalled();
+    expect(screen.getByText('Belt matched to the pod.')).toBeTruthy();
+  });
+
   it("shows the chart on every run, and names a route's stretch above it", () => {
     render(<App />);
     act(() => window.render({ mode: 'running', distance: 900 }));

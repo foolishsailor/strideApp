@@ -40,6 +40,9 @@ export interface SessionState {
   segmentLeftIsDistance?: boolean;
   /** Where the run is in its plan: seconds on a workout, metres on a route. */
   planElapsed?: number;
+  /** The foot pod's steady km/h at this speed, ready for SYNC TO POD; 0 until
+   *  it has ten steady seconds. */
+  podSyncKph?: number;
   inclineAuto?: boolean;
   avgSpeed?: number;
   maxSpeed?: number;
@@ -234,6 +237,10 @@ export interface StrideBridge {
   chooseHeartRate(zone: number, minBpm: number, maxBpm: number): void;
   /** End the workout's current step: an open step's only way out. */
   nextStep(): void;
+  /** The speed menu: hand the speed back to the workout's step, or take it. */
+  setSpeedAuto?(auto: boolean): void;
+  /** The speed menu: match the belt to the foot pod. Answers {ok, note}. */
+  syncToPod?(): string;
   skipWarmup(): void;
   skipCooldown(): void;
   pause(): void;
