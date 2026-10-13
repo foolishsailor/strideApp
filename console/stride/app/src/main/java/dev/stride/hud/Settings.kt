@@ -250,7 +250,12 @@ class Settings(context: Context) {
                     put("id", p.id); put("name", p.name); put("age", p.age); put("pos", i)
                 })
             }
-            gone.forEach { d.delete("settings", "scope = ?", arrayOf(it)) }
+            gone.forEach { id ->
+                d.delete("settings", "scope = ?", arrayOf(id))
+                // What TrailMate sent about them goes too (spec 038).
+                for (t in listOf("schedule", "zones", "person_routes", "sync"))
+                    d.delete(t, "person_id = ?", arrayOf(id))
+            }
             if (dropDefault) d.insertWithOnConflict("settings", null, ContentValues().apply {
                 put("scope", Db.CONSOLE); put("key", DEFAULT_RUNNER); put("value", ASK)
             }, SQLiteDatabase.CONFLICT_REPLACE)

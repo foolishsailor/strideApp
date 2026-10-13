@@ -6,7 +6,8 @@ import android.database.sqlite.SQLiteOpenHelper
 
 /**
  * The console's one database, `stride.db`: people, settings, run summaries,
- * TrailMate links and the upload queue's index.
+ * TrailMate links, the upload queue's index, and what TrailMate sends about
+ * each person: their planned workouts, zones and routes.
  *
  * Android's own SQLite, with no library on top, so it adds nothing to the APK.
  * Every write is a transaction and the journal is synced before a write
@@ -14,15 +15,15 @@ import android.database.sqlite.SQLiteOpenHelper
  * a setting changed a second before that must still be there afterwards.
  *
  * What stays out of it: the per-second trace of a run, which lives in a file
- * only until TrailMate has it (see [RunRecorder] and [TrailMate]), and routes,
- * which are a document from TrailMate rather than rows.
+ * only until TrailMate has it (see [RunRecorder] and [TrailMate]).
  */
 class Db private constructor(context: Context) :
     SQLiteOpenHelper(context.applicationContext, NAME, null, VERSION) {
 
     companion object {
         const val NAME = "stride.db"
-        const val VERSION = 1
+        /** 2: spec 038 — each person's schedule, zones, routes and sync state. */
+        const val VERSION = 2
 
         /** Settings that belong to the whole treadmill rather than a person. */
         const val CONSOLE = ""
@@ -99,9 +100,56 @@ class Db private constructor(context: Context) :
                 status     INTEGER NOT NULL DEFAULT 0,
                 reason     TEXT NOT NULL DEFAULT ''
             )""")
+        v2(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {}
+    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
+        if (old < 2) v2(db)
+    }
+
+    /**
+     * What TrailMate tells the console about each person (spec 038): their
+     * planned workouts by date, their zones, their starred routes and race
+     * courses, and how the last fetch of each went. A cache: each fetch
+     * replaces a person's rows of that kind whole, and nothing here is edited
+     * on the console.
+     */
+    private fun v2(db: SQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE schedule (
+                person_id  TEXT NOT NULL,
+                date       TEXT NOT NULL,
+                pos        INTEGER NOT NULL,
+                workout_id TEXT NOT NULL,
+                json       TEXT NOT NULL,
+                PRIMARY KEY (person_id, date, pos)
+            )""")
+        db.execSQL("""
+            CREATE TABLE zones (
+                person_id TEXT PRIMARY KEY,
+                json      TEXT NOT NULL
+            )""")
+        db.execSQL("""
+            CREATE TABLE person_routes (
+                person_id TEXT NOT NULL,
+                route_id  TEXT NOT NULL,
+                pos       INTEGER NOT NULL,
+                json      TEXT NOT NULL,
+                PRIMARY KEY (person_id, route_id)
+            )""")
+        // kind: "self" | "schedule" | "routes". state: "ok" | "scope" (the link
+        // lacks the permission) | "error". fetched_at: epoch ms of the last 200/304.
+        db.execSQL("""
+            CREATE TABLE sync (
+                person_id  TEXT NOT NULL,
+                kind       TEXT NOT NULL,
+                etag       TEXT NOT NULL DEFAULT '',
+                fetched_at INTEGER NOT NULL DEFAULT 0,
+                state      TEXT NOT NULL DEFAULT '',
+                detail     TEXT NOT NULL DEFAULT '',
+                PRIMARY KEY (person_id, kind)
+            )""")
+    }
 
     /** [block] as one transaction: all of it lands, or none of it does. */
     fun <T> tx(block: (SQLiteDatabase) -> T): T {

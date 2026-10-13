@@ -924,12 +924,23 @@ class MainActivity : Activity() {
         }
 
         /**
-         * The routes cached on this console, for the picker.
-         *
-         * Read from disk at boot, so this answers whether or not there is a
-         * network — which is the whole reason [Routes] writes a file.
+         * The runner's routes, for the picker: their starred TrailMate routes
+         * and race courses, as last synced. Answers with or without a network,
+         * which is the whole reason [Routes] stores them.
          */
-        @JavascriptInterface fun routes(): String = routes.json()
+        @JavascriptInterface fun routes(): String = routes.json(cfg.active)
+
+        /**
+         * What TrailMate last sent for each person, by name, for the home
+         * screen's Today and Tomorrow: `{ name: { state, fetchedAt, zones,
+         * workouts } }`. See [TrailMateSync.scheduleJson].
+         */
+        @JavascriptInterface fun schedules(): String = JSONObject().apply {
+            for (p in cfg.people()) put(p.name, sync.scheduleJson(p.id))
+        }.toString()
+
+        /** Ask TrailMate again for everyone now (pull to refresh, Settings). */
+        @JavascriptInterface fun refreshSchedules() = sync.request(force = true)
 
         /**
          * Start a run on a recorded route.
@@ -946,7 +957,7 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface fun chooseRoute(id: String, loop: Boolean) {
             if (dmk) return
-            val found = routes.byId(id) ?: run {
+            val found = routes.byId(cfg.active, id) ?: run {
                 Log.w(TAG, "no such route: $id")
                 return
             }
@@ -1341,6 +1352,7 @@ class MainActivity : Activity() {
             val phonesWas = cfg.phonesAddr()
             runner = name
             cfg.active = cfg.person(name)?.id ?: ""
+            if (cfg.active.isNotEmpty()) sync.request(cfg.active)
             refreshRunnerHrMax()
             // Their own strap, pod and headphones, not the last runner's.
             if (cfg.hrAddr() != strapWas) applyStrap()
@@ -1920,12 +1932,11 @@ class MainActivity : Activity() {
         scanAfterPermission = null
     }
 
-    /**
-     * Routes from real runs, cached to disk so the console can boot with no
-     * network and still offer them. They will arrive from TrailMate; until
-     * then the cache holds whatever was already here. See Routes.accept.
-     */
+    /** Each person's routes from TrailMate, stored so they work offline. See Routes. */
     private val routes by lazy { Routes(this) }
+
+    /** Each linked person's planned workouts, zones and routes from TrailMate (spec 038). */
+    private val sync by lazy { TrailMateSync(this, cfg, trailmate, routes) { Session.isMoving(session) } }
 
     /** Every run this console has recorded — see History. */
     private val history by lazy { History(this) }
@@ -2538,6 +2549,9 @@ class MainActivity : Activity() {
         // Anything queued last time goes as soon as there is a network, and a
         // run the console did not live to finish is turned into a workout.
         trailmate.start()
+        trailmate.onLinked = { sync.request(it, force = true) }
+        trailmate.syncInfo = { sync.info(it) }
+        sync.start()
         recorder.recover()
         // Loaded now rather than at the first finished run, so an older
         // console's history.json is moved into the database at start-up.

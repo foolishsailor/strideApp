@@ -84,6 +84,12 @@ class TrailMate(context: Context, private val cfg: Settings) {
     private val queueDir = File(app.filesDir, "trailmate/queue").apply { mkdirs() }
     private val failedDir = File(app.filesDir, "trailmate/failed").apply { mkdirs() }
 
+    /** Someone has just linked (or re-linked): their schedule and routes can be fetched now. */
+    @Volatile var onLinked: ((personId: String) -> Unit)? = null
+
+    /** What the sync knows about a person, for [statusJson] (spec 038). */
+    @Volatile var syncInfo: ((personId: String) -> JSONObject)? = null
+
     /** How a run's sending went: "queued", "sent" or "failed", by workout id. */
     @Volatile var onState: ((workoutId: String, state: String) -> Unit)? = null
 
@@ -158,6 +164,11 @@ class TrailMate(context: Context, private val cfg: Settings) {
         links = loadLinks()
         if (t == null) return
         Log.i(TAG, "$personId: disconnected")
+        revokeQuietly(personId, t)
+    }
+
+    /** Ask TrailMate to revoke a token, in the background; forgotten here either way. */
+    private fun revokeQuietly(personId: String, t: String) {
         thread(name = "trailmate-revoke") {
             try {
                 val r = call("DELETE", "/devices/self", null, t)
@@ -240,6 +251,11 @@ class TrailMate(context: Context, private val cfg: Settings) {
                 val o = r.json()
                 val token = o?.optString("deviceToken").orEmpty()
                 if (token.isEmpty()) return fail(l, "error", "TrailMate approved, but sent no token.")
+                // A re-link (spec 038: reconnecting for new permissions)
+                // replaces a token that still works. It is revoked once the
+                // new one is stored, so TrailMate does not list the console
+                // twice.
+                val old = token(person.id)
                 db.tx { d ->
                     d.insertWithOnConflict("links", null, ContentValues().apply {
                         put("person_id", person.id)
@@ -251,6 +267,8 @@ class TrailMate(context: Context, private val cfg: Settings) {
                 }
                 tokens[person.id] = token
                 links = loadLinks()
+                if (old != null && old != token) revokeQuietly(person.id, old)
+                onLinked?.invoke(person.id)
                 l.state = "connected"
                 Log.i(TAG, "${person.id}: connected to TrailMate")
                 // Anything that was waiting for this person can go now.
@@ -558,7 +576,8 @@ class TrailMate(context: Context, private val cfg: Settings) {
                 .put("account", account(p.id))
                 .put("reconnect", reconnectNeeded(p.id))
                 .put("queued", queue.count { it.personId == p.id })
-                .put("failed", failed.count { it.personId == p.id }))
+                .put("failed", failed.count { it.personId == p.id })
+                .put("sync", syncInfo?.invoke(p.id) ?: JSONObject()))
         }
         val l = link
         val linkJson = if (l == null) JSONObject.NULL else JSONObject()
@@ -592,15 +611,32 @@ class TrailMate(context: Context, private val cfg: Settings) {
 
     // --- the wire -------------------------------------------------------------
 
-    private class Reply(val code: Int, val body: String) {
+    internal class Reply(val code: Int, val body: String, val etag: String = "") {
         fun json(): JSONObject? = try { JSONObject(body) } catch (e: Exception) { null }
+    }
+
+    /**
+     * A device read for [personId] (spec 038), or null when they hold no
+     * usable token. Throws on no answer at all. A 401 marks them "reconnect
+     * needed", as it does for uploads.
+     */
+    internal fun get(personId: String, path: String, etag: String = ""): Reply? {
+        if (reconnectNeeded(personId)) return null
+        val t = token(personId) ?: return null
+        val r = call("GET", path, null, t, etag)
+        if (r.code == 401) {
+            setReconnect(personId)
+            Log.w(TAG, "$personId: TrailMate refused the token on $path — reconnect needed")
+        }
+        return r
     }
 
     /**
      * One request. Throws on no answer at all; any answer, 500 included, comes
      * back as a [Reply] for the caller to judge.
      */
-    private fun call(method: String, path: String, body: JSONObject?, token: String?): Reply {
+    private fun call(method: String, path: String, body: JSONObject?, token: String?,
+                     etag: String = ""): Reply {
         val url = URL(cfg.trailmateUrl().trimEnd('/') + path)
         val c = url.openConnection() as HttpURLConnection
         try {
@@ -610,6 +646,7 @@ class TrailMate(context: Context, private val cfg: Settings) {
             c.setRequestProperty("Accept", "application/json")
             c.setRequestProperty("User-Agent", "STRIDE/${BuildConfig.VERSION_NAME}")
             if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
+            if (etag.isNotEmpty()) c.setRequestProperty("If-None-Match", etag)
             if (body != null) {
                 val bytes = body.toString().toByteArray(Charsets.UTF_8)
                 c.doOutput = true
@@ -618,9 +655,9 @@ class TrailMate(context: Context, private val cfg: Settings) {
                 c.outputStream.use { it.write(bytes) }
             }
             val code = c.responseCode
-            val stream = if (code >= 400) c.errorStream else c.inputStream
+            val stream = if (code >= 400) c.errorStream else if (code == 304) null else c.inputStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
-            return Reply(code, text)
+            return Reply(code, text, c.getHeaderField("ETag").orEmpty())
         } finally {
             c.disconnect()
         }
@@ -634,7 +671,7 @@ class TrailMate(context: Context, private val cfg: Settings) {
      * MainActivity.sessionStartWall); until then every certificate on the
      * internet is "not yet valid", and the error says nothing about clocks.
      */
-    private fun why(e: Exception): String = when (e) {
+    internal fun why(e: Exception): String = when (e) {
         is SSLException -> "secure connection failed — is the console's clock right?"
         is java.net.UnknownHostException -> "no network, or no such server"
         is java.net.SocketTimeoutException -> "timed out"
