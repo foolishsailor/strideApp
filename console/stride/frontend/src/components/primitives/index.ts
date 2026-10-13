@@ -1,4 +1,6 @@
-export { Button, acknowledge, type ButtonProps, type ButtonSize, type ButtonTone } from './Button';
+export { acknowledge } from './acknowledge';
+export { Button, type ButtonProps, type ButtonSize, type ButtonTone } from './Button';
+export { Icon, type IconName } from './Icon';
 export { Fill, Row, Surface } from './Layout';
 export { Overlay } from './Overlay';
 export { PressableCard } from './Pressable';

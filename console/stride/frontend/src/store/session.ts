@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Plan, PlanStep, SessionMode, SessionState } from '../bridge/types';
-import { elevationFor, type Elevation } from '../lib/path/geometry';
 import { normaliseMode } from '../lib/session';
+import { record } from './history';
 
 /* What Kotlin has told us. Written only by the window.render / plan entry
    points (see bridge/kotlin.ts); read through narrow selectors so a 5 Hz
@@ -12,7 +12,8 @@ interface SessionStore {
   mode: SessionMode;
   planName: string;
   planSteps: PlanStep[];
-  elevation: Elevation;
+  /** A route's steps are metres; a workout's are seconds. */
+  planByDistance: boolean;
 
   render(s: SessionState): void;
   setPlan(p: Plan | null | undefined): void;
@@ -23,15 +24,16 @@ export const useSession = create<SessionStore>()((set) => ({
   mode: 'welcome',
   planName: '',
   planSteps: [],
-  elevation: elevationFor([]),
+  planByDistance: false,
 
   render(s) {
-    set({ snapshot: s || {}, mode: normaliseMode(s && s.mode) });
+    const mode = normaliseMode(s && s.mode);
+    set({ snapshot: s || {}, mode });
+    record(s || {}, mode);
   },
 
   setPlan(p) {
-    const steps = (p && p.steps) || [];
-    set({ planName: (p && p.name) || '', planSteps: steps, elevation: elevationFor(steps) });
+    set({ planName: (p && p.name) || '', planSteps: (p && p.steps) || [], planByDistance: !!(p && p.byDistance) });
   },
 }));
 

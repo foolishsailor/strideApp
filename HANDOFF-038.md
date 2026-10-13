@@ -11,20 +11,8 @@ Read first:
 
 ## Next, asked by jc (not started)
 
-1. **Remove the mountain / course imagery everywhere.** jc: "don't use the stupid mountain course imagery for anything, remove all that." It is the path-ahead scenery on the run screen:
-   - `frontend/src/lib/path/scene.ts`
-   - `frontend/src/lib/path/geometry.ts`
-   - `components/organisms/PathHero.tsx`, `Hero.tsx`
-   - the scenery tokens in `theme/themes/trailmate.ts`, `theme/tokens.ts` and `theme/types.ts`
-   - check `stride-core.js` (`track`, `profile`, `routePoints`) for anything only the scenery uses
-
-   Replace the hero with something useful, which is item 2 for heart-rate runs. A route or pace workout still needs a centre: a plain incline profile and position, or the same chart.
-2. **Streaming chart for heart-rate runs:** speed, incline and heart rate against time, live, in the run screen's centre.
-   - Draw it on a canvas: the run screen already redraws at 5 Hz, and the README says not to build the path as DOM.
-   - Read `speed`, `incline` and `pulse` from the snapshot (`useField`), and keep a rolling buffer, say the last 10–20 minutes.
-   - Show the HR target band (`workoutStep.target` hr min/max) shaded.
-   - Follow the walk-screen rules in `CLAUDE.md`, and the over-app look (white on translucent black) when `html.over-app`.
-   - Build it as a reusable component. The dataviz guidance applies.
+1. ~~Remove the mountain / course imagery~~ **Done (uncommitted):** `lib/path/`, `PathHero` and the theme's `scenery` are gone. The core's `profile` and `routePoints` (route-card sparklines) stay; its `track` is no longer used by this interface.
+2. ~~Streaming chart~~ **Done (uncommitted):** `RunChart` (`components/organisms/RunChart.tsx`), painted by `lib/chart/draw.ts`, with the maths in `lib/chart/layout.ts` and a one-sample-a-second buffer in `lib/chart/history.ts` / `store/history.ts`. Heart rate, speed and incline sit in separate strips on one 12-minute time axis (no dual axis). The step's HR or pace band is shaded as it was at each second, and with a plan the last quarter shows the plan's incline still to come, dashed. `ChartHero` puts it in the centre of every run, manual included; the lap oval (`TrackHero`) is gone. The series colours are `theme.chart` and were validated on the canvas. Not shown over an app: the hero is not mounted there.
 3. **The rest of the welcome flow should fill the screen.** The X22i panel lays out at **1920×1080 at zoom 1**, not the 1280×800 the README and fixed sizes assume. The Workouts picker is fixed (`Welcome.module.css` `.workouts` uses vw/vh). Step 2, the route and heart-rate pickers, and the run screen still use fixed px and look under-filled. Measure through DevTools: `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>`, plus a small CDP script (Node 24 has `WebSocket`).
 
 ## Still to do for 038

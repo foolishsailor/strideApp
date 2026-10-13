@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
+import { acknowledge } from './acknowledge';
 import { useScrollTap, useTap } from '../../hooks/useTap';
 import { cx } from '../../lib/cx';
 import styles from './Pressable.module.css';
@@ -15,10 +16,20 @@ export function PressableCard({ onTap, selected, shape = 'card', inList, classNa
   className?: string;
   children: ReactNode;
 }) {
-  const tapRef = useTap<HTMLButtonElement>(inList ? undefined : onTap);
-  const scrollRef = useScrollTap<HTMLButtonElement>(inList ? onTap : undefined);
+  const el = useRef<HTMLButtonElement | null>(null);
+  // Acknowledged like every Button (Button.tsx).
+  const pressed = (e: Event) => {
+    acknowledge(el.current);
+    onTap(e);
+  };
+  const tapRef = useTap<HTMLButtonElement>(inList ? undefined : pressed);
+  const scrollRef = useScrollTap<HTMLButtonElement>(inList ? pressed : undefined);
+  const ref = useCallback((node: HTMLButtonElement | null) => {
+    el.current = node;
+    (inList ? scrollRef : tapRef)(node);
+  }, [inList, scrollRef, tapRef]);
   return (
-    <button ref={inList ? scrollRef : tapRef} className={cx(styles.pressable, styles[shape], selected && styles.selected, className)}>
+    <button ref={ref} className={cx(styles.pressable, styles[shape], selected && styles.selected, className)}>
       {children}
     </button>
   );

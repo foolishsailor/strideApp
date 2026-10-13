@@ -117,12 +117,9 @@ export const trailmate: Theme = {
     edge: '1px',
   },
   glowBlur: 0,
-  scenery: {
-    ridgeFar: { dark: '#02292B', light: '#053336' },
-    ridgeNear: { dark: '#063A3C', light: '#0A4547', cap: '#0F5250' },
-    pine: alpha('#0B4A47', 0.7),
-    soil: [alpha('#0A4A46', 0.92), alpha('#073B3A', 0.62), alpha('#042D2E', 0)],
-    groundEdge: alpha(c.accent, 0.34),
-    contactShadow: alpha(deep, 0.7),
-  },
+  /* Not TrailMate's own chart colours: those (the workout palette above) sit
+     too light and too grey on the canvas to tell three lines apart. These
+     are the dataviz reference's first three dark slots, which pass every
+     palette check on #001E20 with all pairs compared. */
+  chart: { speed: '#3987E5', hr: '#D95926', incline: '#199E70' },
 };

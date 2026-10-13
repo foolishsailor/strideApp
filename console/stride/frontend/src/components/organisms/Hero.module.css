@@ -1,5 +1,5 @@
-/* The hero band, 150 – 554, between the rails. Track, path and phase panel
-   all occupy exactly this box; only one is ever mounted. */
+/* The hero band, 150 – 554, between the rails: the warm-up and cool-down
+   panel. The chart has the whole space between the docks (.charted). */
 .hero {
   position: absolute;
   left: 50%;
@@ -8,50 +8,37 @@
   width: 732px;
   height: 404px;
 }
-.hero svg,
-.canvas {
-  display: block;
-  width: 732px;
-  height: 404px;
-}
+/* ---- chart --------------------------------------------------------------- */
+/* Not the hero band: the chart takes all the room the docks leave, the
+   rails either side (150), the strip above (140) and the bottom dock
+   (--dock-h), held 24px clear of each.
 
-/* ---- track ---------------------------------------------------------------- */
-.lap {
+   A route names its stretch above the chart and notes a hand-taken incline
+   beneath it; a workout's band does both, so there the chart has it all. */
+.charted {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  left: 174px;
+  right: 174px;
+  top: 164px;
+  bottom: calc(var(--dock-h, 104px) + 24px);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
 }
-.lapCaption {
-  margin-top: 10px;
+.chart {
+  flex: 1;
 }
-
-/* ---- path ----------------------------------------------------------------- */
 .segment {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 16px;
+  padding-bottom: 10px;
   text-align: center;
-  pointer-events: none;
 }
 .segSub {
   margin-top: 6px;
   font-size: 14px;
   color: var(--colour-ink-faint);
 }
-/* Under the path: said only once the incline has been taken by hand. */
 .inclineNote {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
+  min-height: 20px;
+  padding-top: 6px;
   text-align: center;
   font-size: 16px;
   color: var(--colour-ink-faint);

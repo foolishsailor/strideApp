@@ -1,13 +1,13 @@
-/* Docked to the bottom edge, on top of the control dock (104 deep) and
-   between the rails (150 each side), below the hero (which ends at 554).
+/* Docked to the bottom edge, on top of the control dock (104 deep), edge to
+   edge like the dock; the rails stop above the two of them.
    No panel of its own on the run screen; over an app the drawer gives it one. */
 .band {
   position: absolute;
-  left: 150px;
-  right: 150px;
+  left: 0;
+  right: 0;
   bottom: 104px;
   height: 116px;
-  padding: 0 24px;
+  padding: 0 48px;
   display: flex;
   align-items: center;
 }
@@ -52,15 +52,23 @@
   font-size: 56px;
   line-height: 1;
 }
-/* NEXT, text only, like the dock beneath it. */
-.left .next {
-  flex: none;
-  width: 220px;
-  margin: 0;
-}
-
 .upNext {
+  display: flex;
+  align-items: center;
+}
+.upNextText {
+  flex: 1;
+  min-width: 0;
   text-align: right;
+}
+/* NEXT, text only, like the dock beneath it, at the band's far end. */
+.upNext .next {
+  flex: none;
+  width: 160px;
+  margin: 0 0 0 16px;
+}
+.upNext .next svg {
+  font-size: 72px;
 }
 .nextLabel {
   margin-top: 2px;

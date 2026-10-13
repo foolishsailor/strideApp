@@ -65,6 +65,13 @@ export function primaryLabel(mode: SessionMode): string {
   return 'PAUSE';
 }
 
+/** The primary button's glyph: skip a warm-up or cool-down, resume, or pause. */
+export function primaryIcon(mode: SessionMode): 'skip' | 'play' | 'pause' {
+  if (isTimed(mode)) return 'skip';
+  if (mode === 'paused') return 'play';
+  return 'pause';
+}
+
 /** Cool-down is already the way out; STOP there would just be a second one. */
 export const canStop = (mode: SessionMode): boolean =>
   mode === 'warmup' || mode === 'running' || mode === 'paused';
@@ -121,6 +128,12 @@ export function handNote(w: Pick<WorkoutStep, 'speedAuto' | 'inclineAuto' | 'inc
   return '';
 }
 
+/** Manual → Heart rate: one open step, no TrailMate workout behind it. It has
+ *  no steps to count or move through, and ending its one step is STOP. */
+export function isManualHr(w: Pick<WorkoutStep, 'plannedId' | 'steps'>): boolean {
+  return !w.plannedId && w.steps <= 1;
+}
+
 /** "Step 3 of 10 · 2 of 4": where in the workout, and in its repeat. */
 export function stepPosition(w: Pick<WorkoutStep, 'step' | 'steps' | 'repeat'>): string {
   const at = `Step ${w.step} of ${w.steps}`;
@@ -147,7 +160,9 @@ export function phaseProgress(left: number): number {
 export function phasePreview(mode: SessionMode, steps: readonly PlanStep[]): string {
   if (mode !== 'warmup') return '';
   const first = steps[0];
-  return first ? `${steps.length} stretches ahead · first up: ${first.label}` : 'then the pace is yours';
+  if (!first) return 'then the pace is yours';
+  // One stretch is a manual heart-rate run: nothing to count.
+  return steps.length === 1 ? `then ${first.label}` : `${steps.length} stretches ahead · first up: ${first.label}`;
 }
 
 /** What the board says it can do. Kotlin's defaults until it says otherwise. */
@@ -206,6 +221,8 @@ export function nearestStop(stops: readonly number[], v: number): number | undef
 export const FAN_LEVELS = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'AUTO'] as const;
 const FAN_SHORT = ['', 'I', 'II', 'III', 'A'];
 export const fanButtonLabel = (fan: number): string => (fan ? 'FAN ' + (FAN_SHORT[fan] ?? '') : 'FAN');
+/** The level beside the fan's glyph: I, II, III or A; nothing when off. */
+export const fanLevelMark = (fan: number): string => FAN_SHORT[fan] ?? '';
 
 /** No name here: the welcome screen is the question "who is running". */
 export function greeting(hour: number): string {

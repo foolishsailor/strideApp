@@ -1,0 +1,8 @@
+/* 1em square in the text's colour: the button's font-size and tone drive it. */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+  fill: currentColor;
+}

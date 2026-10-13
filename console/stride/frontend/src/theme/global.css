@@ -82,3 +82,20 @@ html.over-app #root,
 html.over-app #root * {
   color: var(--role-ink-over-app) !important;
 }
+
+/* The ring that acknowledges a press (components/primitives/acknowledge.ts):
+   out from the edge, or in from it for things in a scrolling list. */
+[data-ack] {
+  animation: ack 0.9s ease-out;
+}
+[data-ack='inset'] {
+  animation-name: ack-inset;
+}
+@keyframes ack {
+  0% { box-shadow: 0 0 0 0 var(--role-pulse); }
+  100% { box-shadow: 0 0 0 22px transparent; }
+}
+@keyframes ack-inset {
+  0% { box-shadow: inset 0 0 0 0 var(--role-pulse); }
+  100% { box-shadow: inset 0 0 0 22px transparent; }
+}

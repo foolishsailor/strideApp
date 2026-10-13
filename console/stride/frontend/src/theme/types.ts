@@ -101,13 +101,8 @@ export interface Theme {
    */
   settings: Record<SettingsVar, string>;
 
-  /** The path ahead's backdrop, drawn on canvas. */
-  scenery: {
-    ridgeFar: { dark: string; light: string };
-    ridgeNear: { dark: string; light: string; cap: string };
-    pine: string;
-    soil: [string, string, string]; // near, middle, far
-    groundEdge: string;
-    contactShadow: string;
-  };
+  /** The live chart's series (RunChart), drawn on canvas. Validated as a set
+   *  against the canvas colour: lightness band, chroma, colour-blind and
+   *  normal-vision separation, 3:1 contrast. */
+  chart: { speed: string; hr: string; incline: string };
 }

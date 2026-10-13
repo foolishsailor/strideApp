@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { modeLabel } from '../../lib/session';
 import { useField, useMode } from '../../store/session';
 import { useUi } from '../../store/ui';
@@ -19,6 +20,10 @@ import {
  *  the edges are drawers: the numbers slide off the top, the rails and dock
  *  off the sides and bottom. The numbers can be made one short line along the
  *  top (SMALL, beside their grip), so the film keeps more of the screen. */
+/** How deep the bottom edge is: the dock, and a workout's step band on it.
+ *  Everything that stops above it (rails, chart, drawer grip) reads this. */
+const dockDepth = (workout: boolean) => ({ '--dock-h': workout ? '220px' : '104px' }) as CSSProperties;
+
 export function WorkoutScreen() {
   const mode = useMode();
   const ramping = useField('ramping');
@@ -31,7 +36,7 @@ export function WorkoutScreen() {
   );
   if (!overApp) {
     return (
-      <Fill>
+      <Fill style={dockDepth(workout)}>
         {strip}
         <InclineRail />
         <SpeedRail />
@@ -43,10 +48,10 @@ export function WorkoutScreen() {
     );
   }
   return (
-    <Fill className={metricsCompact ? 'metrics-small' : undefined}>
+    <Fill className={metricsCompact ? 'metrics-small' : undefined} style={dockDepth(workout)}>
       <Drawer edge="left" open={controlsOpen}><InclineRail /></Drawer>
       <Drawer edge="right" open={controlsOpen}><SpeedRail /></Drawer>
-      <Drawer edge="bottom" open={controlsOpen} tall={workout}>
+      <Drawer edge="bottom" open={controlsOpen}>
         <StepBand />
         <ControlBar />
         <Grip edge="bottom" onTap={toggleControls} />

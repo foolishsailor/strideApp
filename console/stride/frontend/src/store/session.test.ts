@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { installKotlinEntryPoints, installModeWatcher } from '../bridge/kotlin';
+import { historySamples } from './history';
 import { useSession } from './session';
 import { useUi } from './ui';
 import { useWelcome } from './welcome';
@@ -16,10 +17,20 @@ describe('Kotlin entry points', () => {
     expect(useSession.getState().snapshot.speed).toBe(5.4);
   });
 
-  it('builds the elevation from the plan', () => {
-    window.plan({ name: 'Hill', steps: [{ start: 0, end: 100, incline: 10, label: 'up' }] });
+  it('keeps the plan, and whether its steps are metres', () => {
+    window.plan({ name: 'Hill', byDistance: true, steps: [{ start: 0, end: 100, incline: 10, label: 'up' }] });
     expect(useSession.getState().planName).toBe('Hill');
-    expect(useSession.getState().elevation(100)).toBeCloseTo(15);
+    expect(useSession.getState().planSteps).toHaveLength(1);
+    expect(useSession.getState().planByDistance).toBe(true);
+  });
+
+  it('records the run for the chart, and forgets it at the welcome screen', () => {
+    window.render({ mode: 'running', elapsed: 1, speed: 8 });
+    window.render({ mode: 'running', elapsed: 1.4, speed: 8.2 });
+    window.render({ mode: 'running', elapsed: 2, speed: 8.4 });
+    expect(historySamples().map((s) => s.speed)).toEqual([8, 8.4]);
+    window.render({ mode: 'welcome' });
+    expect(historySamples()).toHaveLength(0);
   });
 });
 

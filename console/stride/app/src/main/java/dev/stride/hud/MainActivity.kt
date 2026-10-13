@@ -2275,6 +2275,11 @@ class MainActivity : Activity() {
     private fun followingStep(idx: Int): Plan.Step? =
         if (idx < 0) null else planSteps.getOrNull(idx + 1)
 
+    /**
+     * Forget the plan, here and on the page. The page keeps the last plan it
+     * was sent, so without the push a free run's warm-up announced the last
+     * workout's steps ("1 stretches ahead · first up: Heart rate zone 2").
+     */
     private fun clearPlan() {
         workoutRunner = null
         workoutView = null
@@ -2284,6 +2289,7 @@ class MainActivity : Activity() {
         stepIndex = -1
         inclineAuto = false
         planElapsed = 0.0
+        pushPlan()
     }
 
     /** The segment the run is currently in, or null on a casual run. */

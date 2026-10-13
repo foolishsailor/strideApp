@@ -6,12 +6,15 @@ on-screen interface in React and TypeScript in `console/stride/frontend`. See
 
 ## Design rules
 
-- **The active treadmill screen's controls are text-only buttons.** That
-  means the run screen (`screens/workout`), with its rails, + and −, the
-  incline and speed stops, and start/fan/stop. No fill, border or shadow:
-  large text on the backdrop, with tone and state shown only in the text
-  colour. The full box stays the touch target. Use `Button size="rail"` or
-  `size="dock"` (always bare), or match them. The welcome and summary screens
+- **The active treadmill screen's controls are bare.** That means the run
+  screen (`screens/workout`): its rails, + and −, and the incline and speed
+  stops are large text; the bottom row (apps, pause/resume/skip, fan, stop)
+  and the step band's NEXT/FINISH are glyphs (`Icon`, in currentColor). No
+  fill, border or shadow, with tone and state shown only in the colour. The
+  full box stays the touch target. Use `Button size="rail"` or `size="dock"`
+  (always bare), or match them.
+- **The bottom row runs edge to edge like the top bar,** in equal columns;
+  the rails stand between the two (`--dock-h`). The welcome and summary screens
   and the overlays keep boxed buttons.
 - **On the run screen everything docks to an edge.** Metrics and readings go
   along the top, the incline and speed rails down the sides, and the controls

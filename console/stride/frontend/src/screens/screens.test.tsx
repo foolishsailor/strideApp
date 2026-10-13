@@ -45,7 +45,9 @@ beforeEach(() => {
   act(() => window.render({ mode: 'welcome' }));
 });
 
-const press = (text: string | RegExp) => fireEvent.click(screen.getByText(text));
+/** By its words, or by the name of the glyph that stands for them (the dock). */
+const press = (text: string | RegExp) =>
+  fireEvent.click(screen.queryByText(text) ?? screen.getByLabelText(text));
 
 describe('welcome', () => {
   it('asks Manual, Routes or Workouts, and begins a free run only on BEGIN', () => {
@@ -207,7 +209,6 @@ describe('a workout under way', () => {
     expect(screen.getByText('1:42')).toBeTruthy();
     expect(screen.getByText('Recovery')).toBeTruthy();
     expect(screen.getByText('Strong but controlled')).toBeTruthy();
-    expect(screen.queryByText('NEXT')).toBeNull();
   });
 
   it('says when the runner has the speed, rather than the step', () => {
@@ -220,8 +221,30 @@ describe('a workout under way', () => {
     const b = mockBridge();
     render(<App />);
     act(() => window.render({ mode: 'running', workoutStep: { ...STEP, open: true, left: null } }));
+    expect(screen.getByText('ends on NEXT')).toBeTruthy();
     press('NEXT');
     expect(b.nextStep).toHaveBeenCalled();
+  });
+
+  it('ends a timed step early with NEXT, and the workout with FINISH', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: STEP }));
+    press('NEXT');
+    expect(b.nextStep).toHaveBeenCalledTimes(1);
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, step: 10, nextLabel: '', nextTarget: null } }));
+    expect(screen.getByText('Last step')).toBeTruthy();
+    press('FINISH');
+    expect(b.nextStep).toHaveBeenCalledTimes(2);
+  });
+
+  it('has no steps to move through on a manual heart-rate run', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, plannedId: '', steps: 1, step: 1, open: true, left: null, nextLabel: '', nextTarget: null } }));
+    expect(screen.getByText('Heart rate run')).toBeTruthy();
+    expect(screen.queryByLabelText('NEXT')).toBeNull();
+    expect(screen.queryByLabelText('FINISH')).toBeNull();
+    expect(screen.queryByText('Last step')).toBeNull();
   });
 
   it('puts the zone and heart-rate control beside the heart rate', () => {
@@ -241,7 +264,7 @@ describe('a workout under way', () => {
     render(<App />);
     act(() => window.render({ mode: 'running', workoutStep: STEP }));
     act(() => window.overApp(true));
-    expect(screen.getByText('Interval').closest('[data-drawer]')).toBe(screen.getByText('STOP').closest('[data-drawer]'));
+    expect(screen.getByText('Interval').closest('[data-drawer]')).toBe(screen.getByLabelText('STOP').closest('[data-drawer]'));
   });
 
   it('says where the workout was when paused', () => {
@@ -265,14 +288,14 @@ describe('workout', () => {
     expect(b.end).toHaveBeenCalled();
   });
 
-  it('shows the lap track on a casual run and the path on a guided one', () => {
+  it("shows the chart on every run, and names a route's stretch above it", () => {
     render(<App />);
     act(() => window.render({ mode: 'running', distance: 900 }));
-    // The lap count, not the 2 km/h stop in the speed rail.
-    expect(screen.getByText('laps · 400 m').previousElementSibling?.textContent).toBe('2');
+    expect(screen.getByLabelText('Heart rate, speed and incline')).toBeTruthy();
+    expect(screen.queryByText('laps · 400 m')).toBeNull();
     act(() => window.render({ mode: 'running', segments: 4, segment: 1, segmentLabel: 'Settle in', plan: 'Steady' }));
     expect(screen.getByText('Settle in')).toBeTruthy();
-    expect(screen.queryByText('laps · 400 m')).toBeNull();
+    expect(screen.getByLabelText('Heart rate, speed and incline')).toBeTruthy();
   });
 
   it('goes straight to a stop picked from a rail, and steps from + and −', () => {
@@ -401,9 +424,9 @@ describe('belt calibration', () => {
     const b = mockBridge();
     render(<App />);
     act(() => window.render({ mode: 'running', calib: CAL }));
-    // The panel's own, over the run screen's.
-    const stops = screen.getAllByText('STOP');
-    fireEvent.click(stops[stops.length - 1]!);
+    // The panel's own, in words; the run screen's is the dock's glyph.
+    expect(screen.getByLabelText('STOP')).toBeTruthy();
+    fireEvent.click(screen.getByText('STOP'));
     expect(b.pause).toHaveBeenCalled();
     expect(useUi.getState().confirmOpen).toBe(true);
   });
@@ -453,14 +476,14 @@ describe('apps', () => {
 
     act(() => window.overApp(true));
     expect(document.documentElement.classList.contains('over-app')).toBe(true);
-    expect(screen.queryByText('laps · 400 m')).toBeNull();
-    expect(screen.getByText('STOP')).toBeTruthy();
+    expect(screen.queryByLabelText('Heart rate, speed and incline')).toBeNull();
+    expect(screen.getByLabelText('STOP')).toBeTruthy();
     press('BACK');
     expect(b.closeApp).toHaveBeenCalled();
 
     act(() => window.overApp(false));
     expect(document.documentElement.classList.contains('over-app')).toBe(false);
-    expect(screen.getByText('laps · 400 m')).toBeTruthy();
+    expect(screen.getByLabelText('Heart rate, speed and incline')).toBeTruthy();
   });
 
   it('slides the metrics and the controls away from their grips, and back', () => {
@@ -508,6 +531,6 @@ describe('apps', () => {
   it('has no APPS on a console whose app cannot open them', () => {
     render(<App />);
     act(() => window.render({ mode: 'running' }));
-    expect(screen.queryByText('APPS')).toBeNull();
+    expect(screen.queryByLabelText('APPS')).toBeNull();
   });
 });

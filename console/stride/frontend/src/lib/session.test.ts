@@ -94,6 +94,7 @@ describe('copy', () => {
     const steps = [{ start: 0, end: 60, incline: 0, label: 'Settle in' }, { start: 60, end: 120, incline: 4, label: 'Up' }];
     expect(phasePreview('warmup', steps)).toBe('2 stretches ahead · first up: Settle in');
     expect(phasePreview('warmup', [])).toBe('then the pace is yours');
+    expect(phasePreview('warmup', [{ start: 0, end: 1800, incline: 0, label: 'Heart rate zone 2' }])).toBe('then Heart rate zone 2');
     expect(phasePreview('cooldown', steps)).toBe('');
   });
 

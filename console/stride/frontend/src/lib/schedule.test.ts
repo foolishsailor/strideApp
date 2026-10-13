@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hrStateText, handNote, stepPosition } from './session';
+import { hrStateText, handNote, isManualHr, stepPosition } from './session';
 import {
   addDays, dayCaption, dayLabel, parseRoutes, parseSchedules, parseTarget, scheduleDays, scheduleView, staleness, typeLabel, typeTone,
 } from './schedule';
@@ -129,6 +129,8 @@ describe('workout text', () => {
 
   it('says where a step is and who has the controls', () => {
     expect(stepPosition({ step: 2, steps: 9, repeat: null })).toBe('Step 2 of 9');
+    expect(isManualHr({ plannedId: '', steps: 1 })).toBe(true);
+    expect(isManualHr({ plannedId: 'w1', steps: 1 })).toBe(false);
     expect(handNote({ speedAuto: false, inclineAuto: false, incline: 4 })).toBe('speed and incline yours until the next step');
     // A step that sets no incline never had it to give up.
     expect(handNote({ speedAuto: true, inclineAuto: false, incline: null })).toBe('');

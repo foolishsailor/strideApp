@@ -22,17 +22,16 @@ export type Edge = 'top' | 'left' | 'right' | 'bottom';
 
 /** Slides its children off `edge` when closed. The children keep their own
  *  positions on the panel; each gets the translucent panel behind it.
- *  `small` is the top drawer holding the one-line strip, which is shallower;
- *  `tall` the bottom one carrying a workout's step over the dock, deeper. */
-export function Drawer({ edge, open, small, tall, children }: {
+ *  `small` is the top drawer holding the one-line strip, which is shallower.
+ *  The bottom one's depth is the run screen's --dock-h. */
+export function Drawer({ edge, open, small, children }: {
   edge: Edge;
   open: boolean;
   small?: boolean;
-  tall?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div data-drawer className={cx(styles.drawer, styles[edge], small && styles.small, tall && styles.tall, !open && styles.closed)}>
+    <div data-drawer className={cx(styles.drawer, styles[edge], small && styles.small, !open && styles.closed)}>
       {children}
     </div>
   );

@@ -46,7 +46,8 @@ number keys switch screens and `&dmk=1` pulls the safety key.
   that woke the screen, and accelerate on a hold.
 - **5 Hz updates.** Kotlin pushes a snapshot five times a second. Components
   read single fields through `useField('speed')` so only the numbers that
-  changed re-render. The path ahead is drawn on a canvas, not built as DOM.
+  changed re-render. The live chart (heart rate, speed, incline) is drawn on a
+  canvas, not built as DOM, and moves once a second of moving time.
 
 ## Layout
 
@@ -58,7 +59,7 @@ src/
   App.tsx                picks the screen from the session mode; stacks the overlays
   bridge/                the contract with Kotlin and stride-core (types, accessors, entry points)
   store/                 Zustand: session (from Kotlin), ui (menus, sleep), welcome (choices), trailmate (schedules, routes)
-  lib/                   pure logic: session rules, schedule (TrailMate plans parsed), units and formatting, path geometry and scene
+  lib/                   pure logic: session rules, schedule (TrailMate plans parsed), units and formatting, the live chart's buffer, layout and painter
   theme/                 types.ts, themes/trailmate.ts, tokens.ts (scale, CSS variables), global.css
   hooks/                 useTap/useStepper, useClock, useIdleSleep, useScheduleFeed
   components/
@@ -71,7 +72,7 @@ src/
 
 **Theming:** the look is data, `theme/themes/trailmate.ts`, of the shape in
 `theme/types.ts`: palette, fills by role, type weights and tracking, radii,
-edge width, the path-ahead scenery, and the Settings skin. Type sizes, motion
+edge width, the live chart's series colours, and the Settings skin. Type sizes, motion
 and layers live apart from it in `theme/tokens.ts`, because they are the
 layout. At boot the theme is installed as CSS custom properties
 (`--colour-accent`, `--role-fill`, `--radius-control`, …) that the CSS modules
@@ -80,8 +81,8 @@ colour of its own, and a test fails if any stylesheet reads a variable the
 theme does not define.
 
 The values come from the TrailMate app's design tokens (`shared/design` in
-the TrailMate repository); where it has no equivalent (the scenery, the sleep
-screen) they are derived from its palette. `themes/trailmate.ts` says which
+the TrailMate repository); where it has no equivalent (the sleep screen) they
+are derived from its palette, and the chart's colours are a validated set. `themes/trailmate.ts` says which
 is which.
 
 **Tests** load the real `stride-core.js`, so the track maths, formatters and

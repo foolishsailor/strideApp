@@ -1,0 +1,13 @@
+/* The chart takes whatever box it is put in; the canvas is sized from it. */
+.chart {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.chart canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+}

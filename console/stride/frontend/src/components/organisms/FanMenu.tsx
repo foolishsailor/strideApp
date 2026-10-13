@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { bridge } from '../../bridge/stride';
+import { cx } from '../../lib/cx';
 import { FAN_LEVELS } from '../../lib/session';
 import { useField } from '../../store/session';
 import { useUi } from '../../store/ui';
@@ -23,7 +24,7 @@ export function FanMenu() {
 
   if (!open) return null;
   return (
-    <div data-touch className={styles.menu}>
+    <div data-touch className={cx(styles.menu, !bridge().apps && styles.noApps)}>
       {FAN_LEVELS.map((name, level) => (
         <Button key={name} size="menu" selected={level === fan} onTap={() => { bridge().setFan(level); close(); }}>
           {name}

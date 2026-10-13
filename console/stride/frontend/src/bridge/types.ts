@@ -38,6 +38,8 @@ export interface SessionState {
   segmentLabel?: string;
   segmentLeft?: number;
   segmentLeftIsDistance?: boolean;
+  /** Where the run is in its plan: seconds on a workout, metres on a route. */
+  planElapsed?: number;
   inclineAuto?: boolean;
   avgSpeed?: number;
   maxSpeed?: number;
@@ -202,6 +204,8 @@ export interface PlanStep {
 
 export interface Plan {
   name?: string;
+  /** A route's steps are metres; a workout's are seconds. */
+  byDistance?: boolean;
   steps?: PlanStep[];
 }
 
@@ -279,22 +283,6 @@ export interface AppEntry {
   icon?: string;
 }
 
-export interface TrackPoint {
-  x: number;
-  y: number;
-  nx: number;
-  ny: number;
-}
-
-/** STRIDE.track(): the 400 m stadium, measured by true arc-length. */
-export interface Track {
-  pathD(inset: number): string;
-  atFraction(f: number): TrackPoint;
-  dashFraction(f: number): number;
-  laps(metres: number): number;
-  lapFraction(metres: number): number;
-}
-
 export interface UiMeta {
   id: string;
   name: string;
@@ -304,7 +292,6 @@ export interface UiMeta {
 
 /** window.STRIDE — only the parts this interface uses. */
 export interface StrideCore {
-  track(opts: { straight: number; radius: number; cx: number; cy: number; squash: number }): Track;
   tap(el: Element, fn: (e: Event) => void): Element;
   stepper(el: Element, fn: (delta: number) => void, fine: number, coarse: number): Element;
   suppress(ms: number): void;
