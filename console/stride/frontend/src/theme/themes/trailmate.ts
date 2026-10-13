@@ -58,9 +58,6 @@ export const trailmate: Theme = {
     /* Over a film every word is white: tone colours that read on the teal
        canvas get lost against a picture. */
     inkOverApp: '#FFFFFF',
-    /* Over a film there is no canvas behind the text, so it carries its own:
-       a tight edge for the strokes and a wide halo for a bright scene. */
-    shadowOverApp: `0 1px 3px ${alpha(deep, 0.95)}, 0 0 16px ${alpha(deep, 0.85)}`,
     sleepBg: '#000',
     sleepClock: '#0E3134',
     sleepHint: '#0A2628',

@@ -32,6 +32,19 @@
   font-size: 30px;
   line-height: 1.2;
 }
+/* The one-line strip over another app: every number on one line, small. */
+.metric .compactLabel {
+  margin-right: 6px;
+  font-size: 12px;
+}
+.metric .compactValue {
+  font-size: 22px;
+  line-height: 1.2;
+}
+.compact small {
+  font-size: 12px;
+  margin-left: 2px;
+}
 /* The panel the layout was drawn for is 1280 wide, and six of the large
    numbers only fit between the readings there a size down. */
 @media (max-width: 1500px) {

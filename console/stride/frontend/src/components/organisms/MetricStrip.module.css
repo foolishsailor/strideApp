@@ -37,3 +37,20 @@
   .row > * { margin: 0 12px; }
   .second > * { margin: 0 14px; }
 }
+
+/* Over another app, small: one line flush along the top, everything in it.
+   The drawer's panel is behind it (Drawers.module.css). The ends are held in
+   by the width of Android's status bar clock and icons, which an app under
+   the overlay can leave showing at the top corners. */
+.compact {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0 110px 0 80px;
+  white-space: nowrap;
+}

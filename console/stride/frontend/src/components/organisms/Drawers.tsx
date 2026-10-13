@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useTap } from '../../hooks/useTap';
 import { cx } from '../../lib/cx';
 import { useUi } from '../../store/ui';
+import { Button } from '../primitives';
 import styles from './Drawers.module.css';
 
 /* Over another app (APPS) the run screen's edges become drawers: the numbers
@@ -20,9 +21,10 @@ import styles from './Drawers.module.css';
 export type Edge = 'top' | 'left' | 'right' | 'bottom';
 
 /** Slides its children off `edge` when closed. The children keep their own
- *  positions on the panel; each gets the translucent panel behind it. */
-export function Drawer({ edge, open, children }: { edge: Edge; open: boolean; children: ReactNode }) {
-  return <div data-drawer className={cx(styles.drawer, styles[edge], !open && styles.closed)}>{children}</div>;
+ *  positions on the panel; each gets the translucent panel behind it.
+ *  `small` is the top drawer holding the one-line strip, which is shallower. */
+export function Drawer({ edge, open, small, children }: { edge: Edge; open: boolean; small?: boolean; children: ReactNode }) {
+  return <div data-drawer className={cx(styles.drawer, styles[edge], small && styles.small, !open && styles.closed)}>{children}</div>;
 }
 
 export const toggleMetrics = (): void => {
@@ -35,6 +37,21 @@ export const toggleControls = (): void => {
   ui.setFanOpen(false);
   ui.setControlsOpen(!ui.controlsOpen);
 };
+
+export const toggleMetricsSize = (): void => {
+  const ui = useUi.getState();
+  ui.setMetricsCompact(!ui.metricsCompact);
+};
+
+/** Beside the top grip: the numbers as one short line, or back to the full
+ *  strip. Travels with the drawer, like the grip. */
+export function SizeToggle({ compact }: { compact: boolean }) {
+  return (
+    <Button size="chip" className={styles.sizeToggle} onTap={toggleMetricsSize}>
+      {compact ? 'LARGE' : 'SMALL'}
+    </Button>
+  );
+}
 
 /** The bar on a drawer's inner edge: tap it to send the drawer away or bring
  *  it back. */

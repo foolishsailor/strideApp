@@ -15,9 +15,12 @@
   background: var(--role-fill-over-app);
 }
 
-/* Closed: moved by the depth of what it holds — the strip is 140 deep, the
-   rails 150 wide, the dock 104 tall. */
-.top.closed { transform: translateY(-140px); }
+/* Closed: moved by the depth of what it holds — the strip is 140 deep (44 as
+   one line), the rails 150 wide, the dock 104 tall. The top drawer's depth is
+   a variable, which its grip and size toggle hang off too. */
+.top { --strip-h: 140px; }
+.top.small { --strip-h: 44px; }
+.top.closed { transform: translateY(calc(-1 * var(--strip-h))); }
 .left.closed { transform: translateX(-150px); }
 .right.closed { transform: translateX(150px); }
 .bottom.closed { transform: translateY(104px); }
@@ -56,11 +59,24 @@ button.grip {
   width: 120px;
   height: 28px;
 }
-.topGrip { top: 156px; }
+.topGrip { top: calc(var(--strip-h) + 16px); }
 .bottomGrip { bottom: 120px; }
 .topGrip i,
 .bottomGrip i {
   width: 64px;
   height: 6px;
   margin: -3px 0 0 -32px;
+}
+
+/* To the right of the top grip, at the same height: SMALL or LARGE. The
+   house chip button, made the grip's height so the two read as a pair. */
+.drawer > .sizeToggle {
+  position: absolute;
+  left: 50%;
+  margin: 0 0 0 76px;
+  top: calc(var(--strip-h) + 12px);
+  width: 96px;
+  height: 36px;
+  font-size: 14px;
+  letter-spacing: 0.08em;
 }

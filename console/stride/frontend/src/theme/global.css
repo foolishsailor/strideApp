@@ -61,8 +61,9 @@ body::before {
 }
 
 /* Over another app (OverApp.kt): no canvas and no lift, so the app shows
-   through everywhere the run screen has nothing docked. The text carries a
-   shadow of its own instead, for a bright scene behind it. */
+   through everywhere the run screen has nothing docked. The docked edges sit
+   on a translucent black panel (Drawers), which is what keeps the words
+   readable; they carry no shadow or glow of their own. */
 html.over-app,
 html.over-app body {
   background: transparent;
@@ -70,8 +71,9 @@ html.over-app body {
 html.over-app body::before {
   display: none;
 }
-html.over-app #root {
-  text-shadow: var(--role-shadow-over-app);
+html.over-app #root,
+html.over-app #root * {
+  text-shadow: none !important;
 }
 /* And every word in one colour, white. The tones that tell STOP from START on
    the teal canvas are lost against a picture, so over a film they give way.

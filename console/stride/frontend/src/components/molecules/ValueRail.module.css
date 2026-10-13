@@ -11,6 +11,11 @@
   padding: 0 0 14px;
   text-align: center;
 }
+/* Over another app with the numbers made one line (WorkoutScreen), the rails
+   reach up to meet it rather than leave the strip's old depth empty. */
+:global(.metrics-small) .rail {
+  top: 44px;
+}
 .left {
   left: 0;
 }
