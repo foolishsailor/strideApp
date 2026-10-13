@@ -52,7 +52,8 @@ export function WorkoutScreen() {
       <Drawer edge="top" open={metricsOpen} small={metricsCompact}>
         {metricsCompact ? <CompactStrip /> : strip}
         <Grip edge="top" onTap={toggleMetrics} />
-        <SizeToggle compact={metricsCompact} />
+        {/* Only with the numbers showing: a closed drawer leaves its grip and nothing else. */}
+        {metricsOpen && <SizeToggle compact={metricsCompact} />}
       </Drawer>
       <FanMenu />
     </Fill>

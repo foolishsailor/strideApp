@@ -304,6 +304,9 @@ describe('apps', () => {
     fireEvent.click(screen.getByText('LARGE'));
     expect(useUi.getState().metricsCompact).toBe(false);
     expect(screen.getByText('Heart rate')).toBeTruthy();
+    // Metrics hidden: only the grip is left, not the size toggle.
+    act(() => useUi.getState().setMetricsOpen(false));
+    expect(screen.queryByText('SMALL')).toBeNull();
   });
 
   it('has no APPS on a console whose app cannot open them', () => {
