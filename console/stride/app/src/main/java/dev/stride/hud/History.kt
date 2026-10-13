@@ -1,11 +1,10 @@
 package dev.stride.hud
 
+import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
-import java.io.File
 
 /**
  * Every run this console has recorded, per runner, kept on the console.
@@ -26,10 +25,13 @@ import java.io.File
  * **Guests are not recorded.** A run with no profile has nobody to compare it
  * to and nobody who has agreed to be remembered, so it is summarised and then
  * forgotten. See [record].
+ *
+ * **Stored as rows in [Db]'s `runs` table**, one per run: the summary only.
+ * The per-second trace goes to TrailMate and is deleted once it is there.
  */
 class History(context: Context) {
 
-    private val file = File(context.filesDir, "history.json")
+    private val db = Db.get(context)
 
     /**
      * Newest first, so the reads that matter — "the last few runs" — are the
@@ -59,6 +61,8 @@ class History(context: Context) {
         val avgPulse: Int,
         val maxPulse: Int,
         val plan: String,
+        /** The workout this run was sent to TrailMate as, if it was recorded. */
+        val workoutId: String = "",
     ) {
         fun json(): JSONObject = JSONObject()
             .put("who", who)
@@ -73,6 +77,7 @@ class History(context: Context) {
             .put("avgPulse", avgPulse)
             .put("maxPulse", maxPulse)
             .put("plan", plan)
+            .put("workoutId", workoutId)
 
         companion object {
             private fun round1(v: Double) = Math.round(v * 10.0) / 10.0
@@ -90,27 +95,35 @@ class History(context: Context) {
                 avgPulse = o.optInt("avgPulse", 0),
                 maxPulse = o.optInt("maxPulse", 0),
                 plan = o.optString("plan"),
+                workoutId = o.optString("workoutId"),
+            )
+
+            fun from(c: Cursor) = Run(
+                who = c.getString(c.getColumnIndexOrThrow("who")),
+                startedAt = c.getLong(c.getColumnIndexOrThrow("started_at")),
+                elapsed = c.getDouble(c.getColumnIndexOrThrow("elapsed")),
+                distance = c.getDouble(c.getColumnIndexOrThrow("distance")),
+                calories = c.getDouble(c.getColumnIndexOrThrow("calories")),
+                climbM = c.getDouble(c.getColumnIndexOrThrow("climb")),
+                avgSpeed = c.getDouble(c.getColumnIndexOrThrow("avg_speed")),
+                maxSpeed = c.getDouble(c.getColumnIndexOrThrow("max_speed")),
+                maxIncline = c.getDouble(c.getColumnIndexOrThrow("max_incline")),
+                avgPulse = c.getInt(c.getColumnIndexOrThrow("avg_pulse")),
+                maxPulse = c.getInt(c.getColumnIndexOrThrow("max_pulse")),
+                plan = c.getString(c.getColumnIndexOrThrow("plan")),
+                workoutId = c.getString(c.getColumnIndexOrThrow("workout_id")),
             )
         }
     }
 
     init {
-        runs = try {
-            if (file.exists()) parse(file.readText()) else emptyList()
-        } catch (e: Exception) {
-            Log.w(TAG, "history unreadable (${e.message}) — starting empty")
-            emptyList()
-        }
+        Migration.fromHistoryFile(context, db)
+        val list = ArrayList<Run>()
+        db.readableDatabase.rawQuery(
+            "SELECT * FROM runs ORDER BY started_at DESC, id DESC LIMIT $KEEP", null
+        ).use { c -> while (c.moveToNext()) list += Run.from(c) }
+        runs = list
         Log.i(TAG, "loaded ${runs.size} recorded run(s)")
-    }
-
-    private fun parse(text: String): List<Run> {
-        val arr = JSONArray(text.trim().ifBlank { "[]" })
-        val out = ArrayList<Run>(arr.length())
-        for (i in 0 until arr.length()) {
-            arr.optJSONObject(i)?.let { out.add(Run.from(it)) }
-        }
-        return out
     }
 
     /**
@@ -136,7 +149,15 @@ class History(context: Context) {
         val earned = achievements(run, previous)
 
         runs = (listOf(run) + runs).take(KEEP)
-        save()
+        try {
+            db.tx { d ->
+                d.insert("runs", null, values(run))
+                d.execSQL("DELETE FROM runs WHERE id NOT IN " +
+                    "(SELECT id FROM runs ORDER BY started_at DESC, id DESC LIMIT $KEEP)")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "could not save the run (${e.message})")
+        }
         Log.i(TAG, "recorded run for ${run.who} " +
                 "(${previous.size + 1} total), ${earned.size} achievement(s)")
         return earned
@@ -240,31 +261,45 @@ class History(context: Context) {
     fun recent(who: String, limit: Int): List<Run> =
         runs.filter { it.who == who }.take(limit)
 
-    private fun save() {
-        val arr = JSONArray()
-        for (w in runs) arr.put(w.json())
+    /**
+     * How TrailMate has dealt with a run: "queued", "sent" or "failed". The
+     * summary row is all that is left of a run once it is "sent".
+     */
+    fun markTrailMate(workoutId: String, state: String) {
+        if (workoutId.isEmpty()) return
         try {
-            // Written whole and moved into place: a console losing power
-            // mid-write is an ordinary event here, and a half-written history
-            // would be thrown away wholesale on the next boot.
-            val tmp = File(file.parentFile, "history.json.tmp")
-            tmp.writeText(arr.toString())
-            if (!tmp.renameTo(file)) {
-                file.writeText(arr.toString())
-                tmp.delete()
+            db.tx { d ->
+                d.update("runs", ContentValues().apply { put("trailmate", state) },
+                    "workout_id = ?", arrayOf(workoutId))
             }
         } catch (e: Exception) {
-            Log.w(TAG, "could not save history (${e.message})")
+            Log.w(TAG, "could not mark $workoutId $state (${e.message})")
         }
     }
 
     companion object {
         private const val TAG = "StrideHistory"
 
+        fun values(r: Run) = ContentValues().apply {
+            put("workout_id", r.workoutId)
+            put("who", r.who)
+            put("started_at", r.startedAt)
+            put("elapsed", r.elapsed)
+            put("distance", r.distance)
+            put("calories", r.calories)
+            put("climb", r.climbM)
+            put("avg_speed", r.avgSpeed)
+            put("max_speed", r.maxSpeed)
+            put("max_incline", r.maxIncline)
+            put("avg_pulse", r.avgPulse)
+            put("max_pulse", r.maxPulse)
+            put("plan", r.plan)
+        }
+
         /**
          * How many runs to keep.
          *
-         * Two years of daily running, and about 120 KB of JSON. The trim exists
+         * Two years of daily running, and about 100 KB of rows. The trim exists
          * so the file cannot grow without limit on a console that never gets
          * looked at, not because anything here is expensive.
          */

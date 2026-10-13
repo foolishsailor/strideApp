@@ -105,6 +105,10 @@ class RunRecorder(
 
     val recording: Boolean @Synchronized get() = out != null
 
+    /** The workout id of the run being recorded, or "" between runs. */
+    @Volatile var currentId = ""
+        private set
+
     /**
      * Start recording a run for [personId].
      *
@@ -119,9 +123,10 @@ class RunRecorder(
         lastT = -1L
         lastDistance = 0.0
         pausedAt = -1L
+        currentId = UUID.randomUUID().toString()
         val head = JSONObject()
             .put("h", 1)
-            .put("id", UUID.randomUUID().toString())
+            .put("id", currentId)
             .put("person", personId)
             .put("board", board)
             .put("version", BuildConfig.VERSION_NAME)
@@ -202,6 +207,7 @@ class RunRecorder(
         if (out == null) return
         anchor(SystemClock.elapsedRealtime())
         close()
+        currentId = ""
         val done = File(dir, "run-${System.currentTimeMillis()}.rec")
         if (!current.renameTo(done)) {
             Log.w(TAG, "could not set the recording aside — leaving it for recovery")
@@ -479,6 +485,9 @@ class RunRecorder(
     }
 
     private fun writeLast(workout: JSONObject) {
+        // Release builds keep no copy: once TrailMate has the run, only its
+        // summary stays on the console.
+        if (!BuildConfig.DEBUG) return
         try {
             lastFile.parentFile?.mkdirs()
             lastFile.writeText(workout.toString())

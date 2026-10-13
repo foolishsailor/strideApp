@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { bridge, core, settings } from '../../bridge/stride';
 import { useNow } from '../../hooks/useClock';
 import { greeting } from '../../lib/session';
+import { loadSettings } from '../../store/settings';
 import { useUi } from '../../store/ui';
 import { useWelcome } from '../../store/welcome';
 import { Heading, Prose, Row } from '../../components/primitives';
@@ -26,6 +27,8 @@ export function WhoStep() {
   const pick = (name: string) => {
     setRunner(name);
     bridge().setRunner(name);
+    // Their units and warm-up, not the last runner's.
+    loadSettings();
     goTo(2);
   };
 
@@ -38,8 +41,8 @@ export function WhoStep() {
           <ChoiceCard key={name} person icon={name.charAt(0).toUpperCase()} name={name} onTap={() => pick(name)} />
         ))}
         {/* The way in to Settings only while there is no other reason to be
-            here; once somebody is set up, it has its own quiet button. */}
-        {nobodySetUp && <ChoiceCard person icon="+" name="Add people" onTap={() => settings().open()} />}
+            here; once somebody is set up, Settings is on the next step. */}
+        {nobodySetUp && <ChoiceCard person icon="+" name="Add people" onTap={() => settings().open('treadmill')} />}
       </Row>
     </>
   );

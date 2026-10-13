@@ -128,7 +128,7 @@ That's how most of my own installs have gone.
 
 ## Configuration
 
-**The console configures itself.** Who runs, units, warm-up, TrailMate,
+**The console configures itself.** People, units, warm-up, TrailMate,
 heart rate, display: all of it lives in Settings on the treadmill's own
 screen. No config files, no rebuild.
 
