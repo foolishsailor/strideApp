@@ -13,23 +13,28 @@
   margin-top: 30px;
 }
 
-/* ---- step 1: people, each with their Today and Tomorrow ------------------ */
-.people {
-  margin-top: 40px;
-  align-items: flex-start;
-}
-.person {
-  width: 240px;
-}
-.person > button {
+/* ---- step 2: the ways to run down the left, today and tomorrow on the right */
+.how {
   display: flex;
-  margin: 0 auto;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 36px;
+  text-align: left;
 }
-.schedule {
+.ways > * + * {
   margin-top: 16px;
 }
+.withPlan .ways {
+  margin-right: 40px;
+}
+/* The plan column scrolls if two busy days outgrow the space above BACK. */
+.plan {
+  width: 560px;
+  max-height: 500px;
+  overflow-y: auto;
+}
 .scheduleDay + .scheduleDay {
-  margin-top: 12px;
+  margin-top: 18px;
 }
 .reconnect,
 .stale {

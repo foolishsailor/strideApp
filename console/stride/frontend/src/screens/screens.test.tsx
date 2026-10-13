@@ -132,22 +132,36 @@ describe('welcome', () => {
     expect(b.chooseWorkout).toHaveBeenCalledWith('w1');
   });
 
-  it('asks to reconnect when the link may not read the plan', () => {
+  it('asks to reconnect when the link may not read the plan, once the runner has picked themselves', () => {
     mockBridge({ schedules: schedules(person({ state: 'scope' })) });
     render(<App />);
+    expect(screen.queryByText('Reconnect TrailMate to see your workouts')).toBeNull();
+    press('Sam');
     expect(screen.getByText('Reconnect TrailMate to see your workouts')).toBeTruthy();
   });
 });
 
 describe('home', () => {
-  it('shows today and tomorrow under the runner, and opens a workout from there', () => {
+  it('shows only the people until somebody picks themselves', () => {
+    mockBridge({ schedules: schedules(person()) });
+    render(<App />);
+    expect(screen.getByText('Sam')).toBeTruthy();
+    expect(screen.queryByText('Today')).toBeNull();
+    expect(screen.queryByText('4 × 3 min @ threshold')).toBeNull();
+  });
+
+  it('shows the runner’s today and tomorrow beside the ways to run, and opens a workout from there', () => {
     const b = mockBridge({ schedules: schedules(person()) });
     render(<App />);
+    press('Sam');
+    expect(screen.getByText('Manual')).toBeTruthy();
     expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getByText('Tomorrow')).toBeTruthy();
     expect(screen.getByText('Intervals')).toBeTruthy();
     expect(screen.getByText('39 min · 6.80 km')).toBeTruthy();
     expect(screen.getByText('Rest day')).toBeTruthy();
+    // The bigger card carries the steps, a repeat folded into one line.
+    expect(screen.getByText(/^4 × Interval 3 min/)).toBeTruthy();
     press('4 × 3 min @ threshold');
     expect(b.setRunner).toHaveBeenCalledWith('Sam');
     expect(useWelcome.getState()).toMatchObject({ step: 3, planMode: 'workouts', workout: 'w1', runner: 'Sam' });
@@ -161,6 +175,7 @@ describe('home', () => {
       settingsJson: () => JSON.stringify({ people: [{ name: 'Sam' }], units: 'mi' }),
     });
     render(<App />);
+    press('Sam');
     expect(screen.getByText('Done · 2.00 mi')).toBeTruthy();
     useSettings.setState({ units: 'km' });
   });
@@ -168,6 +183,7 @@ describe('home', () => {
   it('shows nothing for a runner who is not linked', () => {
     mockBridge({ schedules: schedules(person({ state: 'unlinked' })) });
     render(<App />);
+    press('Sam');
     expect(screen.queryByText('Today')).toBeNull();
     expect(screen.queryByText(/Reconnect/)).toBeNull();
   });

@@ -1,6 +1,6 @@
 import type { StepTarget } from '../bridge/types';
 import type { Units } from '../store/settings';
-import type { PlannedWorkout, StepEnd } from './schedule';
+import type { PlannedStep, PlannedWorkout, StepEnd } from './schedule';
 import { durationText, mmss, nf } from './format';
 
 /* Kilometres or miles, from Settings → Display → Units. Only ever the
@@ -93,6 +93,38 @@ export const leftText = (left: number, isDistance: boolean, u: Units): string =>
 
 /** A step's incline: "8% incline". */
 export const inclineText = (pct: number): string => `${Math.round(pct * 10) / 10}% incline`;
+
+/** One step in a line: "Interval 3 min · 4:30–4:45 /km · 1% incline". */
+export function stepText(step: PlannedStep, u: Units): string {
+  const target = targetText(step.target, u);
+  return [`${step.label} ${stepEndText(step.end, u)}`, target, step.incline !== null ? inclineText(step.incline) : '']
+    .filter(Boolean).join(' · ');
+}
+
+/** A workout's steps as short lines, a repeat folded into one:
+ *  "Warm up 10 min · …", "4 × Interval 3 min · … + Recovery 90 s", "Cool down until NEXT".
+ *  TrailMate sends repeats laid out in full; this reads them back as the
+ *  runner wrote them. */
+export function stepLines(steps: readonly PlannedStep[], u: Units): string[] {
+  const out: string[] = [];
+  let i = 0;
+  const repeatAt = (k: number) => steps[k]?.repeat ?? null;
+  while (i < steps.length) {
+    const step = steps[i]!;
+    const r = step.repeat;
+    if (!r || r.index !== 1) {
+      out.push(stepText(step, u));
+      i++;
+      continue;
+    }
+    // The first round of the group is its pattern; the rest repeat it.
+    const pattern: PlannedStep[] = [];
+    while (i < steps.length && repeatAt(i)?.index === 1 && repeatAt(i)?.of === r.of) pattern.push(steps[i++]!);
+    while (i < steps.length && (repeatAt(i)?.index ?? 0) > 1 && repeatAt(i)?.of === r.of) i++;
+    out.push(`${r.of} × ${pattern.map((s) => stepText(s, u)).join(' + ')}`);
+  }
+  return out;
+}
 
 /** The planned length of a workout: "39 min · 6.80 km", either, or ''. */
 export function plannedText(w: Pick<PlannedWorkout, 'durationS' | 'distanceM'>, u: Units): string {

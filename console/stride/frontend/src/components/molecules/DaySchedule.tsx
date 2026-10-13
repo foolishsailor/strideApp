@@ -4,12 +4,14 @@ import styles from './DaySchedule.module.css';
 
 /** One day of a plan, after TrailMate's DayActivitiesSection: "Today" with
  *  the date beside it, then that day's workouts, or "Rest day". */
-export function DaySchedule({ day, today, selectedId, inList, onPick }: {
+export function DaySchedule({ day, today, selectedId, inList, detailed, onPick }: {
   day: ScheduleDay;
   /** YYYY-MM-DD, to say "Today" and "Tomorrow". */
   today: string;
   selectedId?: string | null;
   inList?: boolean;
+  /** The bigger cards, with description and steps (see WorkoutCard). */
+  detailed?: boolean;
   onPick?: (w: PlannedWorkout) => void;
 }) {
   return (
@@ -21,7 +23,7 @@ export function DaySchedule({ day, today, selectedId, inList, onPick }: {
       {day.workouts.length ? (
         day.workouts.map((w) => (
           <div key={w.id} className={styles.item}>
-            <WorkoutCard workout={w} selected={w.id === selectedId} inList={inList} onTap={onPick} />
+            <WorkoutCard workout={w} selected={w.id === selectedId} inList={inList} detailed={detailed} onTap={onPick} />
           </div>
         ))
       ) : (

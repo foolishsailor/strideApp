@@ -4,9 +4,10 @@ import { useSchedule } from '../../store/trailmate';
 import { DaySchedule } from '../../components/molecules';
 import styles from './Welcome.module.css';
 
-/** Under a person's card on the home screen: their Today and Tomorrow from
- *  TrailMate (spec 038, US1). Nothing for somebody who isn't linked; a
- *  prompt for a link that may not read the plan. */
+/** A runner's Today and Tomorrow from TrailMate (spec 038, US1), stacked, in
+ *  the bigger cards that carry the description and steps. Beside the run
+ *  choices once they have said who they are; nothing for somebody who isn't
+ *  linked, and a prompt for a link that may not read the plan. */
 export function PersonSchedule({ name, onPick }: { name: string; onPick: (w: PlannedWorkout) => void }) {
   const schedule = useSchedule(name);
   const now = useNow();
@@ -20,10 +21,15 @@ export function PersonSchedule({ name, onPick }: { name: string; onPick: (w: Pla
     <div className={styles.schedule}>
       {scheduleDays(schedule.workouts, today, 2).map((day) => (
         <div key={day.date} className={styles.scheduleDay}>
-          <DaySchedule day={day} today={today} onPick={onPick} />
+          <DaySchedule day={day} today={today} inList detailed onPick={onPick} />
         </div>
       ))}
       {stale && <div className={styles.stale}>{stale}</div>}
     </div>
   );
+}
+
+/** Whether [PersonSchedule] has anything to show for [name]. */
+export function useHasSchedule(name: string): boolean {
+  return scheduleView(useSchedule(name)) !== 'none';
 }
