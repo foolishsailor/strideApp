@@ -13,7 +13,7 @@ function stylesheets(dir = resolve(process.cwd(), 'src')): string[] {
 }
 
 /** Set by a component, inline or in its own stylesheet, not by the theme. */
-const LOCAL = new Set(['--row-half', '--strip-h']);
+const LOCAL = new Set(['--row-half', '--strip-h', '--dock-h', '--workout-tone']);
 
 /** The shared scripts in assets/ui, which take the theme as --sx-* variables. */
 const SHARED = ['stride-settings.js', 'stride-core.js'].map((f) =>
@@ -50,6 +50,14 @@ describe('the theme', () => {
       expect(css).toContain(v);
     }
     expect(css).toContain('Roboto');
+  });
+
+  it("colours each workout type the way TrailMate's dark mode does", () => {
+    expect(theme.workout).toEqual({
+      easy: '#6CC89B', tempo: '#CF7EA8', intervals: '#E27F79', hills: '#C198CF',
+      longRun: '#6FB3E3', recovery: '#64B28B', threshold: '#D89464', speed: '#C55E58',
+    });
+    expect(css).toContain('--workout-long-run:#6FB3E3');
   });
 
   it('turns a hex colour into rgba', () => {

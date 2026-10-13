@@ -7,7 +7,7 @@ export type { Theme } from './types';
 /* Design tokens.
 
    Two kinds. The THEME (themes/trailmate.ts) is everything that makes the
-   interface look like TrailMate: palette, fills, shape, type, scenery, and
+   interface look like TrailMate: palette, fills, shape, type, chart, and
    the skin for Settings. The SCALE below is the layout — the console is
    1280x800 and every band on it is load-bearing — so it lives apart from the
    look, and a change of look cannot move a button.
@@ -51,6 +51,7 @@ export function cssVariables(t: Theme = theme): string {
   };
   group('colour', t.colour);
   group('role', t.role);
+  group('workout', t.workout);
   group('font', { family: t.font.family, ...fontSize });
   group('weight', {
     numeral: t.font.weightNumeral,

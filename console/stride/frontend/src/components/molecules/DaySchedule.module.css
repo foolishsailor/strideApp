@@ -1,0 +1,68 @@
+.day {
+  text-align: left;
+}
+.header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.label {
+  font-size: var(--font-small);
+  font-weight: var(--weight-heading);
+  color: var(--colour-ink);
+}
+.caption {
+  margin-left: 8px;
+  font-size: var(--font-caption);
+  color: var(--colour-ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item + .item {
+  margin-top: 6px;
+}
+.rest {
+  padding: 2px 0;
+  font-size: var(--font-small);
+  font-style: italic;
+  color: var(--colour-ink-faint);
+}
+
+/* ---- compact: a row of a week, filling the height its parent gives it -- */
+.compact {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+.compact .header {
+  flex: none;
+  display: block;
+  width: 110px;
+  margin: 10px 0 0;
+}
+.compact .label,
+.compact .caption {
+  display: block;
+  margin-left: 0;
+}
+.compact .label {
+  font-size: var(--font-body);
+}
+.compact .workouts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.compact .item {
+  flex: 1 0 0;
+}
+.compact .item + .item {
+  margin-top: 4px;
+}
+.compact .rest {
+  padding: 12px 0;
+  font-size: var(--font-body);
+}

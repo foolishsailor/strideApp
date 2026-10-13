@@ -48,13 +48,7 @@
   background: var(--role-active);
   opacity: 1;
 }
-.pulse {
-  animation: pulse 0.9s ease-out 2;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 var(--role-pulse); }
-  100% { box-shadow: 0 0 0 22px transparent; }
-}
+
 
 /* ---- size: the button's role on the panel ------------------------------- */
 /* The bottom control row. Shares the row equally. */

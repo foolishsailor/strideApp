@@ -81,8 +81,14 @@ class RunRecorder(
         val steps: List<Plan.Step>,
         /** A route's steps are metres, not seconds — see MainActivity.routeTick. */
         val isRoute: Boolean,
-        /** An open circuit: the steps come round again until STOP. */
-        val loops: Boolean,
+        /** TrailMate's id for the planned workout this run is, or "" (spec 038). */
+        val plannedWorkoutId: String = "",
+        /**
+         * The steps are only a forecast: the real ones are written as they
+         * start, with [mark], and the upload's laps come from those. A
+         * workout's steps end on distance or on NEXT as well as on time.
+         */
+        val marked: Boolean = false,
     )
 
     private val dir = File(context.filesDir, "trailmate/rec").apply { mkdirs() }
@@ -131,7 +137,8 @@ class RunRecorder(
             .put("board", board)
             .put("version", BuildConfig.VERSION_NAME)
             .put("plan", plan?.let { p ->
-                JSONObject().put("name", p.name).put("route", p.isRoute).put("loops", p.loops)
+                JSONObject().put("name", p.name).put("route", p.isRoute)
+                    .put("planned", p.plannedWorkoutId).put("marked", p.marked)
                     .put("steps", JSONArray().apply {
                         p.steps.forEach {
                             put(JSONArray().put(it.startSec).put(it.endSec)
@@ -196,6 +203,14 @@ class RunRecorder(
             .put(Math.round(s.calories))
             .put(if (s.pulse > 0 && strap) 1 else 0)
         write(line.toString())
+    }
+
+    /** A step of a marked plan has begun, now (see [PlanInfo.marked]). */
+    @Synchronized
+    fun mark(label: String, incline: Double) {
+        if (out == null) return
+        val t = (SystemClock.elapsedRealtime() - startUptime) / 1000
+        write(JSONObject().put("m", t).put("l", label).put("i", incline).toString())
     }
 
     /**
@@ -290,6 +305,7 @@ class RunRecorder(
         var head: JSONObject? = null
         val samples = ArrayList<Sample>()
         val pauses = ArrayList<LongArray>()
+        val marks = ArrayList<JSONObject>()
         var anchorWall = 0L
         var anchorAge = 0L
         file.forEachLine { raw ->
@@ -312,6 +328,7 @@ class RunRecorder(
                     val o = JSONObject(line)
                     when {
                         o.has("h") -> head = o
+                        o.has("m") -> marks.add(o)
                         o.has("p") -> o.getJSONArray("p").let {
                             pauses.add(longArrayOf(it.getLong(0), it.getLong(1)))
                         }
@@ -413,12 +430,14 @@ class RunRecorder(
             .put("startedAt", iso.format(Date(startedAt)))
             .put("utcOffsetMin", TimeZone.getDefault().getOffset(startedAt) / 60_000)
             .put("totals", totals)
-            .put("plan", planJson(h.optJSONObject("plan"), samples, cleanPauses, elapsed))
+            .put("plan", planJson(h.optJSONObject("plan"), samples, cleanPauses, elapsed, marks))
             .put("samples", sampleObj)
             .put("pauses", JSONArray().apply {
                 cleanPauses.forEach { put(JSONObject().put("startS", it[0]).put("endS", it[1])) }
             })
             .put("sources", JSONObject().put("hr", hrSource).put("footpod", anyPod))
+        h.optJSONObject("plan")?.optString("planned")?.takeIf { it.isNotEmpty() }
+            ?.let { workout.put("plannedWorkoutId", it) }
 
         if (samples.size > MAX_SAMPLES) {
             Log.w(TAG, "run has ${samples.size} samples, over TrailMate's limit — it will be refused")
@@ -441,11 +460,12 @@ class RunRecorder(
      */
     private fun planJson(
         p: JSONObject?, samples: List<Sample>, pauses: List<LongArray>, elapsed: Long,
+        marks: List<JSONObject>,
     ): Any {
         if (p == null) return JSONObject.NULL
+        if (p.optBoolean("marked")) return markedPlan(p.optString("name"), marks, elapsed)
         val steps = p.optJSONArray("steps") ?: return JSONObject.NULL
         val isRoute = p.optBoolean("route")
-        val loops = p.optBoolean("loops")
 
         fun movingToT(m: Double): Double {
             var shift = 0L
@@ -455,33 +475,35 @@ class RunRecorder(
         fun metresToT(m: Double): Double =
             (samples.firstOrNull { it.d >= m }?.t ?: (elapsed + 1)).toDouble()
 
-        val lap = if (steps.length() > 0) steps.getJSONArray(steps.length() - 1).getDouble(1) else 0.0
         val out = JSONArray()
-        var lapNo = 0
         var lastEnd = 0L
-        while (lapNo < 1000) {
-            var reached = false
-            for (i in 0 until steps.length()) {
-                val s = steps.getJSONArray(i)
-                val offset = if (loops) lapNo * lap else 0.0
-                val a = s.getDouble(0) + offset
-                val b = s.getDouble(1) + offset
-                val startS = Math.round(if (isRoute) metresToT(a) else movingToT(a))
-                    .coerceIn(lastEnd, elapsed)
-                val endS = Math.round(if (isRoute) metresToT(b) else movingToT(b))
-                    .coerceIn(startS, elapsed)
-                if (endS <= startS) continue
-                reached = true
-                lastEnd = endS
-                out.put(JSONObject()
-                    .put("startS", startS).put("endS", endS)
-                    .put("label", s.optString(2))
-                    .put("incline", s.optDouble(3, 0.0)))
-            }
-            if (!loops || !reached || lap <= 0.0 || lastEnd >= elapsed) break
-            lapNo++
+        for (i in 0 until steps.length()) {
+            val s = steps.getJSONArray(i)
+            val startS = Math.round(if (isRoute) metresToT(s.getDouble(0)) else movingToT(s.getDouble(0)))
+                .coerceIn(lastEnd, elapsed)
+            val endS = Math.round(if (isRoute) metresToT(s.getDouble(1)) else movingToT(s.getDouble(1)))
+                .coerceIn(startS, elapsed)
+            if (endS <= startS) continue
+            lastEnd = endS
+            out.put(JSONObject()
+                .put("startS", startS).put("endS", endS)
+                .put("label", s.optString(2))
+                .put("incline", s.optDouble(3, 0.0)))
         }
         return JSONObject().put("name", p.optString("name")).put("segments", out)
+    }
+
+    /** A marked plan's segments: each mark to the next, the last to the end of the run. */
+    private fun markedPlan(name: String, marks: List<JSONObject>, elapsed: Long): JSONObject {
+        val out = JSONArray()
+        for ((i, m) in marks.withIndex()) {
+            val start = m.optLong("m").coerceIn(0L, elapsed)
+            val end = (marks.getOrNull(i + 1)?.optLong("m") ?: elapsed).coerceIn(start, elapsed)
+            if (end <= start) continue
+            out.put(JSONObject().put("startS", start).put("endS", end)
+                .put("label", m.optString("l")).put("incline", m.optDouble("i", 0.0)))
+        }
+        return JSONObject().put("name", name).put("segments", out)
     }
 
     private fun writeLast(workout: JSONObject) {

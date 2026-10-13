@@ -1,0 +1,114 @@
+/* A workout, TrailMate style: the type's colour as a faint wash over the
+   card and as the type label's ink. The wash is a layer at low opacity rather
+   than an rgba of the colour, which CSS can't make from a variable before
+   color-mix (Chromium 111). */
+.card {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 10px 14px 11px;
+  text-align: left;
+  overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--workout-tone);
+  opacity: 0.12;
+  pointer-events: none;
+}
+.card > * {
+  position: relative; /* over the wash */
+}
+
+.name {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--font-body);
+  font-weight: var(--weight-label);
+  color: var(--colour-ink);
+  line-height: 1.25;
+  /* Two lines at most: a long name is clipped, not allowed to push the day. */
+  max-height: 2.5em;
+  overflow: hidden;
+}
+.meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--colour-ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.done {
+  color: var(--colour-good);
+}
+/* Listed so the day reads as it does in TrailMate, but not for this machine. */
+.off .name {
+  color: var(--colour-ink-dim);
+}
+
+/* ---- detailed: beside the run choices, with its description and steps ---- */
+.detailed {
+  padding: 16px 20px 18px;
+}
+.detailed .name {
+  margin-top: 5px;
+  font-size: var(--font-title);
+}
+.detailed .meta {
+  margin-top: 6px;
+  font-size: var(--font-small);
+}
+.description {
+  display: block;
+  margin-top: 10px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-dim);
+  line-height: 1.35;
+}
+.steps {
+  display: block;
+  margin-top: 10px;
+}
+.step {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--colour-ink-dim);
+  font-variant-numeric: tabular-nums;
+  /* One line each: a long one is cut, not allowed to push the day down. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- compact: a row of a week ------------------------------------------- */
+.compact {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 18px;
+}
+.top {
+  width: 100%; /* the card may centre its lines; this one spans it */
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.compact .meta {
+  margin: 0 0 0 auto; /* to the right, whatever sits before it */
+  padding-left: 12px;
+  white-space: nowrap;
+}
+.compact .name {
+  margin-top: 4px;
+  font-size: var(--font-title);
+  max-height: 1.25em; /* one line */
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

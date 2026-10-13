@@ -1,0 +1,85 @@
+/* Docked to the bottom edge, on top of the control dock (104 deep), edge to
+   edge like the dock; the rails stop above the two of them.
+   No panel of its own on the run screen; over an app the drawer gives it one. */
+.band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 104px;
+  height: 116px;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+}
+
+.now,
+.upNext {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+.label {
+  margin-top: 2px;
+  font-size: 32px;
+  font-weight: var(--weight-heading);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.target {
+  font-size: 21px;
+  color: var(--colour-accent);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aside {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--colour-ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.left {
+  flex: none;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.leftValue {
+  font-size: 56px;
+  line-height: 1;
+}
+.upNext {
+  display: flex;
+  align-items: center;
+}
+.upNextText {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+/* NEXT, text only, like the dock beneath it, at the band's far end. */
+.upNext .next {
+  flex: none;
+  width: 160px;
+  margin: 0 0 0 16px;
+}
+.upNext .next svg {
+  font-size: 72px;
+}
+.nextLabel {
+  margin-top: 2px;
+  font-size: 22px;
+  color: var(--colour-ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nextTarget {
+  margin-top: 2px;
+  font-size: 16px;
+  color: var(--colour-ink-faint);
+  font-variant-numeric: tabular-nums;
+}

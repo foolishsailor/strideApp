@@ -1,105 +1,102 @@
 package dev.stride.hud
 
+import android.content.ContentValues
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import org.json.JSONArray
-import org.json.JSONException
-import java.io.File
+import org.json.JSONObject
 
 /**
- * Routes converted from real outdoor runs, cached on the console.
+ * Each person's routes, from TrailMate: the routes they have starred there and
+ * the courses of their upcoming races (spec 038, `stride.routes.v1`).
  *
- * They will arrive from TrailMate (see [accept]). They are **cached to disk on
- * arrival**, and that is the whole reason this class exists rather than a
- * `@Volatile` field: the console can boot with no network at all. A route
- * fetched at workout time would not be there, and the failure would arrive at
- * the worst possible moment — standing on the belt, having chosen a run.
+ * **Stored in [Db] on arrival**, per person, which is the whole reason this
+ * class exists rather than a field: the console can boot with no network at
+ * all. A route fetched at workout time would not be there, and the failure
+ * would arrive at the worst possible moment — standing on the belt, having
+ * chosen a run.
  *
  * There is no GPS here and never will be. What arrives is a gradient profile:
- * `[startM, endM, incline]` triples against distance travelled. The phone
- * discards the track before sending — see `iOS.md`.
+ * `[startM, endM, incline]` triples against distance travelled, already worked
+ * out by TrailMate from the route's elevation.
  */
 class Routes(context: Context) {
 
-    private val file = File(context.filesDir, "routes.json")
+    private val db = Db.get(context)
 
-    @Volatile
-    private var raw: String = "[]"
-
-    init {
-        raw = try {
-            if (file.exists()) file.readText() else "[]"
-        } catch (e: Exception) {
-            Log.w(TAG, "cache unreadable (${e.message})")
-            "[]"
-        }
-        Log.i(TAG, "loaded ${count()} route(s) from disk")
-    }
+    /** person id → their routes as the UI gets them, read once and kept. */
+    private val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /**
-     * A new set of routes: the whole list, as JSON. Nothing calls this yet;
-     * it is where routes from TrailMate will land.
-     *
-     * Validated before it replaces anything. A malformed payload that
-     * overwrote the cache would take the routes away until the next sync, and the console would have thrown away a good copy to store a bad
-     * one — so a parse failure keeps what is already here and says so.
+     * A person's routes, replacing what was there, inside the caller's
+     * transaction ([TrailMateSync] writes the sync row in the same one).
+     * Entries without usable segments are dropped here rather than offered.
      */
-    fun accept(payload: String) {
-        val text = payload.trim().ifBlank { "[]" }
-        try {
-            JSONArray(text)
-        } catch (e: JSONException) {
-            Log.w(TAG, "ignoring unparseable payload (${e.message})")
-            return
+    fun replace(d: SQLiteDatabase, personId: String, routes: JSONArray) {
+        d.delete("person_routes", "person_id = ?", arrayOf(personId))
+        var pos = 0
+        for (i in 0 until routes.length()) {
+            val o = routes.optJSONObject(i) ?: continue
+            val id = o.optString("id")
+            if (id.isEmpty() || parse(o) == null) continue
+            d.insertWithOnConflict("person_routes", null, ContentValues().apply {
+                put("person_id", personId); put("route_id", id)
+                put("pos", pos++); put("json", o.toString())
+            }, SQLiteDatabase.CONFLICT_REPLACE)
         }
-        raw = text
-        try {
-            file.writeText(text)
-            Log.i(TAG, "cached ${count()} route(s)")
-        } catch (e: Exception) {
-            // Held in memory regardless. Losing the cache costs the routes on
-            // the next cold boot; refusing the update would cost them now.
-            Log.w(TAG, "cannot write cache (${e.message})")
+        cache.remove(personId)
+    }
+
+    /** The person's routes as a JSON array, for the UI. "[]" for a guest. */
+    fun json(personId: String): String {
+        if (personId.isEmpty()) return "[]"
+        return cache.getOrPut(personId) {
+            val arr = JSONArray()
+            db.readableDatabase.rawQuery(
+                "SELECT json FROM person_routes WHERE person_id = ? ORDER BY pos",
+                arrayOf(personId)
+            ).use { c -> while (c.moveToNext()) arr.put(JSONObject(c.getString(0))) }
+            arr.toString()
         }
     }
 
-    /** The array as it will be handed to the UI. */
-    fun json(): String = raw
-
-    fun count(): Int = try { JSONArray(raw).length() } catch (e: Exception) { 0 }
+    fun count(personId: String): Int = try { JSONArray(json(personId)).length() } catch (e: Exception) { 0 }
 
     /**
-     * One route by id, or null.
+     * One of the person's routes by id, or null.
      *
      * Kept here rather than in JavaScript because Kotlin has to resolve the
      * chosen route into plan steps anyway, and two parsers for one format is
      * one more than the format deserves.
      */
-    fun byId(id: String): Route? {
-        try {
-            val arr = JSONArray(raw)
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                if (o.optString("id") != id) continue
-                val segs = o.optJSONArray("segments") ?: return null
-                val out = ArrayList<Route.Segment>(segs.length())
-                for (j in 0 until segs.length()) {
-                    val t = segs.optJSONArray(j) ?: continue
-                    if (t.length() < 3) continue
-                    out.add(Route.Segment(t.getDouble(0), t.getDouble(1),
-                                          t.getDouble(2)))
-                }
-                if (out.isEmpty()) return null
-                return Route(id = id,
-                             name = o.optString("name", "Route"),
-                             distanceM = o.optDouble("distance_m", out.last().endM),
-                             climbM = o.optDouble("climb_m", 0.0),
-                             segments = out)
-            }
+    fun byId(personId: String, id: String): Route? {
+        if (personId.isEmpty()) return null
+        return try {
+            db.readableDatabase.rawQuery(
+                "SELECT json FROM person_routes WHERE person_id = ? AND route_id = ?",
+                arrayOf(personId, id)
+            ).use { c -> if (c.moveToFirst()) parse(JSONObject(c.getString(0))) else null }
         } catch (e: Exception) {
             Log.w(TAG, "cannot read route $id (${e.message})")
+            null
         }
-        return null
+    }
+
+    private fun parse(o: JSONObject): Route? {
+        val segs = o.optJSONArray("segments") ?: return null
+        val out = ArrayList<Route.Segment>(segs.length())
+        for (j in 0 until segs.length()) {
+            val t = segs.optJSONArray(j) ?: continue
+            if (t.length() < 3) continue
+            out.add(Route.Segment(t.getDouble(0), t.getDouble(1), t.getDouble(2)))
+        }
+        if (out.isEmpty()) return null
+        return Route(id = o.optString("id"),
+                     name = o.optString("name", "Route"),
+                     distanceM = o.optDouble("distance_m", out.last().endM),
+                     climbM = o.optDouble("climb_m", 0.0),
+                     segments = out)
     }
 
     companion object { private const val TAG = "StrideRoutes" }

@@ -23,7 +23,7 @@ For the rules on code that moves the belt, read
 | | Needs | Good for | Belt can move |
 |---|---|---|---|
 | **1. Browser preview** | A browser | Designing screens: HTML, CSS, layout | No |
-| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, guided runs, FTMS, safety logic | No |
+| **2. Emulator + simulator** | Android SDK, emulator | The whole app on a simulated Gen 7 board: metrics, hills, workouts, heart-rate control, FTMS, safety logic | No |
 | **3. Real console** | A console you can reach with `adb` | The truth: real board, real belt | **Yes** |
 
 Work in 1 and 2. Go to 3 to confirm, belt empty first.
@@ -127,7 +127,7 @@ open console/stride/app/src/main/assets/ui/trailmate.html     # macOS
 start console\stride\app\src\main\assets\ui\trailmate.html     # Windows
 ```
 
-Add `?screen=live-guided`, `?screen=paused` or `?screen=summary` to land on a
+Add `?screen=live-workout`, `?screen=paused` or `?screen=summary` to land on a
 state, or press the number keys.
 
 It is built from React and TypeScript source in `console/stride/frontend/`;
@@ -137,7 +137,7 @@ don't edit the built file. See
 ```sh
 cd console/stride/frontend
 npm install
-npm run dev      # http://localhost:5173/trailmate.html?screen=live-guided
+npm run dev      # http://localhost:5173/trailmate.html?screen=live-workout
 npm run build    # writes assets/ui/trailmate.html, then checks it for Chromium 83
 ```
 
@@ -196,12 +196,12 @@ Bluetooth has nothing to advertise to, and STRIDE carries on without it.
 [TEST_HARNESS.md](TEST_HARNESS.md). The ones you will use most:
 
 ```sh
-py tools/sim.py guided pyramid 4        # one of steady, rolling, pyramid, climb
+py tools/sim.py planned <workout id>    # one of the runner's TrailMate workouts
+py tools/sim.py hr 2                    # hold heart-rate zone 2 (Manual -> Heart rate)
 py tools/sim.py speed +0.5              # the on-screen buttons
 py tools/sim.py incline +2
 py tools/sim.py press incline_up        # the console's own buttons
 py tools/sim.py key out                 # the safety key
-py tools/sim.py scenario guided-all 4   # all four shapes, 4 minutes each
 py tools/sim.py watch                   # live state every 2 s
 ```
 

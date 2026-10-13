@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
 import { useStepper, useTap } from '../../hooks/useTap';
 import { cx } from '../../lib/cx';
+import { acknowledge } from './acknowledge';
 import styles from './Button.module.css';
 
 export type ButtonTone = 'default' | 'primary' | 'stop';
@@ -39,14 +40,28 @@ interface Stepping extends Common {
 
 export type ButtonProps = Tappable | Stepping;
 
+/** Every press is acknowledged here, once for all: the ring goes round the
+ *  button before its handler runs, whatever the handler does. */
 export function Button(props: ButtonProps) {
   const { tone = 'default', size = 'control', muted, active, selected, className, children } = props;
-  const tapRef = useTap<HTMLButtonElement>(props.onTap);
-  const stepRef = useStepper<HTMLButtonElement>(props.onStep ?? noop, 'fine' in props ? props.fine : 0, 'coarse' in props ? props.coarse : 0);
+  const el = useRef<HTMLButtonElement | null>(null);
+  const tapRef = useTap<HTMLButtonElement>(props.onTap && ((e) => {
+    acknowledge(el.current);
+    props.onTap?.(e);
+  }));
+  const stepRef = useStepper<HTMLButtonElement>((d) => {
+    acknowledge(el.current);
+    (props.onStep ?? noop)(d);
+  }, 'fine' in props ? props.fine : 0, 'coarse' in props ? props.coarse : 0);
+  const stepping = !!props.onStep;
+  const ref = useCallback((node: HTMLButtonElement | null) => {
+    el.current = node;
+    (stepping ? stepRef : tapRef)(node);
+  }, [stepping, stepRef, tapRef]);
 
   return (
     <button
-      ref={props.onStep ? stepRef : tapRef}
+      ref={ref}
       className={cx(
         styles.button,
         styles[size],
@@ -65,11 +80,3 @@ export function Button(props: ButtonProps) {
 
 function noop() {}
 
-/** A short ring round a button, to acknowledge a press whose result takes a
- *  poll or two to show. */
-export function acknowledge(el: Element | null): void {
-  if (!(el instanceof HTMLElement)) return;
-  el.classList.remove(styles.pulse!);
-  void el.offsetWidth; // restart the animation
-  el.classList.add(styles.pulse!);
-}

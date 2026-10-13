@@ -5,3 +5,6 @@ export { RailReading, RailStop, ValueRail } from './ValueRail';
 export { Sparkline } from './Sparkline';
 export { StatusChip } from './StatusChip';
 export { TopBar } from './TopBar';
+export { DaySchedule } from './DaySchedule';
+export { WorkoutCard } from './WorkoutCard';
+export { WorkoutTypeLabel, workoutToneClass } from './WorkoutTone';

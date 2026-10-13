@@ -1,5 +1,5 @@
-/* The step is sized by its widest row — the four plan cards — so its text
-   needs centring explicitly or it hugs the left of that box. */
+/* The step is sized by its widest row, so its text needs centring
+   explicitly or it hugs the left of that box. */
 .step {
   text-align: center;
 }
@@ -9,14 +9,113 @@
 .choices {
   margin-top: 66px;
 }
-.durations {
-  margin-top: 26px;
-}
-.askShape {
-  margin-top: 34px;
-}
 .plans {
   margin-top: 30px;
+}
+
+/* ---- step 2: the ways to run down the left, today and tomorrow on the right */
+.how {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 36px;
+  text-align: left;
+}
+.ways > * + * {
+  margin-top: 16px;
+}
+.withPlan .ways {
+  margin-right: 40px;
+}
+/* The plan column scrolls if two busy days outgrow the space above BACK. */
+.plan {
+  width: 560px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.scheduleDay + .scheduleDay {
+  margin-top: 18px;
+}
+.reconnect,
+.stale {
+  margin-top: 14px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+}
+.reconnect {
+  color: var(--colour-accent-warm);
+}
+
+/* ---- step 3 ---------------------------------------------------------------- */
+.note {
+  margin-top: 18px;
+}
+/* Manual → Heart rate: a chip a zone, its bpm under its name. */
+.zones {
+  margin-top: 28px;
+}
+.zone {
+  width: 150px;
+  height: 72px;
+}
+.zoneName,
+.zoneBpm {
+  display: block;
+}
+.zoneBpm {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: var(--weight-body);
+  font-variant-numeric: tabular-nums;
+}
+/* Routes: four to a row, two rows at most. */
+.routes {
+  margin-top: 26px;
+  flex-wrap: wrap;
+  width: 1120px;
+}
+.routes > * {
+  margin-bottom: 18px;
+}
+/* Workouts: the week on the left, scrolling; the chosen one's steps on the
+   right. A fixed box between the top bar and BACK / BEGIN. */
+/* All the room the screen has: from under the top bar (56px) to above
+   BACK / BEGIN (the bottom 100px, plus a gap), and its width less the
+   bezel margins. Sized to the viewport rather than fixed, because consoles
+   differ: the X22i's panel lays out at 1920x1080, not 1280x800. */
+.workouts {
+  display: flex;
+  width: calc(100vw - 160px);
+  height: calc(100vh - 56px - 170px);
+  margin-top: -40px;
+}
+/* The whole week fits: seven compact rows (see DaySchedule) sharing the
+   height evenly. It still scrolls rather than clips if a day ever carries
+   more workouts than its share holds. */
+.week {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  width: 44%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.weekDay {
+  flex: 1 0 0;
+  min-height: 72px;
+}
+.weekDay + .weekDay {
+  margin-top: 10px;
+}
+.preview {
+  flex: 1;
+  min-width: 0;
+  margin-left: 40px;
+}
+.pickHint {
+  margin-top: 40px;
+  text-align: left;
 }
 
 .foot {

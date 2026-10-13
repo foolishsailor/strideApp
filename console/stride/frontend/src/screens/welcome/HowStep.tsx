@@ -1,26 +1,35 @@
-import { useMemo } from 'react';
-import { bridge, myRoutes } from '../../bridge/stride';
-import { useWelcome } from '../../store/welcome';
-import { Heading, Prose, Row } from '../../components/primitives';
+import { useScheduleFeed } from '../../hooks/useScheduleFeed';
+import { cx } from '../../lib/cx';
+import { openWorkout, useWelcome } from '../../store/welcome';
+import { Heading, Prose } from '../../components/primitives';
 import { ChoiceCard } from '../../components/molecules';
+import { PersonSchedule, useHasSchedule } from './PersonSchedule';
 import styles from './Welcome.module.css';
 
-/** Step 2 — on your own, or guided. Casual starts the run outright; the
- *  others lead on to step 3. */
+/** Step 2 — how to run (spec 038, S-001): Manual, Routes or Workouts,
+ *  stacked down the left; and on the right what TrailMate has planned for
+ *  today and tomorrow, a workout there being the quickest way in. Nothing
+ *  here moves the belt. */
 export function HowStep() {
-  const { runner, chooseShapes, chooseRoutes } = useWelcome();
-  // Offered only when there is something behind it.
-  const hasRoutes = useMemo(() => myRoutes().length > 0, []);
-
+  const { runner, chooseManual, chooseRoutes, chooseWorkouts } = useWelcome();
+  useScheduleFeed();
+  const planned = useHasSchedule(runner);
   return (
     <>
       <Heading>{runner || 'Guest'}</Heading>
-      <Prose size="ask" className={styles.ask}>On your own, or guided?</Prose>
-      <Row space={40} className={styles.choices}>
-        <ChoiceCard icon="🚶" name="Casual" hint="you choose everything" onTap={() => bridge().choose()} />
-        {hasRoutes && <ChoiceCard icon="🗺️" name="My routes" hint="a run you have already done" onTap={chooseRoutes} />}
-        <ChoiceCard icon="⛰️" name="Guided" hint="the hill is handled for you" onTap={chooseShapes} />
-      </Row>
+      <Prose size="ask" className={styles.ask}>How do you want to run?</Prose>
+      <div className={cx(styles.how, planned && styles.withPlan)}>
+        <div className={styles.ways}>
+          <ChoiceCard row icon="🚶" name="Manual" hint="free, or held to a heart rate" onTap={chooseManual} />
+          <ChoiceCard row icon="🗺️" name="Routes" hint="your starred routes and races" onTap={chooseRoutes} />
+          <ChoiceCard row icon="📅" name="Workouts" hint="your plan from TrailMate" onTap={chooseWorkouts} />
+        </div>
+        {planned && (
+          <div className={styles.plan}>
+            <PersonSchedule name={runner} onPick={(w) => openWorkout(runner, w.id)} />
+          </div>
+        )}
+      </div>
     </>
   );
 }

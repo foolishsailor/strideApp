@@ -1,0 +1,21 @@
+/* Sets --workout-tone, a workout type's colour, for whatever is inside to
+   paint with. Types without a colour of their own take the accent. */
+.easy { --workout-tone: var(--workout-easy); }
+.tempo { --workout-tone: var(--workout-tempo); }
+.intervals { --workout-tone: var(--workout-intervals); }
+.hills { --workout-tone: var(--workout-hills); }
+.longRun { --workout-tone: var(--workout-long-run); }
+.recovery { --workout-tone: var(--workout-recovery); }
+.threshold { --workout-tone: var(--workout-threshold); }
+.speed { --workout-tone: var(--workout-speed); }
+.accent { --workout-tone: var(--colour-accent); }
+
+/* The type over a workout's name: "INTERVALS", tracked wide, in its colour. */
+.label {
+  display: block;
+  color: var(--workout-tone);
+  font-size: var(--font-caption);
+  font-weight: var(--weight-label);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}

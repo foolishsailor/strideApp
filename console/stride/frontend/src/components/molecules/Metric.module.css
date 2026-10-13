@@ -50,3 +50,22 @@
 @media (max-width: 1500px) {
   .metric .large { font-size: 44px; }
 }
+
+/* A word or two beside the number, stacked: the heart rate's zone and what
+   heart-rate control is doing. Small, so the six still fit. */
+.withAside {
+  display: flex;
+  align-items: center;
+}
+.aside {
+  margin-left: 10px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--colour-ink-faint);
+  white-space: nowrap;
+}
+.compact .aside {
+  margin-left: 6px;
+  font-size: 12px;
+}

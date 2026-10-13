@@ -54,3 +54,9 @@
   padding: 0 110px 0 80px;
   white-space: nowrap;
 }
+
+/* The zone the heart rate is in, beside it, while a workout steers by it. */
+.hrZone {
+  color: var(--colour-accent);
+  font-weight: var(--weight-label);
+}

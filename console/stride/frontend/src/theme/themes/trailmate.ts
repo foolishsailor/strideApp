@@ -72,6 +72,19 @@ export const trailmate: Theme = {
     trackingLabel: '0.08em',
     trackingNumeral: '-0.01em',
   },
+  /* TrailMate's workout type colours: its chart palette in dark mode
+     (shared/design, palette.chart; constants/workoutTypes.ts says which role
+     each type takes). Pinned by tokens.test.ts. */
+  workout: {
+    easy: '#6CC89B', // chart.zone2
+    tempo: '#CF7EA8', // chart.tempo
+    intervals: '#E27F79', // chart.zone4
+    hills: '#C198CF', // chart.zone5
+    longRun: '#6FB3E3', // chart.zone1
+    recovery: '#64B28B', // chart.early
+    threshold: '#D89464', // chart.late
+    speed: '#C55E58', // chart.hr
+  },
   radius: { control: 8, chip: 8, card: 8, choice: 8, floating: 8 },
   edgeWidth: 1,
   settings: {
@@ -104,12 +117,9 @@ export const trailmate: Theme = {
     edge: '1px',
   },
   glowBlur: 0,
-  scenery: {
-    ridgeFar: { dark: '#02292B', light: '#053336' },
-    ridgeNear: { dark: '#063A3C', light: '#0A4547', cap: '#0F5250' },
-    pine: alpha('#0B4A47', 0.7),
-    soil: [alpha('#0A4A46', 0.92), alpha('#073B3A', 0.62), alpha('#042D2E', 0)],
-    groundEdge: alpha(c.accent, 0.34),
-    contactShadow: alpha(deep, 0.7),
-  },
+  /* Not TrailMate's own chart colours: those (the workout palette above) sit
+     too light and too grey on the canvas to tell three lines apart. These
+     are the dataviz reference's first three dark slots, which pass every
+     palette check on #001E20 with all pairs compared. */
+  chart: { speed: '#3987E5', hr: '#D95926', incline: '#199E70' },
 };

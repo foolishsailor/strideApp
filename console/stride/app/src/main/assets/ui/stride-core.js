@@ -239,8 +239,8 @@ var DECK_SEC_PER_PCT = 3;
  * @param steps  plan steps as Kotlin sends them: {start, end, incline, label}
  * @param opts.width, opts.height   the drawing box, px
  * @param opts.headroom             px kept clear at the top for the marker
- * @param opts.startIncline         grade the deck is on at t=0; chooseGuided
- *                                  writes zero, so that is the default
+ * @param opts.startIncline         grade the deck is on at t=0; a planned
+ *                                  run starts level, so that is the default
  */
 function profile(steps, opts) {
   opts = opts || {};
@@ -693,7 +693,7 @@ function screenFor(state) {
     case 'paused':   return 'paused';                     // 09
     case 'summary':  return 'summary';                    // 11
     case 'active':   return state.control === 'guided'
-                            ? 'live-guided'               // 06
+                            ? 'live-workout'              // 06
                             : 'live-casual';              // 05
     default:         return 'welcome';                    // 01-04
   }
@@ -735,137 +735,7 @@ function profiles() {
   return names;
 }
 
-/**
- * Run lengths. 5 is a bench test — every segment in about thirty seconds.
- *
- * **0 means open**: no end, and the route becomes a circuit that comes round
- * again rather than running out. Kotlin resolves it at OPEN_LOOP_MIN and
- * reports which lap you are on; nothing but STOP finishes the run.
- */
-var DURATIONS = [5, 15, 20, 30, 45, 0];
-function durationLabel(m) { return m > 0 ? String(m) : 'OPEN'; }
 
-/* The four templates, mirroring Plan.kt. `points` are the real segment
-   inclines from that file, so a sparkline on the picker is the run you are
-   about to get rather than a decorative squiggle. */
-var SHAPES = [
-  { id: 'steady',  name: 'Steady',        blurb: 'One long hill, honestly earned',
-    points: [0, 2, 3.5, 5, 3, 1.5, 0] },
-  { id: 'rolling', name: 'Rolling hills', blurb: 'Uneven ground, no two the same',
-    points: [0, 4, -1, 6.5, 1, 9.5, 2, 5.5, -1.5, 3, 0] },
-  { id: 'pyramid', name: 'Pyramid',       blurb: 'Up in steps, down in steps',
-    points: [0, 2.5, 5, 7.5, 10, 11.5, 7, 4, 1.5, 0] },
-  { id: 'climb',   name: 'The long climb', blurb: 'One ascent, with a sting near the top',
-    points: [0, 3, 5.5, 4.5, 7.5, 11, 6, 2.5, 0] }
-];
-
-/**
- * @param onStep  called with (stepId, flow) whenever the step changes, so the
- *                UI can show the right card. Steps: profile | control | plan.
- *
- * There is no run-or-run step, and deliberately no run-or-run *anything*.
- * It cost a tap on every session to set a noun, and it sold itself on a speed
- * ceiling — "up to 6.5 km/h" against "6.5 and up" — that nothing enforced:
- * speed has always clamped to the board's own MIN_KPH/MAX_KPH whichever card
- * was tapped. Deriving the noun from pace instead was considered and dropped,
- * because 7-8 km/h is honestly ambiguous — the same person runs and jogs at
- * that speed — and a console that guessed would be captioning a number it
- * cannot know. It is a workout. See Snapshot.workout in Session.kt.
- */
-function flow(onStep) {
-  var f = {
-    step: 'profile',
-    profile: defaultRunner() || profiles()[0],
-    control: 'guided',   // the accented, recommended card on screen 03
-    minutes: 30,
-    shape: 'rolling',
-    /** A recorded route's id, or null for one of the four templates. */
-    route: null,
-    /** Run the chosen route out and then home again — see loopMark(). Belongs
-     *  to this run, not to the route, so it is never stored anywhere. */
-    loop: false,
-
-    go: function (step) {
-      f.step = step;
-      if (onStep) onStep(step, f);
-      return f;
-    },
-
-    reset: function () { return f.go('profile'); },
-
-    setProfile: function (name) {
-      f.profile = name;
-      global.Stride.setRunner(name);
-      return f.go('control');
-    },
-
-    /* Three choices, not two: casual, one of the four shapes, or a route you
-       have run. Routes are a peer of "free" and "shaped", not a variant of
-       one — and putting them on the screen before keeps the plan step to four
-       entries, which is all it has room for above the BACK button. */
-    setControl: function (c) {
-      f.control = c;
-      if (c === 'casual') return f.commit();
-      // Either picker is entered clean, so a route chosen and backed out of
-      // cannot arm the belt when a shape is picked afterwards.
-      f.route = null;
-      f.loop = false;
-      return f.go('plan');
-    },
-
-    /** True while the plan step is choosing a route rather than a shape. */
-    pickingRoute: function () { return f.control === 'routes'; },
-
-    /* Moving to a different route drops the loop rather than carrying it over.
-       Looping is a decision about a particular run — "this one is only half an
-       hour one way" — and inheriting it silently is how somebody sets off on
-       twice the run they chose. */
-    setRoute: function (id) {
-      if (id !== f.route) f.loop = false;
-      f.route = id;
-      return f;
-    },
-
-    /** Tapping the loop mark picks that route as well as looping it, the way
-     *  repeat on a music player applies to the thing you are playing. */
-    toggleLoop: function (id) {
-      f.loop = id === f.route ? !f.loop : true;
-      f.route = id;
-      return f;
-    },
-
-    /** Is this route the chosen one, and looped? */
-    looped: function (id) { return f.loop && f.route === id; },
-
-    /** The routes cached on this console, or [] when there are none. */
-    routes: function () {
-      try { return JSON.parse(global.Stride.routes() || '[]'); }
-      catch (e) { return []; }
-    },
-
-    setMinutes: function (m) { f.minutes = m; return f; },
-    setShape:   function (s) { f.shape = s;   return f; },
-
-    /** The one call that arms the belt. */
-    commit: function () {
-      if (f.control === 'casual') { global.Stride.choose(); return f; }
-      if (f.control === 'routes') {
-        // Nothing to arm the belt with if no route was picked.
-        if (f.route) global.Stride.chooseRoute(f.route, f.loop);
-        return f;
-      }
-      global.Stride.chooseGuided(f.shape, f.minutes);
-      return f;
-    },
-
-    back: function () {
-      if (f.step === 'plan')    return f.go('control');
-      if (f.step === 'control') return f.go('profile');
-      return f;
-    }
-  };
-  return f;
-}
 
 /* ===========================================================================
    3b. WHO IS SET UP
@@ -1044,7 +914,8 @@ function fanLabel(n) { return n ? n + ' OF 4' : 'OFF'; }
    one carrying its own copy of the stub.
    =========================================================================== */
 
-var BRIDGE = ['choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause',
+var BRIDGE = ['choose', 'chooseRoute', 'chooseWorkout', 'chooseHeartRate', 'nextStep',
+              'refreshSchedules', 'skipWarmup', 'skipCooldown', 'pause',
               'setSpeed', 'setIncline',
               'resume', 'end', 'home', 'speed', 'incline', 'fan', 'setFan',
               'setRunner', 'ackDmk', 'dim', 'wakeBoard',
@@ -1076,22 +947,64 @@ function stub() {
     global.setTimeout(function () { pretendWake = 'awake'; }, 1500);
   };
 
-  /* Two routes on the desktop, so the third control card and the route list can
-     be designed and reviewed in a browser. Real ones come from the phone, and
-     the shape matches RouteStore.swift exactly: segments are
-     [startM, endM, incline] triples. */
+  /* Two routes on the desktop, so the route list can be designed and reviewed
+     in a browser: a starred route and a race course, in TrailMate's shape
+     (spec 038, stride.routes.v1): segments are [startM, endM, incline]. */
   s.routes = function () {
     return JSON.stringify([
-      { id: 'demo-river', name: 'Friday river loop', distance_m: 5060,
-        climb_m: 18, difficulty: 1.0,
+      { id: 'demo-river', kind: 'route', name: 'Friday river loop', distance_m: 5060,
+        climb_m: 18, run_count: 12,
         segments: [[0,900,0],[900,1400,1],[1400,2100,2],[2100,2600,1],
                    [2600,3400,0],[3400,3900,-1],[3900,4500,0],[4500,5060,1]] },
-      { id: 'demo-hill', name: 'Thursday the hill', distance_m: 3030,
-        climb_m: 68, difficulty: 1.0,
+      { id: 'demo-hill', kind: 'race', name: 'Hill race course', date: '2026-11-08',
+        distance_m: 3030, climb_m: 68, run_count: 0,
         segments: [[0,200,6],[200,700,8],[700,1100,5],[1100,1600,2],
                    [1600,2100,-2],[2100,2500,-3],[2500,3030,0]] }
     ]);
   };
+  /* TrailMate's week for two pretend runners (spec 038, stride.schedule.v1),
+     so the home screen's Today and Tomorrow and the Workouts picker can be
+     designed in a browser. Dated from today, whatever today is. */
+  s.schedules = function () {
+    function day(n) {
+      var d = new Date(); d.setDate(d.getDate() + n);
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+    function pace(slow, fast) { return { type: 'pace', minMs: slow, maxMs: fast, zone: null }; }
+    var zones = {
+      pace: [{ zone: 1, minMs: 2.53, maxMs: 2.86 }, { zone: 2, minMs: 2.86, maxMs: 3.13 },
+             { zone: 3, minMs: 3.13, maxMs: 3.45 }, { zone: 4, minMs: 3.45, maxMs: 3.77 },
+             { zone: 5, minMs: 3.77, maxMs: 4.35 }],
+      hr: [{ zone: 1, minBpm: 98, maxBpm: 118 }, { zone: 2, minBpm: 119, maxBpm: 138 },
+           { zone: 3, minBpm: 139, maxBpm: 155 }, { zone: 4, minBpm: 156, maxBpm: 171 },
+           { zone: 5, minBpm: 172, maxBpm: 189 }],
+      maxHr: 189, restingHr: 48
+    };
+    var intervals = { id: 'demo-intervals', date: day(0), name: '4 × 3 min @ threshold',
+      type: 'intervals', sport: 'running', runnable: true, description: 'Keep the recoveries easy.',
+      estimatedDurationS: 2340, estimatedDistanceM: 6800, completed: false, completedActivity: null,
+      steps: [{ kind: 'warmup', label: 'Warm up', end: { type: 'time', value: 600 },
+                target: pace(2.5, 2.78), inclinePct: null, note: null, repeat: null }]
+        .concat([1, 2, 3, 4].map(function (i) {
+          return { kind: 'interval', label: 'Interval', end: { type: 'time', value: 180 },
+                   target: pace(3.64, 3.77), inclinePct: 1, note: 'Strong but controlled',
+                   repeat: { index: i, of: 4 } };
+        }))
+        .concat([{ kind: 'cooldown', label: 'Cool down', end: { type: 'open', value: null },
+                   target: { type: 'none' }, inclinePct: null, note: null, repeat: null }]) };
+    var easy = { id: 'demo-easy', date: day(1), name: 'Easy 40 in zone 2', type: 'easy',
+      sport: 'running', runnable: true, description: 'Conversational.',
+      estimatedDurationS: 2400, estimatedDistanceM: 7000, completed: false, completedActivity: null,
+      steps: [{ kind: 'interval', label: 'Easy', end: { type: 'time', value: 2400 },
+                target: { type: 'hr', minBpm: 119, maxBpm: 138, zone: 2 },
+                inclinePct: null, note: null, repeat: null }] };
+    function person(workouts) {
+      return { state: 'ok', fetchedAt: Date.now(), from: day(0),
+               scopes: ['workouts:upload', 'schedule:read', 'routes:read'], zones: zones, workouts: workouts };
+    }
+    return JSON.stringify({ Sam: person([intervals, easy]), Alex: person([easy]) });
+  };
+
   /* A belt calibration to look at in Settings → Treadmill: two points, a belt
      a few percent slow, as a Stryd would find it. */
   var pretendCal = [{ kph: 6.0, belt: 6.31 }, { kph: 10.0, belt: 10.56 }];
@@ -1261,13 +1174,13 @@ function wakeStep(overlay, done) {
    renderer on the console. Drives window.render at the same 5 Hz Kotlin does,
    which is the only honest way to check that a layout does not jitter.
 
-       ?screen=live-guided   open straight onto one screen
+       ?screen=live-workout  open straight onto one screen
        ?dmk=1                safety key out
 
    Number keys 1-9 and 0 jump between screens while it runs.
    =========================================================================== */
 
-var DEMO_SCREENS = ['welcome', 'warmup', 'live-casual', 'live-guided',
+var DEMO_SCREENS = ['welcome', 'warmup', 'live-casual', 'live-workout',
                     'paused', 'cooldown', 'summary'];
 
 function demo(opts) {
@@ -1279,11 +1192,10 @@ function demo(opts) {
     q[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || '');
   });
 
-  var screen = q.screen || opts.screen || 'live-guided';
-  var guided = screen === 'live-guided' || screen === 'warmup' || opts.guided;
+  var screen = q.screen || opts.screen || 'live-workout';
+  var guided = screen === 'live-workout' || screen === 'warmup' || opts.guided;
 
-  /* Rolling hills at 30 minutes, resolved the way Plan.kt would. */
-  var shape = SHAPES[1].points;
+  /* A TrailMate workout with hills in it, 30 minutes of steps (spec 038). */
   var total = 30 * 60, steps = [], at = 0;
   var shares = [0.11, 0.09, 0.07, 0.12, 0.06, 0.05, 0.09, 0.08, 0.07, 0.12, 0.14];
   var labels = ['Settle in', 'First rise', 'Down the far side', 'The long one',
@@ -1301,7 +1213,7 @@ function demo(opts) {
   var dist = 720, cals = 78;
 
   function frame() {
-    var phase = screen === 'live-casual' || screen === 'live-guided' ? 'running'
+    var phase = screen === 'live-casual' || screen === 'live-workout' ? 'running'
               : screen === 'welcome' ? 'welcome' : screen;
     var moving = phase === 'running' || phase === 'warmup' || phase === 'cooldown';
     var step = null, idx = 0;
@@ -1328,16 +1240,28 @@ function demo(opts) {
       ramping: '', phaseLeft: phase === 'warmup' ? 161 : 0, boardMode: 2,
       avgSpeed: 5.2, maxSpeed: 6.1, avgIncline: 3.4, maxIncline: 9.5,
       who: 'Sam',
-      plan: guided ? 'Rolling hills' : '',
+      plan: guided ? 'Hill repeats' : '',
       segment: guided ? idx : 0, segments: guided ? steps.length : 0,
       segmentLabel: guided ? step.label : '',
       segmentLeft: guided ? step.end - t : 0,
       suggestPace: guided ? 5.6 : 0, inclineAuto: true,
+      /* What WorkoutView.kt sends while a workout runs. */
+      workoutStep: guided ? {
+        plannedId: 'demo-hills', name: 'Hill repeats', step: idx, steps: steps.length,
+        label: step.label, kind: step.incline > 3 ? 'interval' : 'recovery', note: '',
+        repeat: null,
+        target: step.incline > 3 ? { type: 'hr', minBpm: 139, maxBpm: 155, zone: 3 }
+                                 : { type: 'pace', minKph: 9.0, maxKph: 9.6, zone: 2 },
+        incline: step.incline, left: step.end - t, leftIsDistance: false, open: false,
+        nextLabel: idx < steps.length ? steps[idx].label : '',
+        nextTarget: null, speedAuto: true, inclineAuto: true,
+        hrState: step.incline > 3 ? 'holding' : null, hrZoneNow: 2
+      } : null,
       mode: phase
     });
   }
 
-  if (guided && global.plan) global.plan({ name: 'Rolling hills', steps: steps });
+  if (guided && global.plan) global.plan({ name: 'Hill repeats', steps: steps });
 
   frame();
   setInterval(frame, 200);
@@ -1348,8 +1272,8 @@ function demo(opts) {
     var pick = DEMO_SCREENS[n === 0 ? 9 : n - 1];
     if (!pick) return;
     screen = pick;
-    guided = pick === 'live-guided' || pick === 'warmup';
-    if (guided && global.plan) global.plan({ name: 'Rolling hills', steps: steps });
+    guided = pick === 'live-workout' || pick === 'warmup';
+    if (guided && global.plan) global.plan({ name: 'Hill repeats', steps: steps });
     if (pick === 'welcome') resetDerived();
   });
 
@@ -1462,7 +1386,6 @@ global.STRIDE = {
   screenFor: screenFor,
   resetDerived: resetDerived,
 
-  flow: flow,
   routePoints: routePoints,
   loopMark: loopMark,
   tappedLoop: tappedLoop,
@@ -1470,8 +1393,6 @@ global.STRIDE = {
   esc: esc,
   profiles: profiles,
   allowGuest: allowGuest,
-  DURATIONS: DURATIONS,
-  SHAPES: SHAPES,
 
   people: people,
   defaultRunner: defaultRunner,
@@ -1486,7 +1407,6 @@ global.STRIDE = {
   mmss: mmss,
   nf: nf,
   km: km,
-  durationLabel: durationLabel,
   fanName: fanName,
   fanLabel: fanLabel,
 

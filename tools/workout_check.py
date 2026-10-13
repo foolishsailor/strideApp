@@ -35,6 +35,8 @@ def check(w):
         err(f"schema is {w.get('schema')!r}, not 'stride.workout.v1'")
     if not isinstance(w.get("workoutId"), str) or not UUID.match(w["workoutId"]):
         err(f"workoutId {w.get('workoutId')!r} is not a UUID")
+    if "plannedWorkoutId" in w and not isinstance(w["plannedWorkoutId"], str):
+        err(f"plannedWorkoutId {w['plannedWorkoutId']!r} is not a string (spec 038)")
 
     started = w.get("startedAt")
     try:

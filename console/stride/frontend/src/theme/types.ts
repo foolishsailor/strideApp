@@ -65,6 +65,19 @@ export interface Theme {
     trackingNumeral: string;
   };
 
+  /** TrailMate's workout types, each in its own colour (its chart palette).
+   *  Solid colours. A type not here (race, park run, …) takes the accent. */
+  workout: {
+    easy: string;
+    tempo: string;
+    intervals: string;
+    hills: string;
+    longRun: string;
+    recovery: string;
+    threshold: string;
+    speed: string;
+  };
+
   /** Corner radii by role, px. */
   radius: {
     control: number; // buttons
@@ -88,13 +101,8 @@ export interface Theme {
    */
   settings: Record<SettingsVar, string>;
 
-  /** The path ahead's backdrop, drawn on canvas. */
-  scenery: {
-    ridgeFar: { dark: string; light: string };
-    ridgeNear: { dark: string; light: string; cap: string };
-    pine: string;
-    soil: [string, string, string]; // near, middle, far
-    groundEdge: string;
-    contactShadow: string;
-  };
+  /** The live chart's series (RunChart), drawn on canvas. Validated as a set
+   *  against the canvas colour: lightness band, chroma, colour-blind and
+   *  normal-vision separation, 3:1 contrast. */
+  chart: { speed: string; hr: string; incline: string };
 }

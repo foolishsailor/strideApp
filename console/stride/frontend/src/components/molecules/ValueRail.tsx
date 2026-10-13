@@ -1,16 +1,21 @@
 import { memo, useEffect, useRef } from 'react';
 import { useScrollTap } from '../../hooks/useTap';
 import { cx } from '../../lib/cx';
-import { Button, Label, Numeral } from '../primitives';
+import { Button, Label, Numeral, acknowledge } from '../primitives';
 import styles from './ValueRail.module.css';
 
-/** One value in a rail's list. Pressing it goes straight there. */
+/** One value in a rail's list. Pressing it goes straight there. Its own
+ *  button, not Button: it has to let the list scroll (useScrollTap). Its ring
+ *  is drawn inside, since the list clips anything outside. */
 export const RailStop = memo(function RailStop({ value, selected, onPick }: {
   value: number;
   selected: boolean;
   onPick: (v: number) => void;
 }) {
-  const ref = useScrollTap<HTMLButtonElement>(() => onPick(value));
+  const ref = useScrollTap<HTMLButtonElement>((e) => {
+    acknowledge(e.currentTarget as Element, true);
+    onPick(value);
+  });
   return (
     <button ref={ref} data-stop={value} className={cx(styles.stop, selected && styles.selected)}>
       {value}

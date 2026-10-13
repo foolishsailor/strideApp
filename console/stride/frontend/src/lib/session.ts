@@ -1,4 +1,4 @@
-import type { PlanStep, SessionMode, SessionState } from '../bridge/types';
+import type { HrState, PlanStep, SessionMode, SessionState, StepTarget, WorkoutStep } from '../bridge/types';
 import type { Units } from '../store/settings';
 import { mmss } from './format';
 import { far, kphFrom, speedIn, distanceRun } from './units';
@@ -65,6 +65,13 @@ export function primaryLabel(mode: SessionMode): string {
   return 'PAUSE';
 }
 
+/** The primary button's glyph: skip a warm-up or cool-down, resume, or pause. */
+export function primaryIcon(mode: SessionMode): 'skip' | 'play' | 'pause' {
+  if (isTimed(mode)) return 'skip';
+  if (mode === 'paused') return 'play';
+  return 'pause';
+}
+
 /** Cool-down is already the way out; STOP there would just be a second one. */
 export const canStop = (mode: SessionMode): boolean =>
   mode === 'warmup' || mode === 'running' || mode === 'paused';
@@ -73,13 +80,64 @@ export const canStop = (mode: SessionMode): boolean =>
  *  paused console after answering the door wants the run located again. */
 export function pausedWhere(s: SessionState, u: Units = 'km'): string {
   const where = [mmss(s.elapsed ?? 0) + ' in'];
-  if (s.segments) where.push(`${s.segmentLabel || 'segment ' + s.segment} · ${s.segment} of ${s.segments}`);
+  const w = s.workoutStep;
+  if (w) where.push(`${w.label} · step ${w.step} of ${w.steps}`);
+  else if (s.segments) where.push(`${s.segmentLabel || 'segment ' + s.segment} · ${s.segment} of ${s.segments}`);
   else {
     const d = distanceRun(s.distance ?? 0, u);
     where.push(d.value + ' ' + d.unit);
   }
   where.push('the belt has stopped');
   return where.join(' · ');
+}
+
+/* ---- a workout under way (spec 038) ---------------------------------------- */
+
+/** What heart-rate control is doing, in a few words, beside the heart rate.
+ *  When the target is a zone it is named: "Holding zone 2" once the heart rate
+ *  is in it, "Heading for zone 2" while control holds the speed and the heart
+ *  rate is still on its way there. */
+export function hrStateText(state: HrState | null | undefined, target?: StepTarget | null,
+                            zoneNow?: number | null): string {
+  const zone = target?.type === 'hr' ? target.zone : null;
+  switch (state) {
+    case 'settling': return 'Settling';
+    case 'holding':
+      if (!zone) return 'Holding';
+      return zoneNow == null || zoneNow === zone ? `Holding zone ${zone}` : `Heading for zone ${zone}`;
+    case 'raising': return 'Speeding up';
+    case 'easing': return 'Easing off';
+    case 'dropping': return 'Slowing: heart rate high';
+    case 'no_hr': return 'No heart rate';
+    default: return '';
+  }
+}
+
+/** Heart-rate details belong beside the reading while the heart rate is
+ *  what the step is about: an HR target, or control running. */
+export const showsHeartRate = (w: WorkoutStep | null | undefined): w is WorkoutStep =>
+  !!w && (w.target.type === 'hr' || (w.target.type === 'zone' && w.target.of === 'hr') || !!w.hrState);
+
+/** Said once the runner has taken over a control the step was driving: the
+ *  console leaves it alone until the next step. */
+export function handNote(w: Pick<WorkoutStep, 'speedAuto' | 'inclineAuto' | 'incline'>): string {
+  const speed = !w.speedAuto, incline = !w.inclineAuto && w.incline !== null;
+  if (speed && incline) return 'speed and incline yours until the next step';
+  if (speed) return 'speed yours until the next step';
+  if (incline) return 'incline yours until the next step';
+  return '';
+}
+
+/** Manual → Heart rate: one open step, no TrailMate workout behind it. It has
+ *  no steps to count or move through, and ending its one step is STOP. */
+export function isManualHr(w: Pick<WorkoutStep, 'plannedId' | 'steps'>): boolean {
+  return !w.plannedId && w.steps <= 1;
+}
+
+/** "Step 3 of 10 · 2 of 4": where in the workout, and in its repeat. */
+export function stepPosition(w: Pick<WorkoutStep, 'step' | 'steps' | 'repeat'>): string {
+  const at = `Step ${w.step} of ${w.steps}`;
+  return w.repeat ? `${at} · ${w.repeat.index} of ${w.repeat.of}` : at;
 }
 
 /** "Rolling hills · 3 of 11 · 1:20 left", or the ground left for a route. */
@@ -102,7 +160,9 @@ export function phaseProgress(left: number): number {
 export function phasePreview(mode: SessionMode, steps: readonly PlanStep[]): string {
   if (mode !== 'warmup') return '';
   const first = steps[0];
-  return first ? `${steps.length} stretches ahead · first up: ${first.label}` : 'then the pace is yours';
+  if (!first) return 'then the pace is yours';
+  // One stretch is a manual heart-rate run: nothing to count.
+  return steps.length === 1 ? `then ${first.label}` : `${steps.length} stretches ahead · first up: ${first.label}`;
 }
 
 /** What the board says it can do. Kotlin's defaults until it says otherwise. */
@@ -161,6 +221,8 @@ export function nearestStop(stops: readonly number[], v: number): number | undef
 export const FAN_LEVELS = ['OFF', 'LOW', 'MEDIUM', 'HIGH', 'AUTO'] as const;
 const FAN_SHORT = ['', 'I', 'II', 'III', 'A'];
 export const fanButtonLabel = (fan: number): string => (fan ? 'FAN ' + (FAN_SHORT[fan] ?? '') : 'FAN');
+/** The level beside the fan's glyph: I, II, III or A; nothing when off. */
+export const fanLevelMark = (fan: number): string => FAN_SHORT[fan] ?? '';
 
 /** No name here: the welcome screen is the question "who is running". */
 export function greeting(hour: number): string {

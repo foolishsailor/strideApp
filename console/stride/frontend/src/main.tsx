@@ -11,7 +11,7 @@ import './theme/global.css';
 
 /* `Stride` is Kotlin's @JavascriptInterface. In a desktop browser the core
    stubs it, so this page can be designed without a treadmill. Add
-   ?screen=live-guided (or warmup, paused, summary, …) to drive it with the
+   ?screen=live-workout (or warmup, paused, summary, …) to drive it with the
    core's 5 Hz demo instead of sitting on the welcome screen. */
 const standalone = core().stub();
 

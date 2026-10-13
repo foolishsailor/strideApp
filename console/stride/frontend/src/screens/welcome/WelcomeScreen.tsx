@@ -1,5 +1,5 @@
-import { bridge, settings } from '../../bridge/stride';
-import { useWelcome } from '../../store/welcome';
+import { settings } from '../../bridge/stride';
+import { begin, canBegin, useWelcome } from '../../store/welcome';
 import { Button, Fill } from '../../components/primitives';
 import { TopBar } from '../../components/molecules';
 import { HowStep } from './HowStep';
@@ -8,17 +8,11 @@ import { WhoStep } from './WhoStep';
 import styles from './Welcome.module.css';
 
 /** who → how → which. Nothing reaches Kotlin, and the belt cannot move, until
- *  a run is committed to: Casual on step 2, or BEGIN on step 3. */
+ *  a run is committed to with BEGIN on step 3. */
 export function WelcomeScreen() {
-  const { step, back, planMode, route, shape, minutes, loop } = useWelcome();
-
-  const begin = () => {
-    if (planMode === 'routes') {
-      if (route) bridge().chooseRoute(route, loop);
-    } else {
-      bridge().chooseGuided(shape, minutes);
-    }
-  };
+  const step = useWelcome((s) => s.step);
+  const back = useWelcome((s) => s.back);
+  const ready = useWelcome(canBegin);
 
   return (
     <Fill>
@@ -50,7 +44,7 @@ export function WelcomeScreen() {
           <Button size="corner" className={styles.settings} onTap={() => settings().open('me')}>MY SETTINGS</Button>
         )}
         {step > 1 && <Button size="corner" className={styles.back} onTap={back}>← BACK</Button>}
-        {step === 3 && <Button size="corner" className={styles.begin} onTap={begin}>BEGIN →</Button>}
+        {step === 3 && <Button size="corner" className={styles.begin} muted={!ready} onTap={begin}>BEGIN →</Button>}
       </Fill>
     </Fill>
   );

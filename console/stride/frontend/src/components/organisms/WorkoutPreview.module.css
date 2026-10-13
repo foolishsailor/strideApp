@@ -1,0 +1,69 @@
+/* Fills the box its parent gives it: a heading, then the steps, which scroll
+   when there are more than fit. Nothing in it is pressed, so it scrolls as
+   any page does. */
+.preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  text-align: left;
+}
+.name {
+  margin-top: 4px;
+  font-size: var(--font-title);
+  font-weight: var(--weight-heading);
+}
+.about {
+  margin-top: 6px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-dim);
+}
+.steps {
+  flex: 1;
+  min-height: 0;
+  margin-top: 14px;
+  list-style: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  border-top: var(--edge-width) solid var(--role-edge);
+}
+.step {
+  display: flex;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: var(--edge-width) solid var(--role-edge-quiet);
+  font-size: var(--font-body);
+}
+.what {
+  flex: none;
+  width: 34%;
+  font-weight: var(--weight-label);
+}
+.repeat {
+  margin-left: 8px;
+  font-size: var(--font-small);
+  font-weight: var(--weight-body);
+  color: var(--colour-ink-faint);
+}
+.end {
+  flex: none;
+  width: 22%;
+  color: var(--colour-ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+.target {
+  flex: 1;
+  min-width: 0;
+  color: var(--colour-ink);
+  font-variant-numeric: tabular-nums;
+}
+.incline,
+.note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+}
+.incline {
+  color: var(--colour-accent-warm);
+}

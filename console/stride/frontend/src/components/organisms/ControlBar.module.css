@@ -1,20 +1,30 @@
-/* Docked to the bottom edge, between the two rails, at any screen height.
-   The bottom padding holds the buttons clear of the bezel: touches within
-   ~15px of it register unreliably on this digitiser. */
+/* Docked to the bottom edge, edge to edge like the strip along the top; the
+   rails stand between the two. Four equal columns, so the words line up
+   under one another whatever they say. The padding holds the buttons clear
+   of the bezel: touches within ~15px of it register unreliably on this
+   digitiser. */
 .controls {
   position: absolute;
-  left: 150px;
-  right: 150px;
+  left: 0;
+  right: 0;
   bottom: 0;
   height: 104px;
-  padding-bottom: 16px;
+  padding: 0 24px 16px;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
-/* Only as wide as its four letters, so the three that change their words
-   (PAUSE / RESUME, FAN III) keep the room. */
-.controls .apps {
-  flex: none;
-  width: 170px;
+.controls > * {
+  flex: 1;
+  max-width: none;
+  margin: 0;
+}
+/* Glyphs a little larger than the words were: a shape reads at less ink. */
+.controls svg {
+  font-size: 72px;
+}
+/* The fan's level, small beside its glyph. */
+.level {
+  margin-left: 10px;
+  font-size: 30px;
+  vertical-align: middle;
 }

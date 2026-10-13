@@ -3,7 +3,8 @@
 A stand-in for TrailMate's device API, for testing the console's link and
 upload on the emulator before the real one is deployed.
 
-It speaks the endpoints the console uses, from spec 037's `contracts/api.md`,
+It speaks the endpoints the console uses, from spec 037's and spec 038's
+`contracts/api.md` (schedule, routes and scopes from trailmate_fixtures.py),
 and checks every uploaded workout with workout_check.py, answering 400 for a
 broken one exactly as TrailMate would. Uploads that pass are saved to
 `--out` so they can be looked at.
@@ -12,6 +13,7 @@ broken one exactly as TrailMate would. Uploads that pass are saved to
     python tools/trailmate_mock.py --deny               # the runner taps Deny
     python tools/trailmate_mock.py --outage 503         # every upload answers 503
     python tools/trailmate_mock.py --revoked            # every token answers 401
+    python tools/trailmate_mock.py --upload-only        # links made before spec 038: reads get 403
 
 Point the console at it in Settings → People → TrailMate server:
 `http://10.0.2.2:8037/api` from the emulator (the host's loopback).
@@ -22,15 +24,20 @@ mock can be restarted with different failure flags without the console's
 link going stale.
 """
 import argparse
+import hashlib
 import json
 import os
 import secrets
 import sys
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from workout_check import check, describe  # noqa: E402
+import trailmate_fixtures as fixtures  # noqa: E402
+
+ALL_SCOPES = ["workouts:upload", "schedule:read", "routes:read"]
 
 ALPHABET = "BCDFGHJKLMNPQRSTVWXZ23456789"
 QR = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 21" shape-rendering="crispEdges">'
@@ -142,6 +149,53 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(201, {"activityId": received[wid], "garminForward": "skipped"})
         self.reply(404, {"message": "not found"})
 
+    def scopes(self):
+        return ALL_SCOPES[:1] if self.opts.upload_only else ALL_SCOPES
+
+    def read(self, scope, body):
+        """A device read: token, scope, then the body with an ETag."""
+        if self.opts.revoked or self.token() not in tokens:
+            return self.reply(401, {"message": "Unauthorized"})
+        if scope not in self.scopes():
+            return self.reply(403, {"error": "insufficient_scope", "scope": scope})
+        data = json.dumps(body).encode()
+        tag = '"' + hashlib.sha256(data).hexdigest()[:32] + '"'
+        if self.headers.get("If-None-Match") == tag:
+            self.send_response(304)
+            self.send_header("ETag", tag)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("ETag", tag)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_GET(self):
+        url = urlparse(self.path)
+        q = parse_qs(url.query)
+        if url.path == "/api/devices/self":
+            if self.opts.revoked or self.token() not in tokens:
+                return self.reply(401, {"message": "Unauthorized"})
+            return self.reply(200, {"deviceId": "mock-device", "scopes": self.scopes(),
+                                    "user": {"firstName": self.opts.name}})
+        if url.path == "/api/devices/schedule":
+            try:
+                frm = q["from"][0]
+                days = int(q.get("days", ["1"])[0])
+                fixtures.dt.date.fromisoformat(frm)
+                if not 1 <= days <= 14:
+                    raise ValueError
+            except (KeyError, ValueError):
+                return self.reply(400, {"message": "from=YYYY-MM-DD and days=1..14"})
+            print(f"schedule {frm} +{days}")
+            return self.read("schedule:read", fixtures.schedule(frm, days))
+        if url.path == "/api/devices/routes":
+            print("routes")
+            return self.read("routes:read", fixtures.routes())
+        self.reply(404, {"message": "not found"})
+
     def do_DELETE(self):
         if self.path == "/api/devices/self":
             tok = self.token()
@@ -163,6 +217,8 @@ def main():
     p.add_argument("--deny", action="store_true")
     p.add_argument("--outage", type=int, default=0, help="answer uploads with this status")
     p.add_argument("--revoked", action="store_true", help="answer uploads with 401")
+    p.add_argument("--upload-only", action="store_true",
+                   help="tokens hold workouts:upload only, as links made before spec 038")
     p.add_argument("--name", default="Sam", help="the TrailMate first name to link as")
     p.add_argument("--out", default="trailmate-mock-uploads")
     Handler.opts = p.parse_args()

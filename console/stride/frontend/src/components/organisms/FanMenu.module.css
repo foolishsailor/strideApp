@@ -1,10 +1,10 @@
 .menu {
   position: absolute;
-  left: 50%;
-  /* Centred over FAN, the third of four in the dock: APPS takes 170 + 24 of
-     its 980px, the other three share the rest, so FAN sits 97px right of
-     the panel's centre. Half the menu's 170 back from there. */
-  margin-left: 12px;
+  /* Centred over FAN: the dock is equal columns edge to edge, so FAN's
+     centre is 62.5 % across with APPS (third of four) and 50 % without
+     (second of three). Half the menu's 170 back from there. */
+  left: 62.5%;
+  margin-left: -85px;
   bottom: 116px; /* just above the docked controls */
   width: 170px;
   padding: 10px;
@@ -13,4 +13,7 @@
   border-radius: var(--radius-floating);
   box-shadow: var(--role-shadow-floating);
   z-index: var(--layer-fan-menu);
+}
+.noApps {
+  left: 50%;
 }

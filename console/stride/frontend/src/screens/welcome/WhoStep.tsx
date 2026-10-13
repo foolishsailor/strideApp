@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
-import { bridge, core, settings } from '../../bridge/stride';
+import { core, settings } from '../../bridge/stride';
 import { useNow } from '../../hooks/useClock';
 import { greeting } from '../../lib/session';
-import { loadSettings } from '../../store/settings';
 import { useUi } from '../../store/ui';
-import { useWelcome } from '../../store/welcome';
+import { selectRunner, useWelcome } from '../../store/welcome';
 import { Heading, Prose, Row } from '../../components/primitives';
 import { ChoiceCard } from '../../components/molecules';
 import styles from './Welcome.module.css';
 
-/** Step 1 — who is running.
+/** Step 1 — who is running. Only the people: what TrailMate has planned is
+ *  shown once somebody has said who they are (step 2).
  *
  *  Everyone is read from Settings rather than written here. A name on this
  *  picker that Settings does not have would be a runner with no history. One list,
@@ -17,7 +17,7 @@ import styles from './Welcome.module.css';
 export function WhoStep() {
   const now = useNow();
   const peopleVersion = useUi((s) => s.peopleVersion);
-  const { setRunner, goTo } = useWelcome();
+  const goTo = useWelcome((s) => s.goTo);
 
   const { names, nobodySetUp } = useMemo(
     () => ({ names: core().profiles(), nobodySetUp: !core().people().length }),
@@ -25,10 +25,7 @@ export function WhoStep() {
   );
 
   const pick = (name: string) => {
-    setRunner(name);
-    bridge().setRunner(name);
-    // Their units and warm-up, not the last runner's.
-    loadSettings();
+    selectRunner(name);
     goTo(2);
   };
 
