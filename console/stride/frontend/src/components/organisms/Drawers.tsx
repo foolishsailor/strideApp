@@ -22,9 +22,20 @@ export type Edge = 'top' | 'left' | 'right' | 'bottom';
 
 /** Slides its children off `edge` when closed. The children keep their own
  *  positions on the panel; each gets the translucent panel behind it.
- *  `small` is the top drawer holding the one-line strip, which is shallower. */
-export function Drawer({ edge, open, small, children }: { edge: Edge; open: boolean; small?: boolean; children: ReactNode }) {
-  return <div data-drawer className={cx(styles.drawer, styles[edge], small && styles.small, !open && styles.closed)}>{children}</div>;
+ *  `small` is the top drawer holding the one-line strip, which is shallower;
+ *  `tall` the bottom one carrying a workout's step over the dock, deeper. */
+export function Drawer({ edge, open, small, tall, children }: {
+  edge: Edge;
+  open: boolean;
+  small?: boolean;
+  tall?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div data-drawer className={cx(styles.drawer, styles[edge], small && styles.small, tall && styles.tall, !open && styles.closed)}>
+      {children}
+    </div>
+  );
 }
 
 export const toggleMetrics = (): void => {

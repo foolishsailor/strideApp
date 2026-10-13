@@ -47,6 +47,121 @@ export interface SessionState {
   trailmate?: string;
   /** A belt calibration in progress, or null. */
   calib?: Calibration | null;
+  /** A TrailMate workout or heart-rate run under way, or null (WorkoutView.kt). */
+  workoutStep?: WorkoutStep | null;
+}
+
+/* ---- workouts (spec 038) ------------------------------------------------- */
+
+/** A step's target as the screen reads it: km/h and bpm. The run snapshot
+ *  sends it this way; schedules() sends pace in m/s, which lib/schedule turns
+ *  into this on the way in, so one formatter serves both. `zone` is a zone
+ *  the profile could not resolve: shown, never driven from. */
+export type StepTarget =
+  | { type: 'none' }
+  | { type: 'pace'; minKph: number; maxKph: number; zone: number | null }
+  | { type: 'hr'; minBpm: number; maxBpm: number; zone: number | null }
+  | { type: 'cadence'; minSpm: number; maxSpm: number }
+  | { type: 'zone'; of: 'pace' | 'hr'; zone: number };
+
+/** How heart-rate control is doing (HrControl.State). */
+export type HrState = 'settling' | 'holding' | 'raising' | 'easing' | 'dropping' | 'no_hr';
+
+export interface StepRepeat {
+  index: number;
+  of: number;
+}
+
+/** The step of a workout under way (WorkoutView.kt), in every snapshot. */
+export interface WorkoutStep {
+  plannedId: string;
+  name: string;
+  /** 1-based. */
+  step: number;
+  steps: number;
+  label: string;
+  kind: string;
+  note: string;
+  repeat: StepRepeat | null;
+  target: StepTarget;
+  /** The incline the step sets, %, or null when it leaves the deck alone. */
+  incline: number | null;
+  /** Seconds or metres left, or null for an open step. */
+  left: number | null;
+  leftIsDistance: boolean;
+  /** Ended by NEXT (Garmin's lap button), not by time or distance. */
+  open: boolean;
+  nextLabel: string;
+  nextTarget: StepTarget | null;
+  /** False once the runner has taken that control by hand, until the next step. */
+  speedAuto: boolean;
+  inclineAuto: boolean;
+  hrState: HrState | null;
+  /** The zone the heart rate is in now, when the runner's zones are known. */
+  hrZoneNow: number | null;
+}
+
+/* What schedules() carries: TrailMate's own shapes (contracts/api.md §3),
+   stored by Kotlin as they came. Parsed once, by lib/schedule. */
+
+/** A step's target as TrailMate sends it: pace in m/s. */
+export interface WireTarget {
+  type: string;
+  minMs?: number | null;
+  maxMs?: number | null;
+  minBpm?: number | null;
+  maxBpm?: number | null;
+  minSpm?: number | null;
+  maxSpm?: number | null;
+  zone?: number | null;
+}
+
+/** One flattened step of stride.plannedWorkout.v1. */
+export interface WireStep {
+  kind?: string;
+  label?: string;
+  end?: { type?: string; value?: number | null };
+  target?: WireTarget;
+  inclinePct?: number | null;
+  note?: string | null;
+  repeat?: StepRepeat | null;
+}
+
+/** stride.plannedWorkout.v1. */
+export interface WireWorkout {
+  id: string;
+  /** The console's local calendar date, YYYY-MM-DD. */
+  date: string;
+  name?: string;
+  type?: string | null;
+  sport?: string;
+  runnable?: boolean;
+  description?: string | null;
+  estimatedDurationS?: number | null;
+  estimatedDistanceM?: number | null;
+  completed?: boolean;
+  completedActivity?: { distanceM?: number | null; durationS?: number | null } | null;
+  steps?: WireStep[];
+}
+
+export interface WireZones {
+  pace?: { zone: number; minMs: number; maxMs: number }[];
+  hr?: { zone: number; minBpm: number; maxBpm: number | null }[];
+  maxHr?: number | null;
+  restingHr?: number | null;
+}
+
+/** How a person's TrailMate link and last fetch stand (TrailMateView.kt). */
+export type ScheduleState = 'unlinked' | 'reconnect' | 'scope' | 'never' | 'ok' | 'error';
+
+/** One person in schedules(). */
+export interface WirePersonSchedule {
+  state?: ScheduleState;
+  fetchedAt?: number;
+  from?: string;
+  scopes?: string[];
+  zones?: WireZones;
+  workouts?: WireWorkout[];
 }
 
 /** A saved calibration point: to really get `kph`, the board is sent `belt`. */
@@ -90,10 +205,15 @@ export interface Plan {
   steps?: PlanStep[];
 }
 
-/** A route cached on the console (Routes.kt). Segments are [startM, endM, incline]. */
+/** One of the active person's routes (Routes.kt): a route they starred in
+ *  TrailMate, or an upcoming race's course. Segments are [startM, endM, incline]. */
 export interface Route {
   id: string;
+  kind?: 'route' | 'race';
   name?: string;
+  /** A race's date, YYYY-MM-DD. */
+  date?: string;
+  run_count?: number;
   distance_m?: number;
   climb_m?: number;
   segments?: [number, number, number][];
@@ -101,9 +221,15 @@ export interface Route {
 
 /** The @JavascriptInterface object MainActivity injects. */
 export interface StrideBridge {
+  /** Manual, free: the pace is the runner's. */
   choose(): void;
-  chooseGuided(shape: string, minutes: number): void;
   chooseRoute(id: string, loop: boolean): void;
+  /** One of the active person's planned workouts, by id. */
+  chooseWorkout(id: string): void;
+  /** Manual, heart rate: hold zone 1–5 of their zones, or with 0 the bpm range. */
+  chooseHeartRate(zone: number, minBpm: number, maxBpm: number): void;
+  /** End the workout's current step: an open step's only way out. */
+  nextStep(): void;
   skipWarmup(): void;
   skipCooldown(): void;
   pause(): void;
@@ -118,7 +244,13 @@ export interface StrideBridge {
   setRunner(name: string): void;
   ackDmk(): void;
   dim(on: boolean): void;
+  /** The active person's routes, as JSON Route[]. */
   routes(): string;
+  /** Everyone's TrailMate schedule, JSON { [name]: WirePersonSchedule }.
+   *  Optional, with refreshSchedules: an older APK has neither. */
+  schedules?(): string;
+  /** Ask TrailMate again for everyone, now. */
+  refreshSchedules?(): void;
   /** Belt calibration — see BeltCalibration.kt. The panel drives these. */
   calNudge(delta: number): void;
   calUseStryd(): void;

@@ -7,7 +7,7 @@ import { useUnits } from '../../store/settings';
 import { Label } from '../primitives';
 import styles from './Hero.module.css';
 
-/* The path ahead, for a guided run. An oval cannot show a hill; a path
+/* The path ahead, for a route or a workout. An oval cannot show a hill; a path
    receding into the distance can, so the climb is visible before it arrives. */
 
 function PathCanvas() {
@@ -44,12 +44,15 @@ function InclineNote() {
   return <div className={styles.inclineNote}>{manual && 'incline yours until the next stretch'}</div>;
 }
 
+/** The path ahead. A workout's own band (StepBand) names the step, so the
+ *  segment header and incline note are for a route alone. */
 export function PathHero() {
+  const workout = !!useField('workoutStep');
   return (
     <div className={styles.hero}>
       <PathCanvas />
-      <SegmentHeader />
-      <InclineNote />
+      {!workout && <SegmentHeader />}
+      {!workout && <InclineNote />}
     </div>
   );
 }

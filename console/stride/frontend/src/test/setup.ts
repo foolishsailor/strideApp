@@ -13,7 +13,7 @@ const CORE = resolve(process.cwd(), '../app/src/main/assets/ui/stride-core.js');
 export function mockBridge(overrides: Partial<Record<keyof StrideBridge | string, unknown>> = {}) {
   const b: Record<string, unknown> = {};
   for (const name of [
-    'choose', 'chooseGuided', 'chooseRoute', 'skipWarmup', 'skipCooldown', 'pause', 'resume', 'end',
+    'choose', 'chooseRoute', 'chooseWorkout', 'chooseHeartRate', 'nextStep', 'refreshSchedules', 'skipWarmup', 'skipCooldown', 'pause', 'resume', 'end',
     'home', 'speed', 'incline', 'setSpeed', 'setIncline', 'setFan', 'setRunner', 'ackDmk', 'dim',
     'calibrate', 'calNudge', 'calUseStryd', 'calSave', 'calDone',
   ]) b[name] = vi.fn();

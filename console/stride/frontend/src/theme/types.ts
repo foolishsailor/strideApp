@@ -65,6 +65,19 @@ export interface Theme {
     trackingNumeral: string;
   };
 
+  /** TrailMate's workout types, each in its own colour (its chart palette).
+   *  Solid colours. A type not here (race, park run, …) takes the accent. */
+  workout: {
+    easy: string;
+    tempo: string;
+    intervals: string;
+    hills: string;
+    longRun: string;
+    recovery: string;
+    threshold: string;
+    speed: string;
+  };
+
   /** Corner radii by role, px. */
   radius: {
     control: number; // buttons

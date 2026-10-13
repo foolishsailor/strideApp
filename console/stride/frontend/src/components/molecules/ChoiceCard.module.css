@@ -41,3 +41,6 @@
   font-size: var(--font-small);
   color: var(--colour-ink-faint);
 }
+.muted {
+  opacity: 0.45;
+}

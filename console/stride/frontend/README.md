@@ -26,7 +26,7 @@ npm run typecheck
 ```
 
 In the browser, the core stubs the bridge, so the page runs without a
-treadmill. Add `?screen=live-guided` (or `welcome`, `warmup`, `live-casual`,
+treadmill. Add `?screen=live-workout` (or `welcome`, `warmup`, `live-casual`,
 `paused`, `cooldown`, `summary`) to drive it with the core's 5 Hz demo. The
 number keys switch screens and `&dmk=1` pulls the safety key.
 
@@ -57,15 +57,15 @@ src/
   main.tsx               boot: stub the bridge, install the Kotlin entry points, mount
   App.tsx                picks the screen from the session mode; stacks the overlays
   bridge/                the contract with Kotlin and stride-core (types, accessors, entry points)
-  store/                 Zustand: session (from Kotlin), ui (menus, sleep), welcome (choices)
-  lib/                   pure logic: session rules, plans, formatting, path geometry and scene
+  store/                 Zustand: session (from Kotlin), ui (menus, sleep), welcome (choices), trailmate (schedules, routes)
+  lib/                   pure logic: session rules, schedule (TrailMate plans parsed), units and formatting, path geometry and scene
   theme/                 types.ts, themes/trailmate.ts, tokens.ts (scale, CSS variables), global.css
-  hooks/                 useTap/useStepper, useClock, useIdleSleep
+  hooks/                 useTap/useStepper, useClock, useIdleSleep, useScheduleFeed
   components/
     primitives/          Button, PressableCard, Text (Label, Numeral, Heading, Prose), Layout, Overlay
-    molecules/           Metric, StatCard, ValueRail, RailReading, ChoiceCard, PlanCard, Sparkline, TopBar, StatusChip
-    organisms/           Hero (Track/Path/Phase), Rails, MetricStrip, ControlBar, FanMenu
-  screens/               welcome (Who/How/Plan steps), workout, summary
+    molecules/           Metric, StatCard, ValueRail, RailReading, ChoiceCard, PlanCard, WorkoutCard, DaySchedule, Sparkline, TopBar, StatusChip
+    organisms/           Hero (Track/Path/Phase), Rails, MetricStrip, StepBand, ControlBar, FanMenu, WorkoutPreview
+  screens/               welcome (Who/How/Plan steps; Manual, Routes and Workouts pickers), workout, summary
   overlays/              paused, safety key, sleep
 ```
 
@@ -98,7 +98,11 @@ speed come from a foot pod (Footpod.kt; Settings → Devices) and show a dash
 without one; `tools/sim.py pod on` fakes one on the emulator. The incline and speed rails
 run down the sides from the bottom of that bar: a fixed + and −, with a
 scrolling list of stops between them. Start, fan and stop are docked along
-the bottom. The hero sits in the middle.
+the bottom. The hero sits in the middle. During a TrailMate workout the step
+under way (where it is, its target, what is left or NEXT, and what comes
+next) docks along the bottom on top of the controls, and the heart rate
+gains its zone and what heart-rate control is doing; over another app the
+step rides in the bottom drawer with the dock.
 
 **Its controls are text only.** No fill, no edge, no shadow: just large text
 on the backdrop, with tone and state shown only in the text's colour. The

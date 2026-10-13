@@ -1,25 +1,20 @@
-import { useMemo } from 'react';
-import { bridge, myRoutes } from '../../bridge/stride';
 import { useWelcome } from '../../store/welcome';
 import { Heading, Prose, Row } from '../../components/primitives';
 import { ChoiceCard } from '../../components/molecules';
 import styles from './Welcome.module.css';
 
-/** Step 2 — on your own, or guided. Casual starts the run outright; the
- *  others lead on to step 3. */
+/** Step 2 — Manual, Routes or Workouts (spec 038, S-001). Each leads on to
+ *  step 3; nothing here moves the belt. */
 export function HowStep() {
-  const { runner, chooseShapes, chooseRoutes } = useWelcome();
-  // Offered only when there is something behind it.
-  const hasRoutes = useMemo(() => myRoutes().length > 0, []);
-
+  const { runner, chooseManual, chooseRoutes, chooseWorkouts } = useWelcome();
   return (
     <>
       <Heading>{runner || 'Guest'}</Heading>
-      <Prose size="ask" className={styles.ask}>On your own, or guided?</Prose>
+      <Prose size="ask" className={styles.ask}>How do you want to run?</Prose>
       <Row space={40} className={styles.choices}>
-        <ChoiceCard icon="🚶" name="Casual" hint="you choose everything" onTap={() => bridge().choose()} />
-        {hasRoutes && <ChoiceCard icon="🗺️" name="My routes" hint="a run you have already done" onTap={chooseRoutes} />}
-        <ChoiceCard icon="⛰️" name="Guided" hint="the hill is handled for you" onTap={chooseShapes} />
+        <ChoiceCard icon="🚶" name="Manual" hint="free, or held to a heart rate" onTap={chooseManual} />
+        <ChoiceCard icon="🗺️" name="Routes" hint="your starred routes and races" onTap={chooseRoutes} />
+        <ChoiceCard icon="📅" name="Workouts" hint="your plan from TrailMate" onTap={chooseWorkouts} />
       </Row>
     </>
   );

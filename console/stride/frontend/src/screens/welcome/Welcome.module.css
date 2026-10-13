@@ -1,5 +1,5 @@
-/* The step is sized by its widest row — the four plan cards — so its text
-   needs centring explicitly or it hugs the left of that box. */
+/* The step is sized by its widest row, so its text needs centring
+   explicitly or it hugs the left of that box. */
 .step {
   text-align: center;
 }
@@ -9,14 +9,96 @@
 .choices {
   margin-top: 66px;
 }
-.durations {
-  margin-top: 26px;
-}
-.askShape {
-  margin-top: 34px;
-}
 .plans {
   margin-top: 30px;
+}
+
+/* ---- step 1: people, each with their Today and Tomorrow ------------------ */
+.people {
+  margin-top: 40px;
+  align-items: flex-start;
+}
+.person {
+  width: 240px;
+}
+.person > button {
+  display: flex;
+  margin: 0 auto;
+}
+.schedule {
+  margin-top: 16px;
+}
+.scheduleDay + .scheduleDay {
+  margin-top: 12px;
+}
+.reconnect,
+.stale {
+  margin-top: 14px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+}
+.reconnect {
+  color: var(--colour-accent-warm);
+}
+
+/* ---- step 3 ---------------------------------------------------------------- */
+.note {
+  margin-top: 18px;
+}
+/* Manual → Heart rate: a chip a zone, its bpm under its name. */
+.zones {
+  margin-top: 28px;
+}
+.zone {
+  width: 150px;
+  height: 72px;
+}
+.zoneName,
+.zoneBpm {
+  display: block;
+}
+.zoneBpm {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: var(--weight-body);
+  font-variant-numeric: tabular-nums;
+}
+/* Routes: four to a row, two rows at most. */
+.routes {
+  margin-top: 26px;
+  flex-wrap: wrap;
+  width: 1120px;
+}
+.routes > * {
+  margin-bottom: 18px;
+}
+/* Workouts: the week on the left, scrolling; the chosen one's steps on the
+   right. A fixed box between the top bar and BACK / BEGIN. */
+.workouts {
+  display: flex;
+  width: 1120px;
+  height: 560px;
+  margin-top: 20px;
+}
+.week {
+  flex: none;
+  width: 380px;
+  padding-right: 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.weekDay + .weekDay {
+  margin-top: 16px;
+}
+.preview {
+  flex: 1;
+  min-width: 0;
+  margin-left: 40px;
+}
+.pickHint {
+  margin-top: 40px;
+  text-align: left;
 }
 
 .foot {

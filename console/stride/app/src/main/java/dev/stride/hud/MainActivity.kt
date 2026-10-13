@@ -1065,6 +1065,15 @@ class MainActivity : Activity() {
                 repaint()
                 return
             }
+            // A TrailMate workout brings its own cool-down as a step (spec 038):
+            // ending one early finishes it, with the belt eased down, rather
+            // than starting the console's own on top.
+            if (workoutRunner != null) {
+                Log.i(TAG, "workout ended early — no console cool-down")
+                requestFinish()
+                repaint()
+                return
+            }
             val now = SystemClock.elapsedRealtime()
             // Coming out of a pause the clock is already stopped; restart it so
             // the cool-down is counted like any other part of the workout.
@@ -1937,6 +1946,9 @@ class MainActivity : Activity() {
                 else -> null
             }
             recorder.begin(snap.whoId, plan, boardName())
+            // The step under way began in the frame that opened the
+            // recording, before there was one to mark it in.
+            w?.step?.let { recorder.mark(it.label, it.incline ?: targetGrade) }
         }
         recorder.tick(snap, strap.bpm() > 0)
     }

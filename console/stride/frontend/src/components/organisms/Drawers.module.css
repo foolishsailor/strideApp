@@ -16,14 +16,17 @@
 }
 
 /* Closed: moved by the depth of what it holds — the strip is 140 deep (44 as
-   one line), the rails 150 wide, the dock 104 tall. The top drawer's depth is
-   a variable, which its grip and size toggle hang off too. */
+   one line), the rails 150 wide, the dock 104 tall (220 with a workout's step
+   on it, StepBand). The top and bottom drawers' depths are variables, which
+   their grips (and the size toggle) hang off too. */
 .top { --strip-h: 140px; }
 .top.small { --strip-h: 44px; }
 .top.closed { transform: translateY(calc(-1 * var(--strip-h))); }
 .left.closed { transform: translateX(-150px); }
 .right.closed { transform: translateX(150px); }
-.bottom.closed { transform: translateY(104px); }
+.bottom { --dock-h: 104px; }
+.bottom.tall { --dock-h: 220px; }
+.bottom.closed { transform: translateY(var(--dock-h)); }
 
 button.grip {
   position: absolute;
@@ -60,7 +63,7 @@ button.grip {
   height: 28px;
 }
 .topGrip { top: calc(var(--strip-h) + 16px); }
-.bottomGrip { bottom: 120px; }
+.bottomGrip { bottom: calc(var(--dock-h) + 16px); }
 .topGrip i,
 .bottomGrip i {
   width: 64px;

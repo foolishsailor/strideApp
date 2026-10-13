@@ -72,6 +72,19 @@ export const trailmate: Theme = {
     trackingLabel: '0.08em',
     trackingNumeral: '-0.01em',
   },
+  /* TrailMate's workout type colours: its chart palette in dark mode
+     (shared/design, palette.chart; constants/workoutTypes.ts says which role
+     each type takes). Pinned by tokens.test.ts. */
+  workout: {
+    easy: '#6CC89B', // chart.zone2
+    tempo: '#CF7EA8', // chart.tempo
+    intervals: '#E27F79', // chart.zone4
+    hills: '#C198CF', // chart.zone5
+    longRun: '#6FB3E3', // chart.zone1
+    recovery: '#64B28B', // chart.early
+    threshold: '#D89464', // chart.late
+    speed: '#C55E58', // chart.hr
+  },
   radius: { control: 8, chip: 8, card: 8, choice: 8, floating: 8 },
   edgeWidth: 1,
   settings: {

@@ -2,19 +2,44 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { installKotlinEntryPoints } from '../bridge/kotlin';
+import type { WorkoutStep } from '../bridge/types';
+import { addDays, localDate } from '../lib/schedule';
 import { useUi } from '../store/ui';
 import { touchableBoxes } from '../hooks/useTouchRegion';
 import { loadSettings, useSettings } from '../store/settings';
+import { useTrailmate } from '../store/trailmate';
 import { useWelcome } from '../store/welcome';
 import { mockBridge } from '../test/setup';
 
 const ROUTES = JSON.stringify([
-  { id: 'r1', name: 'River', distance_m: 5000, climb_m: 18, segments: [[0, 2500, 2], [2500, 5000, -1]] },
+  { id: 'r1', kind: 'route', name: 'River', distance_m: 5000, climb_m: 18, segments: [[0, 2500, 2], [2500, 5000, -1]] },
 ]);
+
+const TODAY = localDate(new Date());
+const ZONES = {
+  pace: [{ zone: 2, minMs: 2.86, maxMs: 3.13 }],
+  hr: [{ zone: 1, minBpm: 98, maxBpm: 118 }, { zone: 2, minBpm: 119, maxBpm: 138 }],
+  maxHr: 189, restingHr: 48,
+};
+const INTERVALS = {
+  id: 'w1', date: TODAY, name: '4 × 3 min @ threshold', type: 'intervals', sport: 'running', runnable: true,
+  estimatedDurationS: 2340, estimatedDistanceM: 6800, completed: false, completedActivity: null,
+  steps: [
+    { kind: 'warmup', label: 'Warm up', end: { type: 'time', value: 600 }, target: { type: 'none' }, inclinePct: null, note: null, repeat: null },
+    { kind: 'interval', label: 'Interval', end: { type: 'time', value: 180 }, target: { type: 'pace', minMs: 3.64, maxMs: 3.77 }, inclinePct: 1, note: null, repeat: { index: 1, of: 4 } },
+    { kind: 'cooldown', label: 'Cool down', end: { type: 'open', value: null }, target: { type: 'hr', zone: 2 }, inclinePct: null, note: null, repeat: null },
+  ],
+};
+const STRENGTH = {
+  id: 'w2', date: addDays(TODAY, 2), name: 'Core', type: null, sport: 'strength_training', runnable: false, steps: [],
+};
+const person = (over: object = {}) => ({ state: 'ok', fetchedAt: Date.now(), from: TODAY, scopes: [], zones: ZONES, workouts: [INTERVALS, STRENGTH], ...over });
+const schedules = (sam: object) => () => JSON.stringify({ Sam: sam });
 
 beforeEach(() => {
   installKotlinEntryPoints();
-  useWelcome.setState({ step: 1, runner: '', planMode: 'shapes', minutes: 30, shape: 'rolling', route: null, loop: false });
+  useWelcome.setState({ step: 1, runner: '', planMode: 'manual', manual: 'free', hrZone: null, route: null, loop: false, workout: null });
+  useTrailmate.setState({ schedules: {}, routes: [] });
   useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false, appsOpen: false });
   act(() => window.overApp(false));
   act(() => window.render({ mode: 'welcome' }));
@@ -23,24 +48,49 @@ beforeEach(() => {
 const press = (text: string | RegExp) => fireEvent.click(screen.getByText(text));
 
 describe('welcome', () => {
-  it('runs who → how → which and begins the chosen guided run', () => {
+  it('asks Manual, Routes or Workouts, and begins a free run only on BEGIN', () => {
     const b = mockBridge();
     render(<App />);
     press('Sam');
     expect(b.setRunner).toHaveBeenCalledWith('Sam');
-    press('Guided');
-    press('45 min');
-    press('Pyramid');
-    expect(b.chooseGuided).not.toHaveBeenCalled(); // choosing never starts the belt
+    expect(screen.getByText('Manual')).toBeTruthy();
+    expect(screen.getByText('Routes')).toBeTruthy();
+    expect(screen.getByText('Workouts')).toBeTruthy();
+    press('Manual');
+    expect(b.choose).not.toHaveBeenCalled(); // choosing never starts the belt
     press('BEGIN →');
-    expect(b.chooseGuided).toHaveBeenCalledWith('pyramid', 45);
+    expect(b.choose).toHaveBeenCalled();
   });
 
-  it('offers routes only when there are some, and loops one there and back', () => {
+  it('holds a heart-rate zone from the runner’s own zones', () => {
+    const b = mockBridge({ schedules: schedules(person()) });
+    render(<App />);
+    press('Sam');
+    press('Manual');
+    press('Heart rate');
+    expect(screen.getByText('119–138 bpm')).toBeTruthy();
+    press('BEGIN →');
+    expect(b.chooseHeartRate).not.toHaveBeenCalled(); // no zone picked yet
+    press('Zone 2');
+    press('BEGIN →');
+    expect(b.chooseHeartRate).toHaveBeenCalledWith(2, 119, 138);
+  });
+
+  it('says heart rate needs zones when TrailMate sent none', () => {
+    mockBridge();
+    render(<App />);
+    press('Sam');
+    press('Manual');
+    expect(screen.getByText('no heart-rate zones yet')).toBeTruthy();
+    press('Heart rate');
+    expect(useWelcome.getState().manual).toBe('free');
+  });
+
+  it('lists the runner’s routes and loops one there and back', () => {
     const b = mockBridge({ routes: () => ROUTES });
     render(<App />);
     press('Sam');
-    press('My routes');
+    press('Routes');
     expect(screen.getByText(/5\.00 km · 18 m up/)).toBeTruthy();
     fireEvent.click(document.querySelector('.loop')!);
     // Out and back: the 2 % climb and the 1 % descent are both climbed once.
@@ -49,10 +99,139 @@ describe('welcome', () => {
     expect(b.chooseRoute).toHaveBeenCalledWith('r1', true);
   });
 
-  it('hides My routes when the console has none', () => {
+  it('shows a race course with its date', () => {
+    mockBridge({ routes: () => JSON.stringify([{ id: 'x', kind: 'race', name: 'Hill race course', date: '2026-11-08', distance_m: 3000, climb_m: 60, segments: [[0, 3000, 2]] }]) });
     render(<App />);
     press('Sam');
-    expect(screen.queryByText('My routes')).toBeNull();
+    press('Routes');
+    expect(screen.getByText(/race · Sunday 8 November/)).toBeTruthy();
+  });
+
+  it('says how to get routes when there are none', () => {
+    render(<App />);
+    press('Sam');
+    press('Routes');
+    expect(screen.getByText('Star routes in TrailMate to run them here.')).toBeTruthy();
+  });
+
+  it('lists the week’s workouts and previews one before BEGIN runs it', () => {
+    const b = mockBridge({ schedules: schedules(person()) });
+    render(<App />);
+    press('Sam');
+    press('Workouts');
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getAllByText('Rest day').length).toBe(5); // seven days, two with something
+    expect(screen.getByText('Not for the treadmill')).toBeTruthy();
+    press('4 × 3 min @ threshold');
+    expect(screen.getByText('1 of 4')).toBeTruthy();
+    expect(screen.getByText('4:25–4:35 /km')).toBeTruthy();
+    expect(screen.getByText('1% incline')).toBeTruthy();
+    expect(screen.getByText('until NEXT')).toBeTruthy();
+    expect(screen.getByText('Zone 2')).toBeTruthy(); // a zone TrailMate could not resolve
+    press('BEGIN →');
+    expect(b.chooseWorkout).toHaveBeenCalledWith('w1');
+  });
+
+  it('asks to reconnect when the link may not read the plan', () => {
+    mockBridge({ schedules: schedules(person({ state: 'scope' })) });
+    render(<App />);
+    expect(screen.getByText('Reconnect TrailMate to see your workouts')).toBeTruthy();
+  });
+});
+
+describe('home', () => {
+  it('shows today and tomorrow under the runner, and opens a workout from there', () => {
+    const b = mockBridge({ schedules: schedules(person()) });
+    render(<App />);
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Tomorrow')).toBeTruthy();
+    expect(screen.getByText('Intervals')).toBeTruthy();
+    expect(screen.getByText('39 min · 6.80 km')).toBeTruthy();
+    expect(screen.getByText('Rest day')).toBeTruthy();
+    press('4 × 3 min @ threshold');
+    expect(b.setRunner).toHaveBeenCalledWith('Sam');
+    expect(useWelcome.getState()).toMatchObject({ step: 3, planMode: 'workouts', workout: 'w1', runner: 'Sam' });
+    expect(screen.getByText('Warm up')).toBeTruthy(); // its preview
+  });
+
+  it('marks a workout done with what was run, in miles when Settings says so', () => {
+    useSettings.setState({ units: 'mi' });
+    mockBridge({
+      schedules: schedules(person({ workouts: [{ ...INTERVALS, completed: true, completedActivity: { distanceM: 3218.688 } }] })),
+      settingsJson: () => JSON.stringify({ people: [{ name: 'Sam' }], units: 'mi' }),
+    });
+    render(<App />);
+    expect(screen.getByText('Done · 2.00 mi')).toBeTruthy();
+    useSettings.setState({ units: 'km' });
+  });
+
+  it('shows nothing for a runner who is not linked', () => {
+    mockBridge({ schedules: schedules(person({ state: 'unlinked' })) });
+    render(<App />);
+    expect(screen.queryByText('Today')).toBeNull();
+    expect(screen.queryByText(/Reconnect/)).toBeNull();
+  });
+});
+
+const STEP: WorkoutStep = {
+  plannedId: 'w1', name: '4 × 3 min', step: 3, steps: 10, label: 'Interval', kind: 'interval', note: 'Strong but controlled',
+  repeat: { index: 2, of: 4 }, target: { type: 'pace', minKph: 13.1, maxKph: 13.57, zone: null }, incline: 1,
+  left: 102, leftIsDistance: false, open: false, nextLabel: 'Recovery', nextTarget: { type: 'none' },
+  speedAuto: true, inclineAuto: true, hrState: null, hrZoneNow: null,
+};
+
+describe('a workout under way', () => {
+  it('shows the step, its target, what is left and what is next', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: STEP }));
+    expect(screen.getByText('Step 3 of 10 · 2 of 4')).toBeTruthy();
+    expect(screen.getByText('Interval')).toBeTruthy();
+    expect(screen.getByText('4:25–4:35 /km · 1% incline')).toBeTruthy();
+    expect(screen.getByText('1:42')).toBeTruthy();
+    expect(screen.getByText('Recovery')).toBeTruthy();
+    expect(screen.getByText('Strong but controlled')).toBeTruthy();
+    expect(screen.queryByText('NEXT')).toBeNull();
+  });
+
+  it('says when the runner has the speed, rather than the step', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, speedAuto: false } }));
+    expect(screen.getByText('speed yours until the next step')).toBeTruthy();
+  });
+
+  it('ends an open step with NEXT', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, open: true, left: null } }));
+    press('NEXT');
+    expect(b.nextStep).toHaveBeenCalled();
+  });
+
+  it('puts the zone and heart-rate control beside the heart rate', () => {
+    render(<App />);
+    act(() => window.render({
+      mode: 'running', pulse: 131,
+      workoutStep: { ...STEP, target: { type: 'hr', minBpm: 139, maxBpm: 155, zone: 3 }, hrState: 'holding', hrZoneNow: 2 },
+    }));
+    expect(screen.getByText('131')).toBeTruthy();
+    expect(screen.getByText('Zone 2')).toBeTruthy();
+    expect(screen.getByText('Heading for zone 3')).toBeTruthy();
+    act(() => window.render({ mode: 'running', workoutStep: { ...STEP, target: { type: 'hr', minBpm: 139, maxBpm: 155, zone: 3 }, hrState: 'no_hr' } }));
+    expect(screen.getByText('No heart rate')).toBeTruthy();
+  });
+
+  it('rides in the bottom drawer over another app', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'running', workoutStep: STEP }));
+    act(() => window.overApp(true));
+    expect(screen.getByText('Interval').closest('[data-drawer]')).toBe(screen.getByText('STOP').closest('[data-drawer]'));
+  });
+
+  it('says where the workout was when paused', () => {
+    render(<App />);
+    act(() => window.render({ mode: 'paused', elapsed: 60, workoutStep: STEP }));
+    act(() => useUi.getState().setConfirmOpen(true));
+    expect(screen.getByText('1:00 in · Interval · step 3 of 10 · the belt has stopped')).toBeTruthy();
   });
 });
 

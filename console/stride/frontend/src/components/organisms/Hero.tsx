@@ -5,9 +5,9 @@ import { TrackHero } from './TrackHero';
 
 /** Which hero fills the centre.
  *
- *  Warm-up and cool-down get the phase panel. Otherwise a guided run has a
- *  plan, so there is ground ahead worth drawing and the path earns the space;
- *  a casual run has none — the path would be a dead flat line — so the oval
+ *  Warm-up and cool-down get the phase panel. Otherwise a route or workout
+ *  has a plan, so there is ground ahead worth drawing and the path earns the
+ *  space; a manual run has none — the path would be a dead flat line — so the oval
  *  counts laps instead, which is what a casual run actually accumulates. */
 export function Hero() {
   const mode = useMode();

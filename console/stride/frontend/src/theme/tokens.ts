@@ -51,6 +51,7 @@ export function cssVariables(t: Theme = theme): string {
   };
   group('colour', t.colour);
   group('role', t.role);
+  group('workout', t.workout);
   group('font', { family: t.font.family, ...fontSize });
   group('weight', {
     numeral: t.font.weightNumeral,

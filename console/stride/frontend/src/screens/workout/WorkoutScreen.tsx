@@ -5,14 +5,15 @@ import { Fill } from '../../components/primitives';
 import { StatusChip } from '../../components/molecules';
 import {
   CompactStrip, ControlBar, Drawer, FanMenu, Grip, Hero, InclineRail, InclineReading, MetricStrip,
-  SizeToggle, SpeedRail, SpeedReading, toggleControls, toggleMetrics,
+  SizeToggle, SpeedRail, SpeedReading, StepBand, toggleControls, toggleMetrics,
 } from '../../components/organisms';
 
 /** The screen the treadmill is actually run on: warm-up, the run, pause and
  *  cool-down. A bar docked along the top — incline at its left end, speed at
  *  its right, the run's numbers between — and from its bottom edge the
  *  incline and speed rails down either side. The oval or path hero between
- *  them, and apps, start, fan and stop beneath it.
+ *  them, and apps, start, fan and stop beneath it. A TrailMate workout's
+ *  step (now, left, next) docks on top of those.
  *
  *  Over another app (APPS) the hero goes, the middle is the app's picture, and
  *  the edges are drawers: the numbers slide off the top, the rails and dock
@@ -22,6 +23,7 @@ export function WorkoutScreen() {
   const mode = useMode();
   const ramping = useField('ramping');
   const { overApp, metricsOpen, controlsOpen, metricsCompact } = useUi();
+  const workout = !!useField('workoutStep');
   const strip = (
     <MetricStrip left={<InclineReading />} right={<SpeedReading />}>
       <StatusChip mode={mode} label={modeLabel(mode, ramping)} />
@@ -34,6 +36,7 @@ export function WorkoutScreen() {
         <InclineRail />
         <SpeedRail />
         <Hero />
+        <StepBand />
         <ControlBar />
         <FanMenu />
       </Fill>
@@ -43,7 +46,8 @@ export function WorkoutScreen() {
     <Fill className={metricsCompact ? 'metrics-small' : undefined}>
       <Drawer edge="left" open={controlsOpen}><InclineRail /></Drawer>
       <Drawer edge="right" open={controlsOpen}><SpeedRail /></Drawer>
-      <Drawer edge="bottom" open={controlsOpen}>
+      <Drawer edge="bottom" open={controlsOpen} tall={workout}>
+        <StepBand />
         <ControlBar />
         <Grip edge="bottom" onTap={toggleControls} />
       </Drawer>
