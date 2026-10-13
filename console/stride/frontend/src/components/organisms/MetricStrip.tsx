@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { mmss, nf } from '../../lib/format';
-import { climb as climbIn, paceSec, paceUnit, speedIn, speedUnit, stride as strideIn, distanceRun } from '../../lib/units';
+import { fixed1, mmss, nf } from '../../lib/format';
+import { climb as climbIn, paceSec, paceUnit, speedIn, speedText, speedUnit, stride as strideIn, distanceRun } from '../../lib/units';
 import { useField } from '../../store/session';
 import { useUnits } from '../../store/settings';
 import { Row } from '../primitives';
@@ -52,6 +52,42 @@ export function MetricStrip({ left, right, children }: { left?: ReactNode; right
         </Row>
       </div>
       {right}
+    </div>
+  );
+}
+
+/** The strip over another app, made small: every number on one line along
+ *  the top, incline first and speed last, so a film keeps the screen. */
+export function CompactStrip() {
+  const incline = useField('incline') ?? 0;
+  const elapsed = useField('elapsed') ?? 0;
+  const distance = useField('distance') ?? 0;
+  const speed = useField('speed');
+  const pulse = useField('pulse');
+  const cadence = useField('cadence');
+  const power = useField('power');
+  const calories = useField('calories') ?? 0;
+  const climb = useField('climbM') ?? 0;
+  const stride = useField('strideM');
+  const podKph = useField('podKph');
+  const u = useUnits();
+  const pace = paceSec(speed, u);
+  const dist = distanceRun(distance, u);
+  const up = climbIn(climb, u);
+  return (
+    <div className={styles.compact}>
+      <Metric compact label="Incline" unit="%">{fixed1(incline)}</Metric>
+      <Metric compact label="Elapsed">{mmss(elapsed)}</Metric>
+      <Metric compact label="Distance" unit={dist.unit}>{dist.value}</Metric>
+      <Metric compact label="Pace" unit={paceUnit(u)}>{pace ? mmss(pace) : dash}</Metric>
+      <Metric compact label="HR" unit="bpm">{orDash(pulse)}</Metric>
+      <Metric compact label="Cadence" unit="spm">{orDash(cadence)}</Metric>
+      <Metric compact label="Power" unit="W">{orDash(power)}</Metric>
+      <Metric compact label="Cal" unit="kcal">{nf(calories)}</Metric>
+      <Metric compact label="Climb" unit={up.unit}>{up.value}</Metric>
+      <Metric compact label="Stride" unit={stride ? strideIn(stride, u).unit : u === 'mi' ? 'ft' : 'm'}>{orDash(stride, (n) => strideIn(n, u).value)}</Metric>
+      <Metric compact label="Pod" unit={speedUnit(u)}>{orDash(podKph, (n) => speedIn(n, u).toFixed(1))}</Metric>
+      <Metric compact label="Speed" unit={speedUnit(u)}>{speedText(speed, u)}</Metric>
     </div>
   );
 }

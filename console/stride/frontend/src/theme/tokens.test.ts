@@ -12,8 +12,8 @@ function stylesheets(dir = resolve(process.cwd(), 'src')): string[] {
   });
 }
 
-/** Set inline by a component, not by the theme. */
-const LOCAL = new Set(['--row-half']);
+/** Set by a component, inline or in its own stylesheet, not by the theme. */
+const LOCAL = new Set(['--row-half', '--strip-h']);
 
 /** The shared scripts in assets/ui, which take the theme as --sx-* variables. */
 const SHARED = ['stride-settings.js', 'stride-core.js'].map((f) =>

@@ -27,6 +27,9 @@ interface UiStore {
    *  rails and dock. Both open each time an app is opened. */
   metricsOpen: boolean;
   controlsOpen: boolean;
+  /** Over another app, the numbers as one short line rather than the full
+   *  strip. Kept for the session: chosen once, it holds across apps. */
+  metricsCompact: boolean;
   /** Bumped when Settings closes, since somebody may have just added themselves. */
   peopleVersion: number;
 
@@ -37,6 +40,7 @@ interface UiStore {
   setOverApp(on: boolean): void;
   setMetricsOpen(open: boolean): void;
   setControlsOpen(open: boolean): void;
+  setMetricsCompact(compact: boolean): void;
   peopleChanged(): void;
 }
 
@@ -48,6 +52,7 @@ export const useUi = create<UiStore>()((set) => ({
   overApp: false,
   metricsOpen: true,
   controlsOpen: true,
+  metricsCompact: false,
   peopleVersion: 0,
 
   setFanOpen: (fanOpen) => set({ fanOpen }),
@@ -57,5 +62,6 @@ export const useUi = create<UiStore>()((set) => ({
   setOverApp: (overApp) => set({ overApp, metricsOpen: true, controlsOpen: true }),
   setMetricsOpen: (metricsOpen) => set({ metricsOpen }),
   setControlsOpen: (controlsOpen) => set({ controlsOpen }),
+  setMetricsCompact: (metricsCompact) => set({ metricsCompact }),
   peopleChanged: () => set((s) => ({ peopleVersion: s.peopleVersion + 1 })),
 }));

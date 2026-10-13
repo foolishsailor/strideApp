@@ -291,6 +291,24 @@ describe('apps', () => {
     expect(touchableBoxes()).toBe('all');
   });
 
+  it('makes the metrics one small line over an app, and back', () => {
+    useUi.setState({ metricsCompact: false });
+    render(<App />);
+    act(() => window.render({ mode: 'running', elapsed: 65, podKph: 9.6 }));
+    act(() => window.overApp(true));
+    expect(screen.queryByText('Pod')).toBeNull();
+    fireEvent.click(screen.getByText('SMALL'));
+    expect(useUi.getState().metricsCompact).toBe(true);
+    expect(screen.getByText('Pod')).toBeTruthy();        // the one-line strip
+    expect(screen.queryByText('Heart rate')).toBeNull(); // not the full one
+    fireEvent.click(screen.getByText('LARGE'));
+    expect(useUi.getState().metricsCompact).toBe(false);
+    expect(screen.getByText('Heart rate')).toBeTruthy();
+    // Metrics hidden: only the grip is left, not the size toggle.
+    act(() => useUi.getState().setMetricsOpen(false));
+    expect(screen.queryByText('SMALL')).toBeNull();
+  });
+
   it('has no APPS on a console whose app cannot open them', () => {
     render(<App />);
     act(() => window.render({ mode: 'running' }));
