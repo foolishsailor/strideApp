@@ -1,11 +1,16 @@
 import { useMemo, useRef } from 'react';
 import { bridge } from '../../bridge/stride';
+import { cx } from '../../lib/cx';
 import { fixed1 } from '../../lib/format';
 import { inclineStops, isMoving, nearestStop, parseLimits, speedDelta, speedStops } from '../../lib/session';
 import { kphFrom, speedIn, speedText, speedUnit } from '../../lib/units';
 import { useField, useMode, useSession } from '../../store/session';
 import { useUnits } from '../../store/settings';
+import { useUi } from '../../store/ui';
 import { RailReading, ValueRail } from '../molecules';
+import { Button, Icon } from '../primitives';
+import { drivesSpeed } from './SpeedMenu';
+import styles from './SpeedMenu.module.css';
 
 /** Speed steps 0.1 on a tap, 0.5 while held, in km/h or mph — whichever the
  *  screen shows; incline 0.5 % either way. */
@@ -27,11 +32,31 @@ export function InclineReading() {
   return <RailReading label="Incline" value={fixed1(incline)} unit="%" target={fixed1(target)} />;
 }
 
+/** Whether the workout or the runner has the speed, beside it; nothing when
+ *  no step is setting it. */
+function SpeedMode() {
+  const step = useField('workoutStep');
+  if (!drivesSpeed(step)) return null;
+  return step!.speedAuto
+    ? <span className={styles.mode}><Icon name="auto" label="Speed: auto" /></span>
+    : <span className={cx(styles.mode, styles.manual)}><Icon name="manual" label="Speed: manual" /></span>;
+}
+
+/** The speed, and whose it is. Pressing either opens the speed menu. */
 export function SpeedReading() {
   const u = useUnits();
   const speed = useField('speed') ?? 0;
   const target = useField('targetSpeed') ?? speed;
-  return <RailReading label="Speed" value={speedText(speed, u)} unit={speedUnit(u)} target={speedText(target, u)} />;
+  return (
+    <Button size="reading" onTap={() => {
+      const ui = useUi.getState();
+      ui.setFanOpen(false);
+      ui.setSpeedMenuOpen(!ui.speedMenuOpen);
+    }}>
+      <SpeedMode />
+      <RailReading label="Speed" value={speedText(speed, u)} unit={speedUnit(u)} target={speedText(target, u)} />
+    </Button>
+  );
 }
 
 /** How long a step we sent is trusted over the snapshot's target. The board

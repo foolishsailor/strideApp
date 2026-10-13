@@ -41,6 +41,7 @@ export function onModeChange(mode: SessionMode): void {
   const ui = useUi.getState();
   if (mode === 'welcome' || mode === 'summary') {
     ui.setFanOpen(false);
+    ui.setSpeedMenuOpen(false);
     ui.setAppsOpen(false);
   }
   if (mode !== 'paused') ui.setConfirmOpen(false);

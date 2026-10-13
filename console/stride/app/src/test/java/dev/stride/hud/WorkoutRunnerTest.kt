@@ -52,6 +52,16 @@ class WorkoutRunnerTest {
         assertTrue(r.tick(at(600.0, 1800.0)).speedKph != null)
     }
 
+    @Test fun `AUTO hands the speed back before the next step`() {
+        val r = runner()
+        r.tick(at(0.0))
+        r.speedTakenOver()
+        assertNull(r.tick(at(10.0)).speedKph)
+        r.speedBackToAuto(at(20.0))
+        assertTrue(r.speedAuto)
+        assertEquals((2.5 + 2.78) / 2 * 3.6, r.tick(at(21.0)).speedKph!!, 1e-9)
+    }
+
     @Test fun `a hand on the incline keeps it until the next step`() {
         val r = runner()
         r.tick(at(0.0)); r.tick(at(600.0, 1800.0))

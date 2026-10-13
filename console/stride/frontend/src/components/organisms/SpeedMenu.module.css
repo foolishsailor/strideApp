@@ -1,0 +1,41 @@
+/* Under the speed reading, at the top bar's right end, clear of the rail's +.
+   Boxed like the fan's menu: it is an overlay, not a run-screen control. */
+.menu {
+  position: absolute;
+  right: 24px;
+  top: 140px;
+  width: 300px;
+  padding: 10px;
+  background: var(--role-fill-floating);
+  border: var(--edge-width) solid var(--role-edge);
+  border-radius: var(--radius-floating);
+  box-shadow: var(--role-shadow-floating);
+  z-index: var(--layer-fan-menu);
+}
+:global(.metrics-small) .menu {
+  top: 44px;
+}
+/* AUTO and MANUAL side by side: one choice of two. */
+.pair {
+  display: flex;
+}
+.pair > * + * {
+  margin-left: 8px;
+}
+.hint {
+  margin: 6px 4px 2px;
+  font-size: var(--font-caption);
+  color: var(--colour-ink-faint);
+  text-align: center;
+}
+
+/* Beside the speed reading: AUTO in the accent, MANUAL in the warm tone.
+   Over another app every word is white (global.css), and so is this. */
+.mode {
+  margin-right: 14px;
+  font-size: 44px;
+  color: var(--colour-accent);
+}
+.manual {
+  color: var(--colour-accent-warm);
+}

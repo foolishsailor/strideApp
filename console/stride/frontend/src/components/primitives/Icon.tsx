@@ -5,7 +5,7 @@ import styles from './Icon.module.css';
    its words. Sized by font-size, 1em square, so a button's size sets them.
    Each carries its word as its accessible name. */
 
-export type IconName = 'apps' | 'back' | 'pause' | 'play' | 'skip' | 'fan' | 'stop' | 'finish';
+export type IconName = 'apps' | 'back' | 'pause' | 'play' | 'skip' | 'fan' | 'stop' | 'finish' | 'auto' | 'manual';
 
 const GLYPHS: Record<IconName, React.ReactNode> = {
   // Four tiles: the apps on the console.
@@ -42,6 +42,14 @@ const GLYPHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   stop: <rect x="4" y="4" width="16" height="16" rx="2" />,
+  // The workout is setting the speed: two arrows chasing round.
+  auto: (
+    <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8A5.9 5.9 0 0 1 6 12c0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z" />
+  ),
+  // The runner has the speed: an open hand.
+  manual: (
+    <path d="M21.5 5.5V18c0 2.2-1.8 4-4 4h-6.3c-1.08 0-2.1-.43-2.85-1.19L2.5 14.9l1.3-1.25c.4-.36 1-.4 1.42-.1L8.5 15.5V4a1.5 1.5 0 0 1 3 0v7h1V2.5a1.5 1.5 0 0 1 3 0V11h1V3.5a1.5 1.5 0 0 1 3 0V11h1V5.5a1.5 1.5 0 0 1 3 0z" />
+  ),
   // The chequered flag: the end of the workout.
   finish: (
     <>

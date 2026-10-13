@@ -17,6 +17,8 @@ export const idleMs = (): number => performance.now() - lastActivity;
 
 interface UiStore {
   fanOpen: boolean;
+  /** The speed menu: AUTO / MANUAL and SYNC TO POD. */
+  speedMenuOpen: boolean;
   confirmOpen: boolean;
   asleep: boolean;
   /** The APPS picker. */
@@ -34,6 +36,7 @@ interface UiStore {
   peopleVersion: number;
 
   setFanOpen(open: boolean): void;
+  setSpeedMenuOpen(open: boolean): void;
   setConfirmOpen(open: boolean): void;
   setAsleep(asleep: boolean): void;
   setAppsOpen(open: boolean): void;
@@ -46,6 +49,7 @@ interface UiStore {
 
 export const useUi = create<UiStore>()((set) => ({
   fanOpen: false,
+  speedMenuOpen: false,
   confirmOpen: false,
   asleep: false,
   appsOpen: false,
@@ -56,6 +60,7 @@ export const useUi = create<UiStore>()((set) => ({
   peopleVersion: 0,
 
   setFanOpen: (fanOpen) => set({ fanOpen }),
+  setSpeedMenuOpen: (speedMenuOpen) => set({ speedMenuOpen }),
   setConfirmOpen: (confirmOpen) => set({ confirmOpen }),
   setAsleep: (asleep) => set({ asleep }),
   setAppsOpen: (appsOpen) => set({ appsOpen }),

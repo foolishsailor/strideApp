@@ -16,10 +16,12 @@ export function mockBridge(overrides: Partial<Record<keyof StrideBridge | string
     'choose', 'chooseRoute', 'chooseWorkout', 'chooseHeartRate', 'nextStep', 'refreshSchedules', 'skipWarmup', 'skipCooldown', 'pause', 'resume', 'end',
     'home', 'speed', 'incline', 'setSpeed', 'setIncline', 'setFan', 'setRunner', 'ackDmk', 'dim',
     'calibrate', 'calNudge', 'calUseStryd', 'calSave', 'calDone',
+    'setSpeedAuto',
   ]) b[name] = vi.fn();
   b.routes = vi.fn(() => '[]');
   b.settingsJson = vi.fn(() => JSON.stringify({ people: [{ name: 'Sam' }], default_runner: '' }));
   b.wakeState = vi.fn(() => 'awake');
+  b.syncToPod = vi.fn(() => JSON.stringify({ ok: true, note: 'Belt matched to the pod.' }));
   Object.assign(b, overrides);
   window.Stride = b as unknown as StrideBridge;
   return b as unknown as { [K in keyof StrideBridge]: ReturnType<typeof vi.fn> };

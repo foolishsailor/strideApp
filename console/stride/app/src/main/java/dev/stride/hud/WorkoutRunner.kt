@@ -78,6 +78,21 @@ class WorkoutRunner(
     }
 
     fun speedTakenOver() { speedAuto = false }
+
+    /**
+     * The speed menu's AUTO: the step takes the speed back now rather than at
+     * the next step. A heart-rate step starts its controller again from the
+     * speed the runner chose, not from where it last decided.
+     */
+    fun speedBackToAuto(p: Progress) {
+        if (finished || speedAuto) return
+        speedAuto = true
+        val s = step ?: return
+        hr = (s.target as? Workout.Target.HeartRate)?.let {
+            val from = if (p.currentKph > 0) p.currentKph else fallbackKph
+            HrControl.forStep(it.band, it.zone, zones, limits, from, p.nowMs, hrTuning)
+        }
+    }
     fun inclineTakenOver() { inclineAuto = false }
 
     /** What is left of the current step: seconds or metres, and which; null for an open step. */

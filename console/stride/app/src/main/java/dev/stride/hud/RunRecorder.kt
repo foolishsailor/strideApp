@@ -191,10 +191,14 @@ class RunRecorder(
         // counter now and then; the contract wants distance that never falls.
         val d = maxOf(lastDistance, s.distance)
         lastDistance = d
+        // The foot pod's speed while it is reading, the belt's otherwise: the
+        // pod measures the runner, the belt only the belt. The distance sent
+        // is built from this column (see build), so it follows the same choice.
+        val speedKph = if (s.podKph > 0.0) s.podKph else s.speed
         val line = JSONArray()
             .put(t)
             .put(round(d, 1))
-            .put(round(s.speed / 3.6, 2))
+            .put(round(speedKph / 3.6, 2))
             .put(round(s.incline.coerceIn(-10.0, 45.0), 1))
             .put(if (s.pulse > 0) s.pulse else JSONObject.NULL)
             .put(if (s.cadence > 0) s.cadence else JSONObject.NULL)
@@ -351,7 +355,14 @@ class RunRecorder(
         if (person.isEmpty()) return null
 
         val elapsed = samples.lastOrNull()?.t ?: 0L
-        val distance = samples.lastOrNull()?.d ?: 0.0
+        // Built from the speed recorded each second, not the odometer column:
+        // the board restarts its odometer on resume, which once reported a
+        // 13.7-mile run as 6.98. See RunTotals.
+        val along = RunTotals.distanceFromSpeeds(
+            LongArray(samples.size) { samples[it].t },
+            DoubleArray(samples.size) { samples[it].v },
+        )
+        val distance = along.lastOrNull() ?: 0.0
         if (elapsed < MIN_SECONDS || distance < MIN_DISTANCE_M || samples.size < MIN_SECONDS) {
             Log.i(TAG, "run too short to send (${elapsed} s, ${"%.0f".format(distance)} m)")
             return null
@@ -379,15 +390,13 @@ class RunRecorder(
         val t = JSONArray(); val dist = JSONArray(); val speed = JSONArray(); val incline = JSONArray()
         val hr = JSONArray(); val cad = JSONArray(); val pw = JSONArray(); val st = JSONArray()
         var climb = 0.0
-        var prev: Sample? = null
-        for (s in samples) {
-            t.put(s.t); dist.put(s.d); speed.put(s.v); incline.put(s.inc)
+        for ((i, s) in samples.withIndex()) {
+            t.put(s.t); dist.put(round(along[i], 1)); speed.put(s.v); incline.put(s.inc)
             hr.put(s.hr ?: JSONObject.NULL); cad.put(s.cad ?: JSONObject.NULL)
             pw.put(s.pw ?: JSONObject.NULL); st.put(s.st ?: JSONObject.NULL)
             // The contract's climb, to the letter: rise over the ground covered
             // since the last sample, at this sample's incline, never negative.
-            prev?.let { climb += maxOf(0.0, (s.d - it.d) * s.inc / 100.0) }
-            prev = s
+            if (i > 0) climb += maxOf(0.0, (along[i] - along[i - 1]) * s.inc / 100.0)
         }
         val beats = samples.mapNotNull { it.hr }
         val anyPod = samples.any { it.cad != null || it.pw != null || it.st != null }
@@ -406,7 +415,8 @@ class RunRecorder(
             .put("movingS", elapsed - paused)
             .put("distanceM", round(distance, 1))
             .put("climbM", round(climb, 1))
-            .put("calories", samples.last().kcal)
+            // Every step the counter took: it restarts with the odometer.
+            .put("calories", RunTotals.resettingCounterTotal(samples.map { it.kcal }))
         if (beats.isNotEmpty()) {
             totals.put("avgHr", Math.round(beats.average()).toInt())
             totals.put("maxHr", beats.maxOrNull() ?: 0)
