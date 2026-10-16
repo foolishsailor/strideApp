@@ -46,3 +46,26 @@
 .prose.body { font-size: var(--font-body); }
 .prose.lead { font-size: var(--font-lead); }
 .prose.ask { font-size: 24px; }
+
+/* ---- fitting text to its box (fit() in Text.tsx) ----------------------------
+   One line, or two, and an ellipsis where the text would run past its box.
+   min-width 0 and max-width 100% are what make it work everywhere: this
+   WebView lays a button's content out as a flex box, and a flex item refuses
+   to be narrower than its text unless told it may be, so without them a long
+   name runs under the card's edge instead of ending in an ellipsis. */
+.line1,
+.line2 {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.line1 {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.line2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

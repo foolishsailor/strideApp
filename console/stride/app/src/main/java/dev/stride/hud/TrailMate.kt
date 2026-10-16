@@ -58,7 +58,18 @@ import kotlin.concurrent.thread
  * Plain [HttpURLConnection] on background threads, so the link adds no
  * library to the APK.
  */
-class TrailMate(context: Context, private val cfg: Settings) {
+class TrailMate(
+    context: Context,
+    private val cfg: Settings,
+    /**
+     * True on the simulated board (debug builds, tools/sim.py on). Its runs
+     * are pretend, so they are never sent to the real TrailMate: they are
+     * kept in `trailmate/held` instead. Pointed at a mock (a TrailMate URL
+     * other than the real one), they are sent as usual, which is what the
+     * mock is for.
+     */
+    private val simulated: () -> Boolean = { false },
+) {
 
     companion object {
         private const val TAG = "StrideTrailMate"
@@ -83,6 +94,7 @@ class TrailMate(context: Context, private val cfg: Settings) {
     private val db = Db.get(app)
     private val queueDir = File(app.filesDir, "trailmate/queue").apply { mkdirs() }
     private val failedDir = File(app.filesDir, "trailmate/failed").apply { mkdirs() }
+    private val heldDir = File(app.filesDir, "trailmate/held")
 
     /** Someone has just linked (or re-linked): their schedule and routes can be fetched now. */
     @Volatile var onLinked: ((personId: String) -> Unit)? = null
@@ -326,6 +338,12 @@ class TrailMate(context: Context, private val cfg: Settings) {
             return
         }
         val id = workout.optString("workoutId")
+        if (simulated() && cfg.trailmateUrl() == Settings.TRAILMATE_DEFAULT_URL) {
+            heldDir.mkdirs()
+            File(heldDir, "$id.json").writeText(JSONObject().put("personId", personId).put("workout", workout).toString())
+            Log.i(TAG, "simulator: workout $id held on the console, not sent to the real TrailMate")
+            return
+        }
         val stamp = "%013d".format(startedMs(workout))
         val file = File(queueDir, "$stamp-$id.json")
         val tmp = File(queueDir, "$stamp-$id.tmp")

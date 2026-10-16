@@ -467,6 +467,8 @@ class MainActivity : Activity() {
     @Volatile private var calPodKph = 0.0
     @Volatile private var calPodSecs = 0.0
     @Volatile private var fanState = 0
+    /** FAN_STATE as a FitPro 2 board last pushed it, for [readFan]. */
+    @Volatile private var lastFp2Fan: Double? = null
     @Volatile private var pendingWrite: Map<FitPro.Field, Double>? = null
 
     /** True while the board is refusing traffic pending VerifySecurity. The
@@ -877,6 +879,15 @@ class MainActivity : Activity() {
 
         /** Ask TrailMate again for everyone now (pull to refresh, Settings). */
         @JavascriptInterface fun refreshSchedules() = sync.request(force = true)
+
+        /**
+         * A page showing [kind] ("schedule" or "routes") is open: ask
+         * TrailMate for this runner's copy now. window.trailmateRead(kind, ok)
+         * follows once it has answered, or could not.
+         */
+        @JavascriptInterface fun refreshTrailMate(kind: String) {
+            if (cfg.active.isNotEmpty()) sync.requestNow(cfg.active, kind)
+        }
 
         /**
          * Start one of the runner's planned workouts from TrailMate (spec 038):
@@ -1969,7 +1980,8 @@ class MainActivity : Activity() {
 
     /** Who is connected to TrailMate, and the runs on their way there. */
     private val trailmate by lazy {
-        TrailMate(this, cfg).also { it.onState = { id, state -> history.markTrailMate(id, state) } }
+        TrailMate(this, cfg, simulated = { sim != null })
+            .also { it.onState = { id, state -> history.markTrailMate(id, state) } }
     }
 
     /**
@@ -2640,6 +2652,11 @@ class MainActivity : Activity() {
         trailmate.start()
         trailmate.onLinked = { sync.request(it, force = true) }
         trailmate.syncInfo = { tmView.sync(it) }
+        sync.onRead = { id, kind, ok ->
+            if (id == cfg.active) runOnUiThread {
+                web.evaluateJavascript("window.trailmateRead && window.trailmateRead('$kind', $ok)", null)
+            }
+        }
         sync.start()
         recorder.recover()
         // Loaded now rather than at the first finished run, so an older
@@ -3114,6 +3131,7 @@ class MainActivity : Activity() {
             // poll, now that the board is in a state that will accept it.
             if (queued != null && writes === queued) pendingWrite = rest
 
+            (outcome as FitPro2Board.Result.Values).v[FitPro.Field.FAN_STATE]?.let { lastFp2Fan = it }
             val v = (outcome as FitPro2Board.Result.Values).v.filter { (f, value) ->
                 // Reject anything outside what the machine says it can do.
                 when (f) {
@@ -3867,19 +3885,23 @@ class MainActivity : Activity() {
      * that does not track, which is exactly where we are now.
      */
     private fun readFan() {
-        // FitPro 2's fan encoding is not known yet; the tile stays local.
-        if (fp2 != null) fanReadable = false
-        if (fanReadable == false) return
-        val reply = conn.exchange(FitPro.readWrite(deviceId, FAN_READ)) ?: return
-        val why = FitPro.rejectReason(reply, FAN_READ)
-        if (why != null) {
-            if (fanReadable == null) {
-                fanReadable = false
-                Log.i(TAG, "fan: board will not report FAN_STATE ($why) — tile stays local")
+        // FitPro 2 pushes FAN_STATE with everything else it is subscribed to
+        // (FitPro2Board.SUBSCRIBE); FitPro 1 is asked on its own exchange.
+        val v = if (fp2 != null) {
+            lastFp2Fan ?: return
+        } else {
+            if (fanReadable == false) return
+            val reply = conn.exchange(FitPro.readWrite(deviceId, FAN_READ)) ?: return
+            val why = FitPro.rejectReason(reply, FAN_READ)
+            if (why != null) {
+                if (fanReadable == null) {
+                    fanReadable = false
+                    Log.i(TAG, "fan: board will not report FAN_STATE ($why) — tile stays local")
+                }
+                return
             }
-            return
+            FitPro.parse(reply, FAN_READ)[FitPro.Field.FAN_STATE] ?: return
         }
-        val v = FitPro.parse(reply, FAN_READ)[FitPro.Field.FAN_STATE] ?: return
         if (fanReadable == null) {
             fanReadable = true
             Log.i(TAG, "fan: board reports FAN_STATE — tile now follows the hardware")

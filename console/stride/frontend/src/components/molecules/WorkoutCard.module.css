@@ -25,16 +25,13 @@
   position: relative; /* over the wash */
 }
 
+/* Two lines at most, one in a compact row: fit() in the component. */
 .name {
-  display: block;
   margin-top: 3px;
   font-size: var(--font-body);
   font-weight: var(--weight-label);
   color: var(--colour-ink);
   line-height: 1.25;
-  /* Two lines at most: a long name is clipped, not allowed to push the day. */
-  max-height: 2.5em;
-  overflow: hidden;
 }
 .meta {
   display: block;
@@ -108,7 +105,4 @@
 .compact .name {
   margin-top: 4px;
   font-size: var(--font-title);
-  max-height: 1.25em; /* one line */
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }

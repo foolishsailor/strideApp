@@ -18,7 +18,6 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  margin-top: 36px;
   text-align: left;
 }
 .ways > * + * {
@@ -68,30 +67,37 @@
   font-weight: var(--weight-body);
   font-variant-numeric: tabular-nums;
 }
-/* Routes: four to a row, two rows at most. */
-.routes {
-  margin-top: 26px;
-  flex-wrap: wrap;
-  width: 1120px;
+/* Routes: a list that scrolls under its sort bar, the page's whole width. */
+.routeList {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
-.routes > * {
+.listBar {
+  flex: none;
+  display: flex;
+  align-items: center;
   margin-bottom: 18px;
 }
-/* Workouts: the week on the left, scrolling; the chosen one's steps on the
-   right. A fixed box between the top bar and BACK / BEGIN. */
-/* All the room the screen has: from under the top bar (56px) to above
-   BACK / BEGIN (the bottom 100px, plus a gap), and its width less the
-   bezel margins. Sized to the viewport rather than fixed, because consoles
-   differ: the X22i's panel lays out at 1920x1080, not 1280x800. */
-.workouts {
-  display: flex;
-  width: calc(100vw - 160px);
-  height: calc(100vh - 56px - 170px);
-  margin-top: -40px;
+.listScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
-/* The whole week fits: seven compact rows (see DaySchedule) sharing the
-   height evenly. It still scrolls rather than clips if a day ever carries
-   more workouts than its share holds. */
+.listScroll > * + * {
+  margin-top: 14px;
+}
+/* Workouts: the week on the left, scrolling; the chosen one's steps on the
+   right. It takes all of the page's content area (PageContent layout="fill"). */
+.workouts {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  width: 100%;
+}
 .week {
   flex: none;
   display: flex;
@@ -108,34 +114,31 @@
 .weekDay + .weekDay {
   margin-top: 10px;
 }
+/* The chosen workout's steps take the height, scrolling if they must, and
+   START stays at the bottom of the column, always in view. */
 .preview {
   flex: 1;
   min-width: 0;
   margin-left: 40px;
+  display: flex;
+  flex-direction: column;
+}
+.previewBody {
+  flex: 1;
+  min-height: 0;
+}
+.start {
+  flex: none;
+  align-self: flex-end;
+  margin-top: 24px;
 }
 .pickHint {
   margin-top: 40px;
   text-align: left;
 }
 
-.foot {
-  position: absolute;
-  bottom: 44px;
-  font-size: 16px;
-  color: var(--colour-ink-faint);
-}
-
-/* Corner buttons, held clear of the bezel. */
-.back,
-.begin,
+/* TREADMILL SETTINGS on the people screen: quieter than the choices. */
 .settings {
-  position: absolute;
-  bottom: 40px;
-}
-.back { left: 38px; }
-.begin { right: 56px; }
-.settings {
-  right: 38px;
   font-size: 14px;
   color: var(--colour-ink-faint);
   border-color: var(--role-edge-quiet);
@@ -145,12 +148,9 @@
   min-width: 150px;
   padding: 0 22px;
 }
-.cog {
-  width: 22px;
-  height: 22px;
-  margin-right: 10px;
-  vertical-align: middle;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
+.settings svg {
+  font-size: 22px;
+}
+.settingsLabel {
+  margin-left: 10px;
 }

@@ -1,0 +1,26 @@
+/* The ground in the accent green, as TrailMate draws a route's profile. */
+.chart {
+  position: relative;
+  min-width: 0;
+}
+.plot {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.ground {
+  fill: var(--role-selected);
+}
+.edge {
+  fill: none;
+  stroke: var(--colour-accent);
+  stroke-width: 2;
+}
+.range {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  font-size: var(--font-caption);
+  color: var(--colour-ink-faint);
+  font-variant-numeric: tabular-nums;
+}

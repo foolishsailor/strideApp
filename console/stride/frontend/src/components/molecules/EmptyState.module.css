@@ -1,0 +1,9 @@
+/* Centred in whatever page it is on: auto margins centre it in a flex
+   column (PageContent "fill") as well as a centred one. */
+.empty {
+  margin: auto;
+  text-align: center;
+}
+.note {
+  margin-top: 18px;
+}

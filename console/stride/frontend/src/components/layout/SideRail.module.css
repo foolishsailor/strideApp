@@ -1,0 +1,59 @@
+/* TrailMate's sidebar on the console: the surface tone, a soft shadow on the
+   side facing the page, the width animating as it folds. */
+.rail {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 300px;
+  padding: 24px 16px 32px;
+  background: var(--role-fill);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.3);
+  transition: width var(--motion-settle) ease;
+  overflow: hidden;
+}
+.collapsed {
+  width: 104px;
+}
+/* The mark and name, as TrailMate's logo row, the chevron at the far end.
+   The whole row is the fold button. */
+.brand {
+  margin-bottom: 24px;
+}
+.brandName {
+  flex: 1;
+  margin-left: 20px;
+  font-size: 26px;
+  font-weight: var(--weight-heading);
+  letter-spacing: 0.06em;
+  color: var(--colour-ink);
+  white-space: nowrap;
+}
+.fold {
+  flex: none;
+  display: flex;
+  font-size: 32px;
+  color: var(--colour-ink-dim);
+}
+.items {
+  display: flex;
+  flex-direction: column;
+}
+.items > * + * {
+  margin-top: 6px;
+}
+/* The pages take the height; the pinned group sits at the bottom. */
+.pages {
+  flex: 1;
+}
+.icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  font-size: 32px;
+}
+.label {
+  margin-left: 20px;
+}

@@ -48,6 +48,9 @@ object FitPro2 {
          *  FitPro2Board.unlockIdle and FITPRO2_PROTOCOL.md. */
         const val IDLE_SYSTEM_MODE_LOCK = 103
         const val KEY_COOKED = 109
+        /** The fan: 0 OFF, 1 LOW, 2 MEDIUM, 3 HIGH, 4 AUTO (iFit's `Ce/g`),
+         *  the same levels as the fan menu. See docs/journal/gen7-fitpro2-notes.md. */
+        const val FAN_STATE = 129
         const val CURRENT_CALORIES = 202
         const val PULSE = 222
         const val DISTANCE = 252
@@ -73,7 +76,7 @@ object FitPro2 {
      * iFit's console clears at startup on a treadmill with a START key and
      * which nothing clears once iFit is gone. See [write].
      */
-    val WRITABLE = setOf(Id.TARGET_KPH, Id.TARGET_GRADE, Id.WORKOUT_STATE, Id.IDLE_SYSTEM_MODE_LOCK)
+    val WRITABLE = setOf(Id.TARGET_KPH, Id.TARGET_GRADE, Id.WORKOUT_STATE, Id.IDLE_SYSTEM_MODE_LOCK, Id.FAN_STATE)
 
     /** KEY_COOKED codes. 1–6 from iFit's code; the volume pair seen on
      *  hardware 12/10/2026 (ETNT39225-INT). */

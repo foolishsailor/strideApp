@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { installKotlinEntryPoints, installModeWatcher } from '../bridge/kotlin';
 import { historySamples } from './history';
 import { useSession } from './session';
+import { useNav } from './nav';
 import { useUi } from './ui';
 import { useWelcome } from './welcome';
 
@@ -48,6 +49,20 @@ describe('changing screen', () => {
 
     window.render({ mode: 'welcome' });
     expect(useWelcome.getState().step).toBe(1);
+    stop();
+  });
+
+  it('comes back from a run on Run, as the same runner', () => {
+    installKotlinEntryPoints();
+    const stop = installModeWatcher();
+    useWelcome.setState({ runner: 'Sam', step: 3 });
+    useNav.setState({ section: 'history' });
+    window.render({ mode: 'running' });
+    window.render({ mode: 'summary' });
+    window.render({ mode: 'welcome' });
+    expect(useWelcome.getState()).toMatchObject({ runner: 'Sam', step: 2 });
+    expect(useNav.getState().section).toBe('run');
+    useWelcome.setState({ runner: '' });
     stop();
   });
 });

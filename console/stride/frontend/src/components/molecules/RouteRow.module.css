@@ -1,0 +1,46 @@
+/* A full-width row: the route (pressing it starts it) and, at its end,
+   THERE AND BACK, a separate button so the two can never be confused. */
+.row {
+  display: flex;
+  align-items: stretch;
+}
+.card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 120px;
+  padding: 0 28px;
+  text-align: left;
+}
+.words {
+  flex: 0 1 46%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.name {
+  font-size: var(--font-title);
+  font-weight: var(--weight-label);
+  color: var(--colour-ink);
+}
+.facts {
+  margin-top: 8px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+.chart {
+  flex: 1;
+  height: 76px;
+  margin-left: 32px;
+}
+.loop {
+  flex: none;
+  width: 150px;
+  height: auto;
+  margin: 0 0 0 14px;
+  font-size: var(--font-small);
+  line-height: 1.3;
+  white-space: normal;
+}

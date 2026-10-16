@@ -379,7 +379,7 @@ and your workout history with it.
   a workout ramps to the warm-up speed (Settings → Treadmill). Taking the speed
   down to 0 **pauses the belt** while the workout carries on, and raising it
   again restarts from 1.5. STOP and the safety key work as on Gen 6.
-- The fan tile is not connected to the fan on Gen 7 yet.
+- The fan button controls the fan on Gen 7 too (`FAN_STATE`, feature 129), and follows the console's own fan button.
 - **Powering on:** run `unchain.sh` with `STRIDE_KIOSK=0`. It grants STRIDE
   *display over other apps*, which is what Android 13 needs before it lets
   STRIDE open itself at boot. The Android launcher stays the home screen, so

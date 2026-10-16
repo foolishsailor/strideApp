@@ -50,7 +50,45 @@ const press = (text: string | RegExp) =>
   fireEvent.click(screen.queryByText(text) ?? screen.getByLabelText(text));
 
 describe('welcome', () => {
-  it('asks Manual, Routes or Workouts, and begins a free run only on BEGIN', () => {
+  it('puts the runner in a shell: Run and History on the rail, Settings at the bottom', () => {
+    mockBridge();
+    render(<App />);
+    press('Sam');
+    expect(screen.getByText('How do you want to run?')).toBeTruthy();
+    press('History');
+    expect(screen.getByText('No runs to show yet')).toBeTruthy();
+    press('Run');
+    expect(screen.getByText('How do you want to run?')).toBeTruthy();
+    press('Settings');
+    expect(window.STRIDE_SETTINGS.open).toHaveBeenCalledWith('me');
+  });
+
+  it('folds the rail to its icons, and remembers it', () => {
+    mockBridge();
+    render(<App />);
+    press('Sam');
+    press('Collapse'); // the chevron by STRIDE's name
+    expect(screen.queryByText('History')).toBeNull(); // the label goes; the icon stays
+    expect(screen.getByLabelText('History')).toBeTruthy();
+    expect(screen.queryByText('STRIDE')).toBeNull();
+    expect(localStorage.getItem('stride.railCollapsed')).toBe('true');
+    press('Expand'); // the mark, folded
+    expect(screen.getByText('History')).toBeTruthy();
+    press('STRIDE'); // the name folds it too: the whole row is the button
+    expect(screen.queryByText('History')).toBeNull();
+    press('Expand');
+    expect(screen.getByText('History')).toBeTruthy();
+  });
+
+  it('goes back to the people from Home, at the top of the rail', () => {
+    mockBridge();
+    render(<App />);
+    press('Sam');
+    press('Home');
+    expect(screen.getByText("Who's running?")).toBeTruthy();
+  });
+
+  it('asks Manual, Routes or Workouts, and Free starts a free run', () => {
     const b = mockBridge();
     render(<App />);
     press('Sam');
@@ -59,9 +97,19 @@ describe('welcome', () => {
     expect(screen.getByText('Routes')).toBeTruthy();
     expect(screen.getByText('Workouts')).toBeTruthy();
     press('Manual');
-    expect(b.choose).not.toHaveBeenCalled(); // choosing never starts the belt
-    press('BEGIN →');
+    expect(b.choose).not.toHaveBeenCalled(); // the way to run is not the run
+    expect(screen.queryByText('BEGIN →')).toBeNull();
+    press('Free');
     expect(b.choose).toHaveBeenCalled();
+  });
+
+  it('goes back from the app bar', () => {
+    mockBridge();
+    render(<App />);
+    press('Sam');
+    press('Manual');
+    fireEvent.click(screen.getByLabelText('Back'));
+    expect(screen.getByText('How do you want to run?')).toBeTruthy();
   });
 
   it('holds a heart-rate zone from the runner’s own zones', () => {
@@ -71,10 +119,8 @@ describe('welcome', () => {
     press('Manual');
     press('Heart rate');
     expect(screen.getByText('119–138 bpm')).toBeTruthy();
-    press('BEGIN →');
     expect(b.chooseHeartRate).not.toHaveBeenCalled(); // no zone picked yet
     press('Zone 2');
-    press('BEGIN →');
     expect(b.chooseHeartRate).toHaveBeenCalledWith(2, 119, 138);
   });
 
@@ -97,8 +143,65 @@ describe('welcome', () => {
     fireEvent.click(document.querySelector('.loop')!);
     // Out and back: the 2 % climb and the 1 % descent are both climbed once.
     expect(screen.getByText(/10\.00 km · 75 m up/)).toBeTruthy();
-    press('BEGIN →');
+    expect(b.chooseRoute).not.toHaveBeenCalled(); // the loop half only sets there-and-back
+    press(/10\.00 km · 75 m up/);
     expect(b.chooseRoute).toHaveBeenCalledWith('r1', true);
+  });
+
+  it('sorts the routes by name or distance, either way', () => {
+    const many = JSON.stringify([
+      { id: 'long', kind: 'route', name: 'Bay loop', distance_m: 9000, climb_m: 40, segments: [[0, 9000, 1]] },
+      { id: 'short', kind: 'route', name: 'Canal', distance_m: 3000, climb_m: 10, segments: [[0, 3000, 1]] },
+    ]);
+    mockBridge({ routes: () => many });
+    render(<App />);
+    press('Sam');
+    press('Routes');
+    const order = () => screen.getAllByText(/^(Bay loop|Canal)$/).map((e) => e.textContent);
+    expect(order()).toEqual(['Bay loop', 'Canal']); // name, A to Z
+    press('Distance');
+    expect(order()).toEqual(['Canal', 'Bay loop']); // shortest first
+    press('Distance');
+    expect(order()).toEqual(['Bay loop', 'Canal']); // and turned round
+  });
+
+  it('asks TrailMate for the routes on every visit, and shows them when it answers', () => {
+    let stored = '[]';
+    const b = mockBridge({ routes: () => stored, refreshTrailMate: vi.fn() });
+    render(<App />);
+    press('Sam');
+    press('Routes');
+    expect(b.refreshTrailMate).toHaveBeenCalledWith('routes');
+    expect(screen.getByText('Checking TrailMate…')).toBeTruthy();
+    expect(screen.getByText('Looking for your routes')).toBeTruthy();
+    stored = JSON.stringify([{ id: 'new', kind: 'route', name: 'Starred a minute ago', distance_m: 4000, climb_m: 20, segments: [[0, 4000, 0.5]] }]);
+    act(() => window.trailmateRead('routes', true));
+    expect(screen.getByText('Starred a minute ago')).toBeTruthy();
+    expect(screen.queryByText('Checking TrailMate…')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Back'));
+    press('Routes');
+    const routeAsks = () => b.refreshTrailMate!.mock.calls.filter(([k]) => k === 'routes').length;
+    expect(routeAsks()).toBe(2); // and again next time
+  });
+
+  it('says when TrailMate could not be reached, keeps the last copy, and tries again', () => {
+    const b = mockBridge({ routes: () => ROUTES, refreshTrailMate: vi.fn() });
+    render(<App />);
+    press('Sam');
+    press('Routes');
+    act(() => window.trailmateRead('routes', false));
+    expect(screen.getByText(/Offline: showing the treadmill’s last copy/)).toBeTruthy();
+    expect(screen.getByText(/5\.00 km · 18 m up/)).toBeTruthy();
+    press('RETRY');
+    expect(b.refreshTrailMate!.mock.calls.filter(([k]) => k === 'routes').length).toBe(2);
+  });
+
+  it('asks TrailMate for the schedule when Workouts opens', () => {
+    const b = mockBridge({ schedules: schedules(person()), refreshTrailMate: vi.fn() });
+    render(<App />);
+    press('Sam');
+    press('Workouts');
+    expect(b.refreshTrailMate).toHaveBeenCalledWith('schedule');
   });
 
   it('shows a race course with its date', () => {
@@ -116,7 +219,7 @@ describe('welcome', () => {
     expect(screen.getByText('Star routes in TrailMate to run them here.')).toBeTruthy();
   });
 
-  it('lists the week’s workouts, previews the first, and BEGIN runs it', () => {
+  it('lists the week’s workouts, previews the first, and START runs it', () => {
     const b = mockBridge({ schedules: schedules(person()) });
     render(<App />);
     press('Sam');
@@ -131,7 +234,8 @@ describe('welcome', () => {
     expect(screen.getByText('1% incline')).toBeTruthy();
     expect(screen.getByText('until NEXT')).toBeTruthy();
     expect(screen.getByText('Zone 2')).toBeTruthy(); // a zone TrailMate could not resolve
-    press('BEGIN →');
+    expect(b.chooseWorkout).not.toHaveBeenCalled(); // previewing is not running
+    press('START');
     expect(b.chooseWorkout).toHaveBeenCalledWith('w1');
   });
 
