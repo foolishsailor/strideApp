@@ -2,7 +2,7 @@ import { cx } from '../../lib/cx';
 import type { PlannedWorkout } from '../../lib/schedule';
 import { doneText, plannedText, stepLines } from '../../lib/units';
 import { useUnits } from '../../store/settings';
-import { PressableCard, Surface } from '../primitives';
+import { fit, PressableCard, Surface } from '../primitives';
 import { WorkoutTypeLabel, workoutToneClass } from './WorkoutTone';
 import styles from './WorkoutCard.module.css';
 
@@ -35,12 +35,12 @@ export function WorkoutCard({ workout, selected, inList, detailed, compact, onTa
         <WorkoutTypeLabel workout={workout} />
         {metaEl}
       </span>
-      <span className={styles.name}>{workout.name}</span>
+      <span className={cx(styles.name, fit(1))}>{workout.name}</span>
     </>
   ) : (
     <>
       <WorkoutTypeLabel workout={workout} />
-      <span className={styles.name}>{workout.name}</span>
+      <span className={cx(styles.name, fit(2))}>{workout.name}</span>
       {metaEl}
       {detailed && workout.description && <span className={styles.description}>{workout.description}</span>}
       {lines.length > 0 && (

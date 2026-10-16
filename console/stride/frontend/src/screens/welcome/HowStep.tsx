@@ -1,7 +1,6 @@
 import { useScheduleFeed } from '../../hooks/useScheduleFeed';
 import { cx } from '../../lib/cx';
 import { openWorkout, useWelcome } from '../../store/welcome';
-import { Heading, Prose } from '../../components/primitives';
 import { ChoiceCard } from '../../components/molecules';
 import { PersonSchedule, useHasSchedule } from './PersonSchedule';
 import styles from './Welcome.module.css';
@@ -16,8 +15,6 @@ export function HowStep() {
   const planned = useHasSchedule(runner);
   return (
     <>
-      <Heading>{runner || 'Guest'}</Heading>
-      <Prose size="ask" className={styles.ask}>How do you want to run?</Prose>
       <div className={cx(styles.how, planned && styles.withPlan)}>
         <div className={styles.ways}>
           <ChoiceCard row icon="🚶" name="Manual" hint="free, or held to a heart rate" onTap={chooseManual} />

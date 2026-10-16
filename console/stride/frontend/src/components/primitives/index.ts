@@ -4,4 +4,4 @@ export { Icon, type IconName } from './Icon';
 export { Fill, Row, Surface } from './Layout';
 export { Overlay } from './Overlay';
 export { PressableCard } from './Pressable';
-export { Heading, Label, Numeral, Prose, type Tone } from './Text';
+export { fit, Heading, Label, Numeral, Prose, type Tone } from './Text';

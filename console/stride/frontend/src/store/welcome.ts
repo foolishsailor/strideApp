@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { bridge, core } from '../bridge/stride';
 import { loadSettings } from './settings';
+import { useNav } from './nav';
 import { useTrailmate, zonesOf } from './trailmate';
 
 /* who → how → which. Purely client side: nothing reaches Kotlin, and the belt
@@ -84,6 +85,8 @@ export function initWelcome(): void {
  *  their units, warm-up and routes replace the last runner's. */
 export function selectRunner(name: string): void {
   useWelcome.getState().setRunner(name);
+  // A new runner starts on Run, whatever the last one was looking at.
+  useNav.getState().go('run');
   bridge().setRunner(name);
   loadSettings();
   useTrailmate.getState().loadRoutes();
@@ -107,7 +110,14 @@ export function canBegin(s: WelcomeStore): boolean {
   return s.manual === 'free' || !!chosenHrBand(s);
 }
 
-/** BEGIN: the one place a run is committed to. */
+/** Choose, and start: Free, a heart-rate zone and a route each start their
+ *  run when pressed; a workout starts from its preview's START. */
+export function chooseAndBegin(change: Partial<WelcomeStore>): void {
+  useWelcome.setState(change);
+  begin();
+}
+
+/** The one place a run is committed to. */
 export function begin(): void {
   const s = useWelcome.getState();
   if (!canBegin(s)) return;

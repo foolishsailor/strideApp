@@ -3,9 +3,9 @@ import { useAutoSelect } from '../../hooks/useAutoSelect';
 import { useScheduleFeed } from '../../hooks/useScheduleFeed';
 import { localDate, RECONNECT_TEXT, scheduleDays, scheduleView } from '../../lib/schedule';
 import { useSchedule } from '../../store/trailmate';
-import { useWelcome } from '../../store/welcome';
-import { Prose } from '../../components/primitives';
-import { DaySchedule } from '../../components/molecules';
+import { begin, useWelcome } from '../../store/welcome';
+import { Button, Prose } from '../../components/primitives';
+import { DaySchedule, EmptyState } from '../../components/molecules';
 import { WorkoutPreview } from '../../components/organisms';
 import styles from './Welcome.module.css';
 
@@ -16,18 +16,15 @@ const DAYS = 7;
 /** Why there is no list: no link, or a link that may not read the plan. */
 function Unavailable({ reconnect }: { reconnect: boolean }) {
   return (
-    <>
-      <Prose size="ask">{reconnect ? RECONNECT_TEXT : 'No workouts from TrailMate'}</Prose>
-      <Prose size="body" className={styles.note}>
-        {reconnect ? 'Reconnect it in My settings → TrailMate.' : 'Link TrailMate in My settings to see your plan here.'}
-      </Prose>
-    </>
+    <EmptyState title={reconnect ? RECONNECT_TEXT : 'No workouts from TrailMate'}>
+      {reconnect ? 'Reconnect it in My settings → TrailMate.' : 'Link TrailMate in My settings to see your plan here.'}
+    </EmptyState>
   );
 }
 
 /** Step 3, Workouts — the runner's week from TrailMate, day by day, with
  *  the chosen workout's steps beside it (spec 038, US2). Picking shows the
- *  preview; BEGIN runs it. */
+ *  preview; its START runs it. */
 export function WorkoutPicker() {
   useScheduleFeed();
   const { runner, workout, pickWorkout } = useWelcome();
@@ -54,7 +51,10 @@ export function WorkoutPicker() {
       </div>
       <div className={styles.preview}>
         {chosen ? (
-          <WorkoutPreview workout={chosen} />
+          <>
+            <div className={styles.previewBody}><WorkoutPreview workout={chosen} /></div>
+            <Button size="wide" tone="primary" className={styles.start} onTap={begin}>START</Button>
+          </>
         ) : (
           <Prose size="body" tone="faint" className={styles.pickHint}>Pick a workout to see its steps.</Prose>
         )}

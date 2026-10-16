@@ -1,10 +1,13 @@
 export { ChoiceCard } from './ChoiceCard';
 export { Metric, StatCard } from './Metric';
-export { PlanCard } from './PlanCard';
 export { RailReading, RailStop, ValueRail } from './ValueRail';
-export { Sparkline } from './Sparkline';
 export { StatusChip } from './StatusChip';
-export { TopBar } from './TopBar';
+export { Clock } from './Clock';
+export { ElevationChart } from './ElevationChart';
+export { EmptyState } from './EmptyState';
+export { RouteRow } from './RouteRow';
+export { SortBar, type SortOption } from './SortBar';
+export { TrailMateStatus } from './TrailMateStatus';
 export { DaySchedule } from './DaySchedule';
 export { WorkoutCard } from './WorkoutCard';
 export { WorkoutTypeLabel, workoutToneClass } from './WorkoutTone';

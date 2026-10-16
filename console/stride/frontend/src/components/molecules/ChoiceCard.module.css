@@ -56,7 +56,11 @@
 .row .glyph {
   font-size: 56px;
 }
+/* min-width 0: the words may be narrower than a long name, which then ends
+   in an ellipsis (fit) rather than running off the card. */
 .words {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

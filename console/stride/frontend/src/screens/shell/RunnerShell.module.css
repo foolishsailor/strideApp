@@ -1,0 +1,16 @@
+/* The mark: TrailMate's logo tile is the canvas colour, so this is too. */
+.mark {
+  width: 48px;
+  height: 48px;
+}
+.markTile {
+  fill: var(--colour-bg-0);
+}
+.markTrack {
+  fill: none;
+  stroke: var(--colour-ink);
+  stroke-width: 3.5;
+}
+.markDot {
+  fill: var(--colour-accent-warm);
+}

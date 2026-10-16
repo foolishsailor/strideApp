@@ -45,6 +45,19 @@ class TrailMateSync(
         const val EVERY_MS = 30 * 60_000L
         /** A person is not asked again sooner than this unless it is forced. */
         const val MIN_GAP_MS = 60_000L
+        /**
+         * Routes at most this often, unless forced (refresh, a new link).
+         * TrailMate allows a console 12 route reads an hour, and every start
+         * and every runner picked is a pass: on 16 Oct 2026 a morning of
+         * restarts used the hour up and the starred routes stopped coming.
+         */
+        const val ROUTES_EVERY_MS = 15 * 60_000L
+        /** A page that shows a list asks for it on every visit, but the same
+         *  list is not fetched twice in a minute. */
+        const val ASKED_GAP_MS = 60_000L
+        /** What a page can ask for: each is stored, and fetched, on its own. */
+        const val SCHEDULE = "schedule"
+        const val ROUTES = "routes"
         /** While the belt moves, look again this often. */
         const val MOVING_RECHECK_MS = 60_000L
 
@@ -60,6 +73,30 @@ class TrailMateSync(
     private val forced = HashSet<String>()
     /** person id → epoch ms of their last pass, to keep a burst of picks cheap. */
     private val lastPass = HashMap<String, Long>()
+    /** person id → kind → epoch ms of their last read of it, answered or not. */
+    private val lastRead = HashMap<String, HashMap<String, Long>>()
+    /** person id → the kinds a page has asked for and is waiting on. */
+    private val asked = HashMap<String, MutableSet<String>>()
+
+    /**
+     * After a kind a page asked for has been read (or could not be): the
+     * page reloads what is stored, and [ok] says whether that came from
+     * TrailMate just now or is the console's last copy.
+     */
+    var onRead: ((personId: String, kind: String, ok: Boolean) -> Unit)? = null
+
+    /** A page showing [kind] is open: fetch it for [personId] now. */
+    fun requestNow(personId: String, kind: String) = synchronized(lock) {
+        asked.getOrPut(personId) { HashSet() } += kind
+        request(personId, force = true)
+    }
+
+    private fun answered(personId: String, kinds: Set<String>, ok: (String) -> Boolean) {
+        for (k in kinds) onRead?.invoke(personId, k, ok(k))
+    }
+
+    private fun stored(personId: String, kind: String) =
+        store.fetch(personId, kind)?.state == TrailMateStore.State.OK
 
     /** Sync [personId] soon; everyone when empty. [force] skips the minimum gap. */
     fun request(personId: String = "", force: Boolean = false) = synchronized(lock) {
@@ -99,33 +136,56 @@ class TrailMateSync(
         }
         val people = if ("" in batch) cfg.people() else batch.mapNotNull { cfg.personById(it) }
         for (p in people) {
-            if (!tm.linked(p.id)) continue
+            val kinds: Set<String> = synchronized(lock) { asked.remove(p.id) } ?: emptySet()
+            if (!tm.linked(p.id)) { answered(p.id, kinds) { false }; continue }
             val now = System.currentTimeMillis()
             if (p.id !in force && "" !in force && now - (lastPass[p.id] ?: 0L) < MIN_GAP_MS) continue
             lastPass[p.id] = now
             try {
-                pass(p.id)
+                pass(p.id, forced = p.id in force || "" in force, asked = kinds)
             } catch (e: Exception) {
                 Log.w(TAG, "${p.id}: sync failed (${tm.why(e)})")
                 store.fail(p.id, "self", TrailMateStore.State.ERROR, tm.why(e))
+                answered(p.id, kinds) { false }    // no network: the last copy stands
             }
         }
     }
 
-    private fun pass(personId: String) {
-        val self = tm.get(personId, "/devices/self") ?: return
-        if (self.code != 200) {
-            store.fail(personId, "self", TrailMateStore.State.ERROR, "TrailMate answered ${self.code}")
+    private fun pass(personId: String, forced: Boolean, asked: Set<String> = emptySet()) {
+        val self = tm.get(personId, "/devices/self")
+        if (self == null || self.code != 200) {
+            if (self != null) store.fail(personId, "self", TrailMateStore.State.ERROR, "TrailMate answered ${self.code}")
+            answered(personId, asked) { false }
             return
         }
         val scopes = self.json()?.optJSONArray("scopes") ?: JSONArray()
         store.putScopes(personId, scopes)
         val granted = (0 until scopes.length()).map { scopes.optString(it) }.toSet()
 
-        if (SCHEDULE_READ in granted) schedule(personId)
-        else store.fail(personId, "schedule", TrailMateStore.State.SCOPE, SCHEDULE_READ)
-        if (ROUTES_READ in granted) routes(personId)
-        else store.fail(personId, "routes", TrailMateStore.State.SCOPE, ROUTES_READ)
+        // The schedule on every pass, as ever; routes no oftener than
+        // ROUTES_EVERY_MS. Either one a page asked for: now, unless it was
+        // read in the last minute.
+        read(personId, SCHEDULE, SCHEDULE_READ in granted, SCHEDULE_READ, asked, everyMs = 0L, forced) { schedule(it) }
+        read(personId, ROUTES, ROUTES_READ in granted, ROUTES_READ, asked, ROUTES_EVERY_MS, forced) { routes(it) }
+    }
+
+    private fun read(
+        personId: String, kind: String, granted: Boolean, scope: String,
+        asked: Set<String>, everyMs: Long, forced: Boolean, fetch: (String) -> Unit,
+    ) {
+        if (!granted) {
+            store.fail(personId, kind, TrailMateStore.State.SCOPE, scope)
+        } else {
+            val reads = lastRead.getOrPut(personId) { HashMap() }
+            val since = System.currentTimeMillis() - (reads[kind] ?: 0L)
+            val due = if (kind in asked) since >= ASKED_GAP_MS else forced || since >= everyMs
+            if (due) {
+                reads[kind] = System.currentTimeMillis()
+                fetch(personId)
+            }
+        }
+        // A page is waiting on it: say how it stands, fetched or not.
+        if (kind in asked) answered(personId, setOf(kind)) { stored(personId, it) }
     }
 
     private fun schedule(personId: String) {

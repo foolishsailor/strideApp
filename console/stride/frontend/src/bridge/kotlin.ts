@@ -1,5 +1,7 @@
 import { useSession } from '../store/session';
 import { markActivity, useUi } from '../store/ui';
+import { useNav } from '../store/nav';
+import { useTrailmate } from '../store/trailmate';
 import { useWelcome } from '../store/welcome';
 import type { SessionMode } from './types';
 import { settings } from './stride';
@@ -15,6 +17,7 @@ export function installKotlinEntryPoints(): void {
   /* Kotlin calls this when the page moves over another app and when it
      comes home (OverApp.kt). */
   window.overApp = (on) => setOverApp(!!on);
+  window.trailmateRead = (kind, ok) => useTrailmate.getState().read(kind, !!ok);
 
   /* Calls that arrived before this module ran (see trailmate.html). Plan
      first, so the first snapshot already has its ground. */
@@ -46,7 +49,16 @@ export function onModeChange(mode: SessionMode): void {
   }
   if (mode !== 'paused') ui.setConfirmOpen(false);
   if (mode !== 'welcome') settings().close();
-  if (mode === 'welcome') useWelcome.getState().goTo(1);
+  /* Back from a run, or anything else that ends at the welcome screen: the
+     runner stays who they were and lands on Run. Only Home goes back to the
+     people, and so does a run with nobody named (a guest). */
+  if (mode === 'welcome') {
+    const w = useWelcome.getState();
+    if (w.runner) {
+      w.goTo(2);
+      useNav.getState().go('run');
+    } else w.goTo(1);
+  }
   /* Changing screen counts as activity. Without this, finishing a workout
      dropped onto the summary with half an hour of "idle" banked, and the panel
      slept before the summary could be read. */

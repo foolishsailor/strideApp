@@ -1,0 +1,16 @@
+/* Quiet, under the clock: it explains the list, it is not the list. */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 10px;
+  font-size: var(--font-small);
+  color: var(--colour-ink-faint);
+}
+.retry {
+  width: auto;
+  height: 48px;
+  margin: 0 0 0 14px;
+  padding: 0 18px;
+  font-size: var(--font-small);
+}

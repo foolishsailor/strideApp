@@ -226,6 +226,9 @@ export interface Route {
   segments?: [number, number, number][];
 }
 
+/** What a page can ask TrailMate for afresh (TrailMateSync.SCHEDULE, ROUTES). */
+export type TrailMateKind = 'schedule' | 'routes';
+
 /** The @JavascriptInterface object MainActivity injects. */
 export interface StrideBridge {
   /** Manual, free: the pace is the runner's. */
@@ -257,6 +260,9 @@ export interface StrideBridge {
   dim(on: boolean): void;
   /** The active person's routes, as JSON Route[]. */
   routes(): string;
+  /** Ask TrailMate for the active runner's schedule or routes now;
+   *  window.trailmateRead follows. */
+  refreshTrailMate?(kind: TrailMateKind): void;
   /** Everyone's TrailMate schedule, JSON { [name]: WirePersonSchedule }.
    *  Optional, with refreshSchedules: an older APK has neither. */
   schedules?(): string;
@@ -310,9 +316,7 @@ export interface StrideCore {
   profiles(): string[];
   people(): unknown[];
   defaultRunner(): string;
-  routePoints(r: Route): number[];
   loopedClimb(r: Route): number;
-  tappedLoop(e: Event): boolean;
   stub(): boolean;
   demo(opts?: object): unknown;
 }
@@ -333,6 +337,9 @@ declare global {
     /** Kotlin calls this when the treadmill's own STOP is pressed. */
     stopPressed: () => void;
     overApp: (on: boolean) => void;
+    /** Kotlin: a kind the page asked for has been read; ok is false when
+     *  TrailMate could not be reached and the console's last copy stands. */
+    trailmateRead: (kind: TrailMateKind, ok: boolean) => void;
     /** Calls Kotlin made before the app module ran; see trailmate.html. */
     __early?: { render?: SessionState; plan?: Plan };
   }

@@ -38,6 +38,8 @@ class FitPro2Board(
             FitPro2.Id.DISTANCE, FitPro2.Id.RUNNING_TIME,
             FitPro2.Id.PULSE, FitPro2.Id.CURRENT_CALORIES,
             FitPro2.Id.KEY_COOKED, FitPro2.Id.IDLE_SYSTEM_MODE_LOCK,
+            // So the fan menu follows the console's own fan button.
+            FitPro2.Id.FAN_STATE,
         )
 
         /** How long to wait for a write to be acknowledged. iFit allows 15 s; a
@@ -62,7 +64,6 @@ class FitPro2Board(
     private var features = emptySet<Int>()
     private var lastFrameMs = 0L
     private var lastKey = 0
-    private var fanWarned = false
     private var lastError = ""
     /** We paused the board because the speed was taken to zero mid-workout. */
     private var heldAtZero = false
@@ -278,12 +279,8 @@ class FitPro2Board(
                     null
                 } else FitPro2.Id.WORKOUT_STATE to state.toFloat()
             }
-            FitPro.Field.FAN_STATE, FitPro.Field.FAN_SPEED -> {
-                // The fan's FitPro 2 encoding is not known yet, and guessing
-                // costs nothing but a fan that stays as it is.
-                if (!fanWarned) { fanWarned = true; Log.i(TAG, "fp2: fan control not mapped yet — ignored") }
-                null
-            }
+            // A level, 0 OFF to 4 AUTO, exactly as FitPro 1 takes it.
+            FitPro.Field.FAN_STATE -> FitPro2.Id.FAN_STATE to value.coerceIn(0.0, 4.0).toFloat()
             else -> null
         }
 
@@ -407,6 +404,7 @@ class FitPro2Board(
         put(FitPro.Field.CURRENT_TIME, FitPro2.Id.RUNNING_TIME)
         put(FitPro.Field.PULSE, FitPro2.Id.PULSE)
         put(FitPro.Field.CALORIES, FitPro2.Id.CURRENT_CALORIES)
+        put(FitPro.Field.FAN_STATE, FitPro2.Id.FAN_STATE)
         // FitPro 1 counts distance in metres. FitPro 2's unit is not yet
         // established, so this goes through unscaled and is checked against a
         // known run before anything is built on it.

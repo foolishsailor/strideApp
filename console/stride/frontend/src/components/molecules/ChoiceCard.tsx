@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { cx } from '../../lib/cx';
-import { PressableCard } from '../primitives';
+import { fit, PressableCard } from '../primitives';
 import styles from './ChoiceCard.module.css';
 
 /** A big answer to the welcome screen's question: an icon, a name, a hint.
@@ -28,13 +28,13 @@ export function ChoiceCard({ icon, name, hint, person, row, selected, muted, onT
       {person ? <span className={styles.initial}>{icon}</span> : <span className={styles.glyph}>{icon}</span>}
       {row ? (
         <span className={styles.words}>
-          <span className={styles.name}>{name}</span>
-          {hint && <span className={styles.hint}>{hint}</span>}
+          <span className={cx(styles.name, fit(1))}>{name}</span>
+          {hint && <span className={cx(styles.hint, fit(2))}>{hint}</span>}
         </span>
       ) : (
         <>
-          <span className={styles.name}>{name}</span>
-          {hint && <span className={styles.hint}>{hint}</span>}
+          <span className={cx(styles.name, fit(1))}>{name}</span>
+          {hint && <span className={cx(styles.hint, fit(2))}>{hint}</span>}
         </>
       )}
     </PressableCard>

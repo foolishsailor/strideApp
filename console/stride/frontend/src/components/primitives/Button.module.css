@@ -152,3 +152,31 @@
   letter-spacing: inherit;
   text-align: inherit;
 }
+
+/* A row of the side rail (components/layout/SideRail): icon and name, left
+   aligned, no box until it is the current page, which is filled the way
+   TrailMate's sidebar fills its current item. */
+.nav {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 72px;
+  padding: 0 16px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--colour-ink-dim);
+  font-size: var(--font-lead);
+  font-weight: var(--weight-body);
+  letter-spacing: 0;
+  text-align: left;
+}
+.nav.selected {
+  border: none;
+  background: var(--role-selected);
+  color: var(--colour-ink);
+  font-weight: var(--weight-heading);
+}
+.nav.selected svg {
+  color: var(--colour-accent);
+}
