@@ -88,15 +88,15 @@ describe('welcome', () => {
     expect(screen.getByText("Who's running?")).toBeTruthy();
   });
 
-  it('asks Manual, Routes or Workouts, and Free starts a free run', () => {
+  it('asks Quick start, Routes or Workouts, and Free starts a free run', () => {
     const b = mockBridge();
     render(<App />);
     press('Sam');
     expect(b.setRunner).toHaveBeenCalledWith('Sam');
-    expect(screen.getByText('Manual')).toBeTruthy();
+    expect(screen.getByText('Quick start')).toBeTruthy();
     expect(screen.getByText('Routes')).toBeTruthy();
     expect(screen.getByText('Workouts')).toBeTruthy();
-    press('Manual');
+    press('Quick start');
     expect(b.choose).not.toHaveBeenCalled(); // the way to run is not the run
     expect(screen.queryByText('BEGIN →')).toBeNull();
     press('Free');
@@ -107,7 +107,7 @@ describe('welcome', () => {
     mockBridge();
     render(<App />);
     press('Sam');
-    press('Manual');
+    press('Quick start');
     fireEvent.click(screen.getByLabelText('Back'));
     expect(screen.getByText('How do you want to run?')).toBeTruthy();
   });
@@ -116,7 +116,7 @@ describe('welcome', () => {
     const b = mockBridge({ schedules: schedules(person()) });
     render(<App />);
     press('Sam');
-    press('Manual');
+    press('Quick start');
     press('Heart rate');
     expect(screen.getByText('119–138 bpm')).toBeTruthy();
     expect(b.chooseHeartRate).not.toHaveBeenCalled(); // no zone picked yet
@@ -128,7 +128,7 @@ describe('welcome', () => {
     mockBridge();
     render(<App />);
     press('Sam');
-    press('Manual');
+    press('Quick start');
     expect(screen.getByText('no heart-rate zones yet')).toBeTruthy();
     press('Heart rate');
     expect(useWelcome.getState().manual).toBe('free');
@@ -145,7 +145,28 @@ describe('welcome', () => {
     expect(screen.getByText(/10\.00 km · 75 m up/)).toBeTruthy();
     expect(b.chooseRoute).not.toHaveBeenCalled(); // the loop half only sets there-and-back
     press(/10\.00 km · 75 m up/);
+    // Then how to run it, as Manual asks; Free starts it.
+    expect(screen.getByText('Free, or held to your heart rate?')).toBeTruthy();
+    expect(b.chooseRoute).not.toHaveBeenCalled();
+    press('Free');
     expect(b.chooseRoute).toHaveBeenCalledWith('r1', true);
+  });
+
+  it('runs a route held to a heart-rate zone, and goes back to the list', () => {
+    const b = mockBridge({ routes: () => ROUTES, schedules: schedules(person()), chooseRouteHeartRate: vi.fn() });
+    render(<App />);
+    press('Sam');
+    press('Routes');
+    press(/5\.00 km · 18 m up/);
+    expect(screen.getByRole('dialog', { name: 'River' })).toBeTruthy(); // over the list
+    expect(screen.getByText('Sort by')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Close'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    press(/5\.00 km · 18 m up/);
+    press('Heart rate');
+    press('Zone 2');
+    expect(b.chooseRouteHeartRate).toHaveBeenCalledWith('r1', false, 2, 119, 138);
+    expect(b.chooseRoute).not.toHaveBeenCalled();
   });
 
   it('sorts the routes by name or distance, either way', () => {
@@ -261,7 +282,7 @@ describe('home', () => {
     const b = mockBridge({ schedules: schedules(person()) });
     render(<App />);
     press('Sam');
-    expect(screen.getByText('Manual')).toBeTruthy();
+    expect(screen.getByText('Quick start')).toBeTruthy();
     expect(screen.getByText('Today')).toBeTruthy();
     expect(screen.getByText('Tomorrow')).toBeTruthy();
     expect(screen.getByText('Intervals')).toBeTruthy();

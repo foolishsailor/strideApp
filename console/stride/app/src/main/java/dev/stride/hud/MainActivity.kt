@@ -909,13 +909,8 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface fun chooseHeartRate(zone: Int, minBpm: Int, maxBpm: Int) {
             if (dmk) return
-            val zones = tmStore.zones(cfg.active)
-            val band = if (zone > 0) zones.hr[zone] else if (minBpm in 1..maxBpm) HrBand(minBpm, maxBpm) else null
-            if (band == null) {
-                Log.w(TAG, "heart rate: no band for zone $zone ($minBpm–$maxBpm)")
-                return
-            }
-            startWorkout(Workout.heartRate(band, zone.takeIf { it > 0 }), zones)
+            val band = hrBand(zone, minBpm, maxBpm) ?: return
+            startWorkout(Workout.heartRate(band, zone.takeIf { it > 0 }), tmStore.zones(cfg.active))
         }
 
         /** NEXT: end the workout's current step (the one way an open step ends, short of STOP). */
@@ -940,9 +935,30 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface fun chooseRoute(id: String, loop: Boolean) {
             if (dmk) return
+            if (startRoute(id, loop)) repaint()
+        }
+
+        /**
+         * A route, with the speed held to a heart rate: the route sets the
+         * incline as ever, and heart-rate control the speed, as on Manual →
+         * Heart rate. The run is the route's: its ground, its recording.
+         */
+        @JavascriptInterface fun chooseRouteHeartRate(id: String, loop: Boolean, zone: Int, minBpm: Int, maxBpm: Int) {
+            if (dmk) return
+            val band = hrBand(zone, minBpm, maxBpm) ?: return
+            if (!startRoute(id, loop)) return
+            holdHeartRate(band, zone.takeIf { it > 0 })
+            repaint()
+        }
+
+        /**
+         * Start a run on one of the runner's routes, looped if asked; false
+         * if there is no such route. What chooseRoute always did.
+         */
+        private fun startRoute(id: String, loop: Boolean): Boolean {
             val found = routes.byId(cfg.active, id) ?: run {
                 Log.w(TAG, "no such route: $id")
-                return
+                return false
             }
             val r = if (loop) found.outAndBack() else found
 
@@ -967,7 +983,28 @@ class MainActivity : Activity() {
                     "${"%.0f".format(r.climbM)} m climb, ${r.segments.size} segments" +
                     if (loop) " (looped)" else "")
             pushPlan()
-            repaint()
+            return true
+        }
+
+        /** The band to hold: one of the runner's zones, or the bpm given. */
+        private fun hrBand(zone: Int, minBpm: Int, maxBpm: Int): HrBand? {
+            val zones = tmStore.zones(cfg.active)
+            val band = if (zone > 0) zones.hr[zone] else if (minBpm in 1..maxBpm) HrBand(minBpm, maxBpm) else null
+            if (band == null) Log.w(TAG, "heart rate: no band for zone $zone ($minBpm–$maxBpm)")
+            return band
+        }
+
+        /**
+         * Heart-rate control of the speed beside a route: a one-step
+         * heart-rate workout that leaves the incline, the plan and the step
+         * counter to the route. The tick runs both.
+         */
+        private fun holdHeartRate(band: HrBand, zone: Int?) {
+            val zones = tmStore.zones(cfg.active)
+            workoutZones = zones
+            workoutRunner = WorkoutRunner(Workout.heartRate(band, zone), zones, workoutLimits(),
+                fallbackKph = cfg.warmupKph(),
+                onStep = { _, s -> Log.i(TAG, "route: speed held to ${s.label}") })
         }
 
         /** Straight to the workout proper, keeping whatever pace is set. */
@@ -2007,6 +2044,7 @@ class MainActivity : Activity() {
             !recorder.recording && snap.whoId.isNotEmpty()) {
             val w = workoutRunner
             val plan = when {
+                route != null && planSteps.isNotEmpty() -> RunRecorder.PlanInfo(planName, planSteps, isRoute = true)
                 w != null -> RunRecorder.PlanInfo(planName, planSteps, isRoute = false,
                     plannedWorkoutId = w.workout.plannedId, marked = true)
                 planName.isNotEmpty() && planSteps.isNotEmpty() ->
@@ -2524,7 +2562,8 @@ class MainActivity : Activity() {
             }
             return
         }
-        planElapsed = r.profilePosition(p, planSteps)
+        // On a route the position is the route's, in metres (routeTick).
+        if (route == null) planElapsed = r.profilePosition(p, planSteps)
         cmd.speedKph?.let(::driveSpeed)
         cmd.incline?.let(::stepInclineTowards)
         workoutView = WorkoutView.of(r, p, workoutZones)
@@ -3404,10 +3443,10 @@ class MainActivity : Activity() {
         val elapsedNow = elapsedSec()
         if (Session.isMoving(session)) {
             // A route is ground, not a timetable — see routeTick.
-            when {
-                workoutRunner != null -> workoutTick()
-                route != null -> routeTick(sessionDistance)
-            }
+            // Both on a route held to a heart rate: the runner steers the
+            // speed, the route the incline and the position.
+            if (workoutRunner != null) workoutTick()
+            if (route != null) routeTick(sessionDistance)
         }
         val step = currentStep()
         val foot = podNow(speed, incline)

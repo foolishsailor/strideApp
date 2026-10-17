@@ -6,7 +6,7 @@ import { useWelcome } from '../../store/welcome';
 import { HowStep } from '../welcome/HowStep';
 import { PlanStep } from '../welcome/PlanStep';
 
-const TITLES = { manual: 'Manual', routes: 'Routes', workouts: 'Workouts' } as const;
+const TITLES = { manual: 'Quick start', routes: 'Routes', workouts: 'Workouts' } as const;
 
 /** The clock, and how the page's TrailMate list stands, which it asks for
  *  afresh each time it opens. */

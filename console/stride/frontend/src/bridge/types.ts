@@ -234,6 +234,8 @@ export interface StrideBridge {
   /** Manual, free: the pace is the runner's. */
   choose(): void;
   chooseRoute(id: string, loop: boolean): void;
+  /** A route with the speed held to a heart-rate band, as chooseHeartRate. */
+  chooseRouteHeartRate?(id: string, loop: boolean, zone: number, minBpm: number, maxBpm: number): void;
   /** One of the active person's planned workouts, by id. */
   chooseWorkout(id: string): void;
   /** Manual, heart rate: hold zone 1–5 of their zones, or with 0 the bpm range. */

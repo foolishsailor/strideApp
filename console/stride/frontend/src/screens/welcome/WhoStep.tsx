@@ -35,11 +35,11 @@ export function WhoStep() {
       <Prose size="ask" className={styles.ask}>Who's running?</Prose>
       <Row space={24} className={styles.choices}>
         {names.map((name) => (
-          <ChoiceCard key={name} person icon={name.charAt(0).toUpperCase()} name={name} onTap={() => pick(name)} />
+          <ChoiceCard key={name} person initial={name.charAt(0).toUpperCase()} name={name} onTap={() => pick(name)} />
         ))}
         {/* The way in to Settings only while there is no other reason to be
             here; once somebody is set up, Settings is on the next step. */}
-        {nobodySetUp && <ChoiceCard person icon="+" name="Add people" onTap={() => settings().open('treadmill')} />}
+        {nobodySetUp && <ChoiceCard person initial="+" name="Add people" onTap={() => settings().open('treadmill')} />}
       </Row>
     </>
   );

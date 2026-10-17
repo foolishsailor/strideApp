@@ -46,6 +46,7 @@
   color: var(--colour-ink-dim);
 }
 .aside {
+  position: relative; /* what hangs below it (TrailMateStatus) is placed from here */
   flex: none;
   display: flex;
   flex-direction: column;

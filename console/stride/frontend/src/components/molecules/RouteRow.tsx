@@ -11,7 +11,7 @@ import styles from './RouteRow.module.css';
 
 /** One route in the list: its name (and a race's date), how far, how much
  *  climbing, how often it has been run, and its ground drawn beside. Pressing
- *  the row starts it; THERE AND BACK, at the end, doubles it first. */
+ *  the row chooses it; THERE AND BACK, at the end, doubles it first. */
 export function RouteRow({ route, looped, onStart, onLoop }: {
   route: Route;
   looped: boolean;
