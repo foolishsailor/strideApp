@@ -1,0 +1,58 @@
+/* The page dimmed, not hidden: the popup is a choice made on the way.
+   Fixed to the panel, so the rail and header dim too, wherever it is opened. */
+.scrim {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--layer-overlay);
+}
+/* The floating surface, as the fan menu's: the theme's fill, edge and shadow. */
+.panel {
+  min-width: 640px;
+  max-width: calc(100% - 96px);
+  max-height: calc(100% - 96px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px 36px;
+  background: var(--role-fill-floating);
+  border: var(--edge-width) solid var(--role-edge);
+  border-radius: var(--radius-floating);
+  box-shadow: var(--role-shadow-floating);
+}
+.head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-title);
+  font-weight: var(--weight-heading);
+  color: var(--colour-ink);
+}
+.close {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  margin: -8px -16px 0 16px;
+  justify-content: center;
+  padding: 0;
+  font-size: 32px;
+}
+.body {
+  min-height: 0;
+  overflow-y: auto;
+  text-align: center;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 28px;
+}

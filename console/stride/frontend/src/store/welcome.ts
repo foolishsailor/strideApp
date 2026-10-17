@@ -22,6 +22,8 @@ interface WelcomeStore {
   runner: string;
   planMode: PlanMode;
   manual: ManualMode;
+  /** Routes: a route has been picked, and the page asks Free or Heart rate. */
+  routeChosen: boolean;
   /** Manual → Heart rate: the zone to hold, 1–5. */
   hrZone: number | null;
   /** A route's id when one is picked. */
@@ -50,16 +52,20 @@ export const useWelcome = create<WelcomeStore>()((set, get) => ({
   runner: '',
   planMode: 'manual',
   manual: 'free',
+  routeChosen: false,
   hrZone: null,
   route: null,
   loop: false,
   workout: null,
 
   goTo: (step) => set({ step }),
-  back: () => set({ step: Math.max(1, get().step - 1) as WelcomeStep }),
+  // From how to run a route, back to the list; otherwise a step back.
+  back: () => (get().routeChosen
+    ? set({ routeChosen: false, manual: 'free', hrZone: null })
+    : set({ step: Math.max(1, get().step - 1) as WelcomeStep })),
   setRunner: (runner) => set({ runner }),
   chooseManual: () => set({ planMode: 'manual', manual: 'free', hrZone: null, step: 3 }),
-  chooseRoutes: () => set({ planMode: 'routes', step: 3 }),
+  chooseRoutes: () => set({ planMode: 'routes', routeChosen: false, manual: 'free', hrZone: null, step: 3 }),
   chooseWorkouts: () => set({ planMode: 'workouts', step: 3 }),
   setManual: (manual) => set({ manual }),
   setHrZone: (hrZone) => set({ manual: 'hr', hrZone }),
@@ -89,6 +95,9 @@ export function selectRunner(name: string): void {
   useNav.getState().go('run');
   bridge().setRunner(name);
   loadSettings();
+  // Before the shell draws, so Today and Tomorrow are there in its first
+  // frame instead of arriving a moment later and moving the page.
+  useTrailmate.getState().loadSchedules();
   useTrailmate.getState().loadRoutes();
 }
 
@@ -122,7 +131,11 @@ export function begin(): void {
   const s = useWelcome.getState();
   if (!canBegin(s)) return;
   const b = bridge();
-  if (s.planMode === 'routes') b.chooseRoute(s.route!, s.loop);
+  if (s.planMode === 'routes') {
+    const z = s.manual === 'hr' ? chosenHrBand(s) : null;
+    if (z && b.chooseRouteHeartRate) b.chooseRouteHeartRate(s.route!, s.loop, z.zone, z.minBpm, z.maxBpm);
+    else b.chooseRoute(s.route!, s.loop);
+  }
   else if (s.planMode === 'workouts') b.chooseWorkout(s.workout!);
   else if (s.manual === 'hr') {
     const z = chosenHrBand(s)!;

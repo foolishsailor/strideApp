@@ -1,5 +1,11 @@
-/* Quiet, under the clock: it explains the list, it is not the list. */
+/* Quiet, under the clock: it explains the list, it is not the list. Hung
+   below the header rather than in it, so coming and going it never changes
+   the header's height, and the page under it never moves. */
 .status {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: flex-end;

@@ -11,10 +11,15 @@
   height: 210px;
 }
 
+/* The run types' glyphs, in theme colours rather than emoji (Icon). */
 .glyph {
-  font-size: 66px;
+  display: flex;
+  font-size: 72px;
   line-height: 1;
 }
+.accent { color: var(--colour-accent); }
+.warm { color: var(--colour-accent-warm); }
+.alert { color: var(--colour-alert); }
 .initial {
   width: 84px;
   height: 84px;

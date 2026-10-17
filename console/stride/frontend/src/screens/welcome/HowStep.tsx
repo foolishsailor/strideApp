@@ -17,9 +17,9 @@ export function HowStep() {
     <>
       <div className={cx(styles.how, planned && styles.withPlan)}>
         <div className={styles.ways}>
-          <ChoiceCard row icon="🚶" name="Manual" hint="free, or held to a heart rate" onTap={chooseManual} />
-          <ChoiceCard row icon="🗺️" name="Routes" hint="your starred routes and races" onTap={chooseRoutes} />
-          <ChoiceCard row icon="📅" name="Workouts" hint="your plan from TrailMate" onTap={chooseWorkouts} />
+          <ChoiceCard row icon="bolt" name="Quick start" hint="free, or held to a heart rate" onTap={chooseManual} />
+          <ChoiceCard row icon="route" name="Routes" hint="your starred routes and races" onTap={chooseRoutes} />
+          <ChoiceCard row icon="calendar" name="Workouts" hint="your plan from TrailMate" onTap={chooseWorkouts} />
         </div>
         {planned && (
           <div className={styles.plan}>
