@@ -54,6 +54,12 @@ export function ControlBar() {
       <Button size="dock" tone="stop" muted={mode === 'cooldown'} onTap={onStop}>
         <Icon name="stop" label="STOP" />
       </Button>
+      <Button size="dock" onTap={() => {
+        setFanOpen(false);
+        useUi.getState().setSettingsOpen(true);
+      }}>
+        <Icon name="settings" label="SETTINGS" />
+      </Button>
     </div>
   );
 }

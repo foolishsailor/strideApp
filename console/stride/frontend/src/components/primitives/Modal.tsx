@@ -14,21 +14,23 @@ import styles from './Modal.module.css';
  * the safety key). This is a choice made on the way, and the page it was
  * opened from stays in view.
  */
-export function Modal({ title, onClose, actions, className, children }: {
-  title: ReactNode;
+export function Modal({ title, label, onClose, actions, className, children }: {
+  title?: ReactNode;
+  /** The dialog's name when it has no title. */
+  label?: string;
   onClose: () => void;
   actions?: ReactNode;
   className?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
-    <div className={styles.scrim} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={cx(styles.panel, className)} role="dialog" aria-label={typeof title === 'string' ? title : undefined}>
+    <div data-touch className={styles.scrim} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={cx(styles.panel, className)} role="dialog" aria-label={typeof title === 'string' ? title : label}>
         <div className={styles.head}>
           <div className={cx(styles.title, fit(1))}>{title}</div>
           <Button size="nav" className={styles.close} onTap={onClose}><Icon name="close" label="Close" /></Button>
         </div>
-        <div className={styles.body}>{children}</div>
+        {children && <div className={styles.body}>{children}</div>}
         {actions && <div className={styles.actions}>{actions}</div>}
       </div>
     </div>

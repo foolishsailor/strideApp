@@ -2574,8 +2574,15 @@ class MainActivity : Activity() {
      * speed changes come at the same gentle rate as every other the console
      * makes, and a hand on the speed ends them the same way.
      */
-    private fun driveSpeed(goal: Double) {
+    private fun driveSpeed(want: Double) {
         if (dmk || session != Session.ACTIVE) return
+        // The board caps the belt on a steep decline without saying so; ask
+        // for no more than it will give (DeclineLimit).
+        val goal = DeclineLimit.cap(want, lastActualGrade, targetGrade)
+        if (goal < want && rampTo != goal) {
+            Log.i(TAG, "decline: speed held to ${"%.1f".format(goal)} km/h (wanted ${"%.1f".format(want)}) at " +
+                    "${"%.1f".format(minOf(lastActualGrade, targetGrade))}%")
+        }
         if (Math.abs(targetKph - goal) < 0.05 && rampTo == 0.0) return
         if (rampTo != goal) {
             rampTo = goal

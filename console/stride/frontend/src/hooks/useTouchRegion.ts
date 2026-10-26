@@ -18,7 +18,7 @@ export function touchableBoxes(doc: Document = document): string {
   const view = doc.defaultView ?? window;
   const W = view.innerWidth, H = view.innerHeight, px = view.devicePixelRatio || 1;
   const ui = useUi.getState();
-  if (ui.confirmOpen || ui.appsOpen || ui.asleep || useSession.getState().snapshot.dmk) return 'all';
+  if (ui.confirmOpen || ui.appsOpen || ui.settingsOpen || ui.asleep || useSession.getState().snapshot.dmk) return 'all';
   const boxes: number[][] = [];
   for (const el of doc.querySelectorAll('[data-drawer] > *, [data-touch]')) {
     const r = el.getBoundingClientRect();

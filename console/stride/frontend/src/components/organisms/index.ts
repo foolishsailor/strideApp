@@ -2,6 +2,7 @@ export { ControlBar } from './ControlBar';
 export { Drawer, Grip, SizeToggle, toggleControls, toggleMetrics, toggleMetricsSize } from './Drawers';
 export { FanMenu } from './FanMenu';
 export { SpeedMenu } from './SpeedMenu';
+export { SettingsModal } from './SettingsModal';
 export { Hero } from './Hero';
 export { RunChart } from './RunChart';
 export { CompactStrip, MetricStrip } from './MetricStrip';

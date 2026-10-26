@@ -19,6 +19,8 @@ interface UiStore {
   fanOpen: boolean;
   /** The speed menu: AUTO / MANUAL and SYNC TO POD. */
   speedMenuOpen: boolean;
+  /** The settings popup, mid-run: My settings or Treadmill settings. */
+  settingsOpen: boolean;
   confirmOpen: boolean;
   asleep: boolean;
   /** The APPS picker. */
@@ -37,6 +39,7 @@ interface UiStore {
 
   setFanOpen(open: boolean): void;
   setSpeedMenuOpen(open: boolean): void;
+  setSettingsOpen(open: boolean): void;
   setConfirmOpen(open: boolean): void;
   setAsleep(asleep: boolean): void;
   setAppsOpen(open: boolean): void;
@@ -50,6 +53,7 @@ interface UiStore {
 export const useUi = create<UiStore>()((set) => ({
   fanOpen: false,
   speedMenuOpen: false,
+  settingsOpen: false,
   confirmOpen: false,
   asleep: false,
   appsOpen: false,
@@ -61,6 +65,7 @@ export const useUi = create<UiStore>()((set) => ({
 
   setFanOpen: (fanOpen) => set({ fanOpen }),
   setSpeedMenuOpen: (speedMenuOpen) => set({ speedMenuOpen }),
+  setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
   setConfirmOpen: (confirmOpen) => set({ confirmOpen }),
   setAsleep: (asleep) => set({ asleep }),
   setAppsOpen: (appsOpen) => set({ appsOpen }),

@@ -25,6 +25,7 @@ export function PausedOverlay() {
         <>
           <Button tone="primary" size="overlay" onTap={answer(() => bridge().resume())}>RESUME</Button>
           <Button tone="stop" size="overlay" onTap={answer(() => bridge().end())}>END WORKOUT</Button>
+          <Button size="overlay" onTap={() => useUi.getState().setSettingsOpen(true)}>SETTINGS</Button>
         </>
       }
     />
