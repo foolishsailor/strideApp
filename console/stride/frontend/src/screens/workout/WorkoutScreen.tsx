@@ -6,7 +6,7 @@ import { Fill } from '../../components/primitives';
 import { StatusChip } from '../../components/molecules';
 import {
   CompactStrip, ControlBar, Drawer, FanMenu, Grip, Hero, InclineRail, InclineReading, MetricStrip,
-  SizeToggle, SpeedMenu, SpeedRail, SpeedReading, StepBand, toggleControls, toggleMetrics,
+  SettingsModal, SizeToggle, SpeedMenu, SpeedRail, SpeedReading, StepBand, toggleControls, toggleMetrics,
 } from '../../components/organisms';
 
 /** The screen the treadmill is actually run on: warm-up, the run, pause and
@@ -45,6 +45,7 @@ export function WorkoutScreen() {
         <ControlBar />
         <FanMenu />
         <SpeedMenu />
+        <SettingsModal />
       </Fill>
     );
   }
@@ -67,6 +68,7 @@ export function WorkoutScreen() {
       </Drawer>
       <FanMenu />
       <SpeedMenu />
+      <SettingsModal />
     </Fill>
   );
 }

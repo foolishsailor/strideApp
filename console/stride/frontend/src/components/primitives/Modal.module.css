@@ -10,7 +10,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
-  z-index: var(--layer-overlay);
+  z-index: var(--layer-modal); /* over the pause screen it can be opened from */
 }
 /* The floating surface, as the fan menu's: the theme's fill, edge and shadow. */
 .panel {

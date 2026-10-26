@@ -1,9 +1,9 @@
 .menu {
   position: absolute;
   /* Centred over FAN: the dock is equal columns edge to edge, so FAN's
-     centre is 62.5 % across with APPS (third of four) and 50 % without
-     (second of three). Half the menu's 170 back from there. */
-  left: 62.5%;
+     centre is 50 % across with APPS (third of five) and 37.5 % without
+     (second of four). Half the menu's 170 back from there. */
+  left: 50%;
   margin-left: -85px;
   bottom: 116px; /* just above the docked controls */
   width: 170px;
@@ -15,5 +15,5 @@
   z-index: var(--layer-fan-menu);
 }
 .noApps {
-  left: 50%;
+  left: 37.5%;
 }

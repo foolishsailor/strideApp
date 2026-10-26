@@ -40,7 +40,7 @@ beforeEach(() => {
   installKotlinEntryPoints();
   useWelcome.setState({ step: 1, runner: '', planMode: 'manual', manual: 'free', hrZone: null, route: null, loop: false, workout: null });
   useTrailmate.setState({ schedules: {}, routes: [] });
-  useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false, appsOpen: false });
+  useUi.setState({ fanOpen: false, confirmOpen: false, asleep: false, appsOpen: false, settingsOpen: false, speedMenuOpen: false });
   act(() => window.overApp(false));
   act(() => window.render({ mode: 'welcome' }));
 });
@@ -401,6 +401,28 @@ describe('a workout under way', () => {
 });
 
 describe('workout', () => {
+  it('opens settings mid-run from the cog, without pausing', () => {
+    const b = mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'running' }));
+    press('SETTINGS');
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
+    expect(b.pause).not.toHaveBeenCalled(); // the run carries on
+    press('MY SETTINGS');
+    expect(window.STRIDE_SETTINGS.open).toHaveBeenCalledWith('me');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens settings from the pause screen too', () => {
+    mockBridge();
+    render(<App />);
+    act(() => window.render({ mode: 'paused' }));
+    act(() => useUi.getState().setConfirmOpen(true));
+    fireEvent.click(screen.getByText('SETTINGS'));
+    press('TREADMILL SETTINGS');
+    expect(window.STRIDE_SETTINGS.open).toHaveBeenCalledWith('treadmill');
+  });
+
   it('pauses on STOP before asking, then ends', () => {
     const b = mockBridge();
     render(<App />);
